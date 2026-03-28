@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   LayoutDashboard, 
@@ -42,6 +42,14 @@ export default function App() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>(MOCK_CHECKINS);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get('role');
+    if (roleParam === 'REGISTRATION') {
+      setRole('REGISTRATION');
+    }
+  }, []);
+
   // Role Switcher for Demo
   const RoleSwitcher = () => (
     <div className="fixed bottom-4 right-4 flex gap-2 bg-white p-2 rounded-full shadow-2xl border border-gray-200 z-50">
@@ -63,8 +71,23 @@ export default function App() {
       >
         Funcionário
       </button>
+      <button 
+        onClick={() => setRole('REGISTRATION')}
+        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'REGISTRATION' ? 'bg-orange-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+      >
+        Registro
+      </button>
     </div>
   );
+
+  if (role === 'REGISTRATION') {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+        <RoleSwitcher />
+        <RegistrationForm onComplete={() => setRole('EMPLOYEE')} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
@@ -456,7 +479,7 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
 
   const handleSendLink = (e: React.FormEvent) => {
     e.preventDefault();
-    const link = `${window.location.origin}/register?ref=agency`;
+    const link = `${window.location.origin}?role=REGISTRATION`;
     const message = `Olá! Aqui está o link para o seu cadastro na agência: ${link}`;
     const cleanPhone = linkPhone.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -1171,5 +1194,130 @@ function EmployeePonto({ accessPoints, checkIns, setCheckIns }: { accessPoints: 
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function RegistrationForm({ onComplete }: { onComplete: () => void }) {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    cpf: '',
+    birthDate: '',
+    photo: null as File | null,
+    document: null as File | null,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simulate submission
+    alert('Cadastro enviado com sucesso! Aguarde a aprovação da agência.');
+    onComplete();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100"
+      >
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-blue-200">
+            <UserPlus size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Cadastro de Funcionário</h2>
+          <p className="text-gray-500">Preencha seus dados para começar.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Nome Completo</label>
+              <input 
+                required
+                type="text" 
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                value={formData.fullName}
+                onChange={e => setFormData({...formData, fullName: e.target.value})}
+                placeholder="Seu nome completo"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">CPF</label>
+                <input 
+                  required
+                  type="text" 
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.cpf}
+                  onChange={e => setFormData({...formData, cpf: e.target.value})}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">Data de Nasc.</label>
+                <input 
+                  required
+                  type="date" 
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.birthDate}
+                  onChange={e => setFormData({...formData, birthDate: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Foto de Perfil (Selfie)</label>
+              <div className="relative">
+                <input 
+                  required
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  id="photo-upload"
+                  onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})}
+                />
+                <label 
+                  htmlFor="photo-upload"
+                  className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition-colors"
+                >
+                  <Camera className={formData.photo ? 'text-green-500' : 'text-gray-400'} size={24} />
+                  <span className="text-xs font-medium text-gray-500">
+                    {formData.photo ? formData.photo.name : 'Clique para tirar ou anexar foto'}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Documento (RG ou CNH)</label>
+              <div className="relative">
+                <input 
+                  required
+                  type="file" 
+                  accept="image/*,application/pdf"
+                  className="hidden" 
+                  id="doc-upload"
+                  onChange={e => setFormData({...formData, document: e.target.files?.[0] || null})}
+                />
+                <label 
+                  htmlFor="doc-upload"
+                  className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition-colors"
+                >
+                  <Upload className={formData.document ? 'text-green-500' : 'text-gray-400'} size={24} />
+                  <span className="text-xs font-medium text-gray-500">
+                    {formData.document ? formData.document.name : 'Anexar cópia do documento'}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+            Finalizar Cadastro
+          </button>
+        </form>
+      </motion.div>
+    </div>
   );
 }
