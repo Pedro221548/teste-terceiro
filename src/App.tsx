@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import QrScanner from 'react-qr-scanner';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, calculateValue } from './constants';
 
@@ -918,9 +918,9 @@ function EmployeePonto({ accessPoints, checkIns, setCheckIns }: { accessPoints: 
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
-  const handleScan = (data: any) => {
-    if (data) {
-      const point = accessPoints.find(ap => ap.qrCodeValue === data.text);
+  const handleScan = (text: string) => {
+    if (text) {
+      const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
         setStep('PHOTO');
@@ -1011,11 +1011,19 @@ function EmployeePonto({ accessPoints, checkIns, setCheckIns }: { accessPoints: 
         {step === 'SCANNING' && (
           <div className="space-y-6">
             <div className="relative aspect-square rounded-2xl overflow-hidden border-4 border-blue-600">
-              <QrScanner
-                delay={300}
+              <Scanner
+                onScan={(result) => {
+                  if (result && result.length > 0) {
+                    handleScan(result[0].rawValue);
+                  }
+                }}
                 onError={handleError}
-                onScan={handleScan}
-                style={{ width: '100%' }}
+                styles={{
+                  container: { width: '100%', height: '100%' },
+                  video: { width: '100%', height: '100%', objectFit: 'cover' }
+                }}
+                allowMultiple={false}
+                scanDelay={300}
               />
               <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none">
                 <div className="w-full h-full border-2 border-white/50 border-dashed" />
