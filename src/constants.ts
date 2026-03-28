@@ -36,6 +36,7 @@ export const MOCK_EMPLOYEES: Employee[] = [
 export const MOCK_CLIENTS: Client[] = [
   { id: 'cli1', name: 'Supermercado Alvorada', managerName: 'Ricardo' },
   { id: 'cli2', name: 'Restaurante Sabor Real', managerName: 'Ana' },
+  { id: 'cli3', name: 'CLIMA RIO', managerName: 'Gestor Clima Rio' },
 ];
 
 export const MOCK_ASSIGNMENTS: Assignment[] = [
@@ -53,6 +54,7 @@ export const MOCK_CONTACTS: ContactRequest[] = [
 
 export const MOCK_ACCESS_POINTS: AccessPoint[] = [
   { id: 'ap1', managerName: 'Ricardo', location: 'Supermercado Alvorada - Entrada Principal', qrCodeValue: 'unit-alvorada-001', createdAt: '2026-03-28' },
+  { id: 'ap2', managerName: 'Gestor Clima Rio', location: 'CLIMA RIO', qrCodeValue: 'unit-climario-001', createdAt: '2026-03-28' },
 ];
 
 export const MOCK_CHECKINS: CheckIn[] = [];
