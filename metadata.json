@@ -1,0 +1,5 @@
+{
+  "name": "StaffLink - Gestão de Mão de Obra",
+  "description": "Plataforma completa para gestão de terceirização de mão de obra, conectando agências, gerentes e funcionários diaristas.",
+  "requestFramePermissions": ["camera"]
+}
