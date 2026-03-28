@@ -84,7 +84,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
         <RoleSwitcher />
-        <RegistrationForm onComplete={() => setRole('EMPLOYEE')} />
+        <RegistrationForm 
+          onComplete={() => setRole('EMPLOYEE')} 
+          setEmployees={setEmployees}
+        />
       </div>
     );
   }
@@ -470,12 +473,54 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
   const [showForm, setShowForm] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkPhone, setLinkPhone] = useState('');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     cpf: '',
     birthDate: '',
+    photoUrl: '',
+    docUrl: '',
   });
+
+  const startCamera = async () => {
+    setIsCameraOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Não foi possível acessar a câmera.");
+      setIsCameraOpen(false);
+    }
+  };
+
+  const takePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const photoData = canvasRef.current.toDataURL('image/jpeg');
+        setFormData({ ...formData, photoUrl: photoData });
+        stopCamera();
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setIsCameraOpen(false);
+  };
 
   const handleSendLink = (e: React.FormEvent) => {
     e.preventDefault();
@@ -509,7 +554,7 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
       id: `emp${Date.now()}`,
       ...formData,
       rating: 1,
-      status: 'ACTIVE',
+      status: 'PENDING',
       complaints: 0,
     };
 
@@ -587,8 +632,18 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-3xl border border-gray-200 shadow-xl max-w-2xl mx-auto"
+          className="bg-white p-8 rounded-3xl border border-gray-200 shadow-xl max-w-2xl mx-auto relative"
         >
+          {isCameraOpen && (
+            <div className="absolute inset-0 z-50 bg-black rounded-3xl overflow-hidden flex flex-col">
+              <video ref={videoRef} autoPlay playsInline className="flex-1 object-cover" />
+              <canvas ref={canvasRef} className="hidden" />
+              <div className="p-4 flex justify-center gap-4 bg-black/50">
+                <button onClick={stopCamera} className="p-2 bg-red-500 text-white rounded-full"><X size={24} /></button>
+                <button onClick={takePhoto} className="p-2 bg-white text-black rounded-full"><Camera size={24} /></button>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold">Cadastro Direto</h3>
             <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
@@ -641,17 +696,45 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Foto 3x4</label>
-                <div className="w-full p-4 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all">
-                  <Upload size={24} className="mb-2" />
-                  <span className="text-xs font-bold">Anexar Foto</span>
+                <label className="text-sm font-bold text-gray-700">Foto 3x4 (Na Hora)</label>
+                <div 
+                  onClick={startCamera}
+                  className="w-full p-4 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all overflow-hidden"
+                >
+                  {formData.photoUrl ? (
+                    <img src={formData.photoUrl} alt="Preview" className="w-full h-24 object-cover rounded-lg" />
+                  ) : (
+                    <>
+                      <Camera size={24} className="mb-2" />
+                      <span className="text-xs font-bold">Tirar Foto</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700">Documento (CPF)</label>
-                <div className="w-full p-4 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all">
-                  <Upload size={24} className="mb-2" />
-                  <span className="text-xs font-bold">Anexar Documento</span>
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*,application/pdf"
+                    className="hidden" 
+                    id="direct-doc-upload"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormData({...formData, docUrl: file.name});
+                      }
+                    }}
+                  />
+                  <label 
+                    htmlFor="direct-doc-upload"
+                    className="w-full p-4 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all"
+                  >
+                    <Upload size={24} className="mb-2" />
+                    <span className="text-xs font-bold">
+                      {formData.docUrl || 'Anexar Documento'}
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -696,12 +779,25 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
                 </td>
                 <td className="p-4">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                    emp.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                    emp.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 
+                    emp.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-100 text-gray-500'
                   }`}>
-                    {emp.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                    {emp.status === 'ACTIVE' ? 'Ativo' : emp.status === 'PENDING' ? 'Pendente' : 'Inativo'}
                   </span>
                 </td>
                 <td className="p-4 text-right">
+                  {emp.status === 'PENDING' && (
+                    <button 
+                      onClick={() => {
+                        setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: 'ACTIVE' } : e));
+                        alert(`${emp.firstName} aprovado com sucesso!`);
+                      }}
+                      className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg font-bold hover:bg-green-700 transition-all mr-2"
+                    >
+                      Aprovar
+                    </button>
+                  )}
                   <button className="text-gray-400 hover:text-blue-600 p-1"><ChevronRight size={20} /></button>
                 </td>
               </tr>
@@ -1197,19 +1293,81 @@ function EmployeePonto({ accessPoints, checkIns, setCheckIns }: { accessPoints: 
   );
 }
 
-function RegistrationForm({ onComplete }: { onComplete: () => void }) {
+function RegistrationForm({ onComplete, setEmployees }: { onComplete: () => void, setEmployees: React.Dispatch<React.SetStateAction<Employee[]>> }) {
   const [formData, setFormData] = useState({
     fullName: '',
     cpf: '',
     birthDate: '',
-    photo: null as File | null,
+    photo: null as string | null,
     document: null as File | null,
   });
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  const startCamera = async () => {
+    setIsCameraOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Não foi possível acessar a câmera.");
+      setIsCameraOpen(false);
+    }
+  };
+
+  const takePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const photoData = canvasRef.current.toDataURL('image/jpeg');
+        setFormData({ ...formData, photo: photoData });
+        stopCamera();
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setIsCameraOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate submission
-    alert('Cadastro enviado com sucesso! Aguarde a aprovação da agência.');
+    
+    if (!formData.photo) {
+      alert("Por favor, tire uma foto para o cadastro.");
+      return;
+    }
+
+    const names = formData.fullName.split(' ');
+    const firstName = names[0];
+    const lastName = names.slice(1).join(' ') || '';
+
+    const newEmployee: Employee = {
+      id: Math.random().toString(36).substr(2, 9),
+      firstName,
+      lastName,
+      cpf: formData.cpf,
+      birthDate: formData.birthDate,
+      photoUrl: formData.photo || undefined,
+      docUrl: formData.document ? formData.document.name : undefined,
+      status: 'PENDING',
+      rating: 0,
+      complaints: 0
+    };
+
+    setEmployees(prev => [...prev, newEmployee]);
+    alert('Cadastro enviado com sucesso! Sua conta está PENDENTE de aprovação pela agência.');
     onComplete();
   };
 
@@ -1267,25 +1425,29 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Foto de Perfil (Selfie)</label>
+              <label className="text-sm font-bold text-gray-700">Foto de Perfil (Selfie na Hora)</label>
               <div className="relative">
-                <input 
-                  required
-                  type="file" 
-                  accept="image/*"
-                  className="hidden" 
-                  id="photo-upload"
-                  onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})}
-                />
-                <label 
-                  htmlFor="photo-upload"
-                  className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition-colors"
-                >
-                  <Camera className={formData.photo ? 'text-green-500' : 'text-gray-400'} size={24} />
-                  <span className="text-xs font-medium text-gray-500">
-                    {formData.photo ? formData.photo.name : 'Clique para tirar ou anexar foto'}
-                  </span>
-                </label>
+                {formData.photo ? (
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-gray-200">
+                    <img src={formData.photo} alt="Selfie" className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={startCamera}
+                      className="absolute bottom-2 right-2 p-2 bg-white/80 backdrop-blur rounded-lg text-blue-600 shadow-sm hover:bg-white"
+                    >
+                      <Camera size={20} />
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={startCamera}
+                    className="w-full p-8 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition-colors"
+                  >
+                    <Camera className="text-gray-400" size={32} />
+                    <span className="text-xs font-medium text-gray-500">Tirar Foto Agora</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1318,6 +1480,44 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
           </button>
         </form>
       </motion.div>
+
+      <AnimatePresence>
+        {isCameraOpen && (
+          <div className="fixed inset-0 bg-black z-[60] flex flex-col items-center justify-center p-4">
+            <div className="relative w-full max-w-md aspect-[3/4] bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 border-[20px] border-black/20 pointer-events-none">
+                <div className="w-full h-full border-2 border-white/50 rounded-2xl border-dashed" />
+              </div>
+              
+              <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center gap-8">
+                <button 
+                  type="button"
+                  onClick={stopCamera}
+                  className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white hover:bg-white/30"
+                >
+                  <X size={24} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={takePhoto}
+                  className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all"
+                >
+                  <div className="w-16 h-16 border-4 border-gray-200 rounded-full" />
+                </button>
+                <div className="w-12 h-12" /> {/* Spacer */}
+              </div>
+            </div>
+            <p className="text-white mt-6 font-medium">Posicione seu rosto no centro</p>
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
