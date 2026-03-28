@@ -445,12 +445,26 @@ function AgencyFeedbacks({ feedbacks, employees }: { feedbacks: Feedback[], empl
 
 function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[], setEmployees: React.Dispatch<React.SetStateAction<Employee[]>> }) {
   const [showForm, setShowForm] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkPhone, setLinkPhone] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     cpf: '',
     birthDate: '',
   });
+
+  const handleSendLink = (e: React.FormEvent) => {
+    e.preventDefault();
+    const link = `${window.location.origin}/register?ref=agency`;
+    const message = `Olá! Aqui está o link para o seu cadastro na agência: ${link}`;
+    const cleanPhone = linkPhone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    setShowLinkModal(false);
+    setLinkPhone('');
+  };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -494,11 +508,7 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => {
-              const link = `${window.location.origin}/register?ref=agency`;
-              navigator.clipboard.writeText(link);
-              alert('Link de cadastro copiado!');
-            }}
+            onClick={() => setShowLinkModal(true)}
             className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-all"
           >
             <LinkIcon size={18} />
@@ -513,6 +523,42 @@ function AgencyRegistrations({ employees, setEmployees }: { employees: Employee[
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showLinkModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white p-8 rounded-3xl border border-gray-200 shadow-2xl max-w-md w-full"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold">Enviar Link de Cadastro</h3>
+                <button onClick={() => setShowLinkModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSendLink} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">WhatsApp do Funcionário</label>
+                  <input 
+                    required
+                    type="tel" 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={linkPhone}
+                    onChange={e => setLinkPhone(e.target.value)}
+                    placeholder="Ex: 11999999999"
+                  />
+                  <p className="text-xs text-gray-500">O link será enviado via WhatsApp.</p>
+                </div>
+                <button type="submit" className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-lg hover:bg-green-700 transition-all shadow-lg shadow-green-100 flex items-center justify-center gap-2">
+                  <Phone size={20} />
+                  Enviar via WhatsApp
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {showForm && (
         <motion.div 
