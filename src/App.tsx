@@ -450,6 +450,29 @@ export default function App() {
   }
 
   if (!user) {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get('role');
+    
+    if (roleParam === 'REGISTRATION') {
+      return (
+        <ErrorBoundary>
+          <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <RegistrationForm onComplete={() => window.location.href = '/'} />
+          </div>
+        </ErrorBoundary>
+      );
+    }
+    
+    if (roleParam === 'COMPANY_REGISTRATION') {
+      return (
+        <ErrorBoundary>
+          <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <CompanyRegistrationForm onComplete={() => window.location.href = '/'} />
+          </div>
+        </ErrorBoundary>
+      );
+    }
+
     return (
       <div className="min-h-screen flex bg-slate-50 overflow-hidden">
         {/* Left Side: Purpose/Branding - Website Style */}
