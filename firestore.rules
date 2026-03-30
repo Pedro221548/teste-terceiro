@@ -223,7 +223,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /settings/{settingId} {
+    match /settings/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }

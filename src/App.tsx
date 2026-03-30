@@ -39,7 +39,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -216,7 +216,7 @@ export default function App() {
   useEffect(() => {
     testConnection();
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser && !firebaseUser.isAnonymous) {
+      if (firebaseUser) {
         const urlParams = new URLSearchParams(window.location.search);
         const urlRole = urlParams.get('role') as UserRole;
 
@@ -238,9 +238,6 @@ export default function App() {
           setRole(defaultRole);
         }
         setUser(firebaseUser);
-      } else if (firebaseUser && firebaseUser.isAnonymous) {
-        // Keep the custom user state if it exists
-        setUser(prev => (prev as any)?.isCustom ? prev : null);
       } else {
         setUser(prev => (prev as any)?.isCustom ? prev : null);
       }
@@ -309,60 +306,39 @@ export default function App() {
     // 1. Check in companyUsers
     const cUser = companyUsers.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
     if (cUser) {
-      try {
-        await signInAnonymously(auth);
-        setUser({
-          uid: cUser.id,
-          email: cUser.email,
-          displayName: cUser.fullName,
-          isCustom: true,
-          customRole: 'COMPANY'
-        });
-        setRole('COMPANY');
-        if (cUser.unitId) setImpersonatedClientId(units.find(u => u.id === cUser.unitId)?.clientId || null);
-      } catch (err) {
-        console.error('Anonymous sign-in error:', err);
-        setLoginError('Erro ao iniciar sessão segura. Verifique se o login anônimo está ativado no Firebase.');
-      }
+      setUser({
+        uid: cUser.id,
+        email: cUser.email,
+        displayName: cUser.fullName,
+        isCustom: true
+      });
+      setRole('COMPANY');
+      if (cUser.unitId) setImpersonatedClientId(units.find(u => u.id === cUser.unitId)?.clientId || null);
       return;
     }
 
     // 2. Check in employees
     const eUser = employees.find(e => e.loginEmail?.toLowerCase() === emailInput.toLowerCase() && e.password === passwordInput);
     if (eUser) {
-      try {
-        await signInAnonymously(auth);
-        setUser({
-          uid: eUser.id,
-          email: eUser.loginEmail,
-          displayName: `${eUser.firstName} ${eUser.lastName}`,
-          isCustom: true,
-          customRole: 'EMPLOYEE'
-        });
-        setRole('EMPLOYEE');
-      } catch (err) {
-        console.error('Anonymous sign-in error:', err);
-        setLoginError('Erro ao iniciar sessão segura.');
-      }
+      setUser({
+        uid: eUser.id,
+        email: eUser.loginEmail,
+        displayName: `${eUser.firstName} ${eUser.lastName}`,
+        isCustom: true
+      });
+      setRole('EMPLOYEE');
       return;
     }
 
     // 3. Check for default Agency (Demo)
     if (emailInput === 'admin@stafflink.com' && passwordInput === 'admin123') {
-      try {
-        await signInAnonymously(auth);
-        setUser({
-          uid: 'agency-admin',
-          email: 'admin@stafflink.com',
-          displayName: 'Administrador StaffLink',
-          isCustom: true,
-          customRole: 'AGENCY'
-        });
-        setRole('AGENCY');
-      } catch (err) {
-        console.error('Anonymous sign-in error:', err);
-        setLoginError('Erro ao iniciar sessão segura.');
-      }
+      setUser({
+        uid: 'agency-admin',
+        email: 'admin@stafflink.com',
+        displayName: 'Administrador StaffLink',
+        isCustom: true
+      });
+      setRole('AGENCY');
       return;
     }
 
@@ -784,8 +760,8 @@ export default function App() {
                       onClick={() => setActiveTab('evaluate_team')} 
                     />
                     <SidebarItem 
-                      icon={<div className="flex items-center gap-1">Diaristas <Star size={14} className="fill-yellow-400 text-yellow-400" /></div>} 
-                      label="" 
+                      icon={<Users size={20} />} 
+                      label="Diaristas" 
                       active={activeTab === 'company_diaristas'} 
                       onClick={() => setActiveTab('company_diaristas')} 
                     />
@@ -949,6 +925,7 @@ export default function App() {
                     <UserManagement 
                       employees={employees}
                       companyUsers={companyUsers}
+                      role={role}
                     />
                   </div>
                 )}
@@ -4112,7 +4089,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {accessPoints.map(ap => (
+        {[...accessPoints].sort((a, b) => a.location.localeCompare(b.location)).map(ap => (
           <div key={ap.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
             
@@ -5378,7 +5355,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-const UserManagement = ({ employees, companyUsers }: { employees: Employee[], companyUsers: CompanyUser[] }) => {
+const UserManagement = ({ employees, companyUsers, role }: { employees: Employee[], companyUsers: CompanyUser[], role: UserRole | null }) => {
   const [filter, setFilter] = useState<'EMPLOYEE' | 'COMPANY'>('EMPLOYEE');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState<string | null>(null);
@@ -5406,6 +5383,17 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
     setShowEditModal(null);
     setEditData({ email: '', password: '' });
     alert('Credenciais atualizadas com sucesso!');
+  };
+
+  const handleDeleteUser = async (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+    try {
+      await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
+      alert('Usuário excluído com sucesso!');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Erro ao excluir usuário.');
+    }
   };
 
   const filteredEmployees = employees.filter(emp => 
@@ -5474,9 +5462,13 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                 <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                        {emp.firstName[0]}{emp.lastName[0]}
-                      </div>
+                      {emp.photoUrl ? (
+                        <img src={emp.photoUrl} alt={emp.firstName} className="w-10 h-10 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                          {emp.firstName[0]}{emp.lastName[0]}
+                        </div>
+                      )}
                       <span className="font-bold text-slate-700">{emp.firstName} {emp.lastName}</span>
                     </div>
                   </td>
@@ -5488,7 +5480,7 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                       {emp.loginEmail ? 'Ativo' : 'Pendente'}
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-8 py-6 text-right flex items-center justify-end gap-2">
                     <button 
                       onClick={() => {
                         setShowEditModal(emp.id);
@@ -5498,6 +5490,14 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                     >
                       <Lock size={18} />
                     </button>
+                    {role === 'AGENCY' && (
+                      <button 
+                        onClick={() => handleDeleteUser(emp.id, 'EMPLOYEE')}
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -5506,9 +5506,13 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                 <tr key={cu.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                        {cu.fullName[0]}
-                      </div>
+                      {cu.photoUrl ? (
+                        <img src={cu.photoUrl} alt={cu.fullName} className="w-10 h-10 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                          {cu.fullName[0]}
+                        </div>
+                      )}
                       <span className="font-bold text-slate-700">{cu.fullName}</span>
                     </div>
                   </td>
@@ -5520,7 +5524,7 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                       Ativo
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-8 py-6 text-right flex items-center justify-end gap-2">
                     <button 
                       onClick={() => {
                         setShowEditModal(cu.id);
@@ -5530,6 +5534,14 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                     >
                       <Lock size={18} />
                     </button>
+                    {role === 'AGENCY' && (
+                      <button 
+                        onClick={() => handleDeleteUser(cu.id, 'COMPANY')}
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

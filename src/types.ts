@@ -59,6 +59,7 @@ export interface CompanyUser {
   fullName: string;
   email: string;
   password?: string;
+  photoUrl?: string;
   role: 'COMPANY';
   createdAt: string;
 }
