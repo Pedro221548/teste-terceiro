@@ -5112,14 +5112,11 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
-    const userCredential = await signInAnonymously(auth);
-    const newUid = userCredential.user.uid;
-
     const names = formData.fullName.split(' ');
     const firstName = names[0];
     const lastName = names.slice(1).join(' ') || '';
 
-    const newEmployee: Omit<Employee, 'id'> = {
+    const newEmployeeRegistration = {
       firstName,
       lastName,
       cpf: formData.cpf,
@@ -5130,15 +5127,11 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       photoUrl: formData.photo || undefined,
       docUrl: formData.document ? formData.document.name : undefined,
       status: 'PENDING',
-      rating: 0,
-      complaints: 0,
-      lastAssignmentDate: new Date().toISOString().split('T')[0],
-      unavailableDates: []
+      createdAt: new Date().toISOString()
     };
 
-    await setDocument('employees', newUid, { ...newEmployee, id: newUid });
-    await setDocument('users', newUid, { role: 'EMPLOYEE', email: formData.personalEmail });
-    alert('Cadastro concluído com sucesso!');
+    await createDocument('employeeRegistrations', newEmployeeRegistration);
+    alert('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
     onComplete();
   };
 
