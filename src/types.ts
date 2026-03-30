@@ -19,6 +19,7 @@ export interface Employee {
   complaints: number;
   lastAssignmentDate?: string;
   unavailableDates?: string[];
+  role?: string;
 }
 
 export interface Client {

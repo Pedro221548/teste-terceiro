@@ -32,7 +32,10 @@ import {
   Mail,
   Lock,
   Search,
-  Settings
+  Settings,
+  Filter,
+  Send,
+  Cake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -743,16 +746,35 @@ export default function App() {
         <RoleSwitcher />
         
         <div className="flex">
+          {/* Backdrop for Mobile Menu */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-30 lg:hidden"
+              />
+            )}
+          </AnimatePresence>
+
           {/* Sidebar */}
           <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="h-full flex flex-col">
-              <div className="p-8">
+              <div className="p-8 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                     <Building2 size={22} />
                   </div>
                   <h1 className="text-xl font-bold tracking-tight text-white">StaffLink</h1>
                 </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
               <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
@@ -763,56 +785,56 @@ export default function App() {
                       icon={<LayoutDashboard size={18} />} 
                       label="Dashboard" 
                       active={activeTab === 'dashboard'} 
-                      onClick={() => setActiveTab('dashboard')} 
+                      onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<Calendar size={18} />} 
                       label="Escala" 
                       active={activeTab === 'staffing'} 
-                      onClick={() => setActiveTab('staffing')} 
+                      onClick={() => { setActiveTab('staffing'); setIsMobileMenuOpen(false); }} 
                     />
                     <div className="px-4 py-2 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
                     <SidebarItem 
                       icon={<Building2 size={18} />} 
                       label="Empresas" 
                       active={activeTab === 'companies'} 
-                      onClick={() => setActiveTab('companies')} 
+                      onClick={() => { setActiveTab('companies'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<UserPlus size={18} />} 
                       label="Cadastros" 
                       active={activeTab === 'registrations'} 
-                      onClick={() => setActiveTab('registrations')} 
+                      onClick={() => { setActiveTab('registrations'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<QrCode size={18} />} 
                       label="Controle de Acesso" 
                       active={activeTab === 'access_control'} 
-                      onClick={() => setActiveTab('access_control')} 
+                      onClick={() => { setActiveTab('access_control'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<CreditCard size={18} />} 
                       label="Precificação" 
                       active={activeTab === 'pricing'} 
-                      onClick={() => setActiveTab('pricing')} 
+                      onClick={() => { setActiveTab('pricing'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<MessageSquare size={18} />} 
                       label="Feedbacks" 
                       active={activeTab === 'feedbacks'} 
-                      onClick={() => setActiveTab('feedbacks')} 
+                      onClick={() => { setActiveTab('feedbacks'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<Lock size={18} />} 
                       label="Gestão de Logins" 
                       active={activeTab === 'user_management'} 
-                      onClick={() => setActiveTab('user_management')} 
+                      onClick={() => { setActiveTab('user_management'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<UserIcon size={18} />} 
                       label="Meu Perfil" 
                       active={activeTab === 'profile'} 
-                      onClick={() => setActiveTab('profile')} 
+                      onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }} 
                     />
                   </>
                 )}
@@ -822,25 +844,25 @@ export default function App() {
                       icon={<LayoutDashboard size={20} />} 
                       label="Minhas Escalas" 
                       active={activeTab === 'manager_dashboard'} 
-                      onClick={() => setActiveTab('manager_dashboard')} 
+                      onClick={() => { setActiveTab('manager_dashboard'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<Star size={20} />} 
                       label="Avaliar Equipe" 
                       active={activeTab === 'evaluate_team'} 
-                      onClick={() => setActiveTab('evaluate_team')} 
+                      onClick={() => { setActiveTab('evaluate_team'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<Users size={20} />} 
                       label="Diaristas" 
                       active={activeTab === 'company_diaristas'} 
-                      onClick={() => setActiveTab('company_diaristas')} 
+                      onClick={() => { setActiveTab('company_diaristas'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<UserIcon size={20} />} 
                       label="Meu Perfil" 
                       active={activeTab === 'profile'} 
-                      onClick={() => setActiveTab('profile')} 
+                      onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }} 
                     />
                   </>
                 )}
@@ -850,19 +872,19 @@ export default function App() {
                       icon={<Calendar size={20} />} 
                       label="Minha Agenda" 
                       active={activeTab === 'employee_schedule'} 
-                      onClick={() => setActiveTab('employee_schedule')} 
+                      onClick={() => { setActiveTab('employee_schedule'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<UserIcon size={20} />} 
                       label="Meu Perfil" 
-                      active={activeTab === 'profile'} 
-                      onClick={() => setActiveTab('profile')} 
+                      active={activeTab === 'employee_profile'} 
+                      onClick={() => { setActiveTab('employee_profile'); setIsMobileMenuOpen(false); }} 
                     />
                     <SidebarItem 
                       icon={<Scan size={20} />} 
                       label="PONTO" 
                       active={activeTab === 'employee_ponto'} 
-                      onClick={() => setActiveTab('employee_ponto')} 
+                      onClick={() => { setActiveTab('employee_ponto'); setIsMobileMenuOpen(false); }} 
                     />
                   </>
                 )}
@@ -1028,6 +1050,8 @@ export default function App() {
                       pricing={pricing}
                       ratingLabel={ratingLabel}
                       onSeedData={seedData}
+                      setActiveTab={setActiveTab}
+                      clients={clients}
                     />
                   </div>
                 )}
@@ -1195,7 +1219,7 @@ export default function App() {
               <>
                 <BottomNavItem icon={<Calendar size={20} />} active={activeTab === 'employee_schedule'} onClick={() => setActiveTab('employee_schedule')} />
                 <BottomNavItem icon={<Scan size={20} />} active={activeTab === 'employee_ponto'} onClick={() => setActiveTab('employee_ponto')} />
-                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'employee_profile'} onClick={() => setActiveTab('employee_profile')} />
                 <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
               </>
             )}
@@ -1249,7 +1273,7 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData, setActiveTab, clients }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void, setActiveTab: (tab: string) => void, clients: Client[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const today = new Date().toISOString().split('T')[0];
@@ -1268,13 +1292,15 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       exit={{ opacity: 0, y: -20 }}
       className="space-y-10"
     >
-      <div className="flex flex-col gap-2 relative">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
-        <p className="text-slate-500 font-medium">Acompanhe o desempenho da sua agência hoje.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho da sua agência hoje.</p>
+        </div>
         
         <button 
           onClick={onSeedData}
-          className="absolute top-0 right-0 px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-black transition-all shadow-lg active:scale-95 flex items-center gap-2"
+          className="sm:absolute sm:top-0 sm:right-0 px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <Plus size={16} />
           Cadastrar Dados de Teste
@@ -1313,41 +1339,41 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         />
       </div>
 
-      <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/5 rounded-full -mr-32 -mt-32 transition-all group-hover:scale-110"></div>
         
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 sm:mb-10">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500 shadow-inner">
-                {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400" /> : <Calendar size={32} />}
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500 shadow-inner shrink-0">
+                {pricing.type === 'STARS' ? <Star size={28} className="fill-yellow-400" /> : <Calendar size={28} />}
               </div>
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia da Semana'}
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
                 </h3>
-                <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual.</p>
+                <p className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual.</p>
               </div>
             </div>
             {pricing.type === 'DAILY' && (
-              <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
+              <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit">
                 Hoje: {todayName}
               </div>
             )}
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
             {pricing.type === 'STARS' ? (
               Object.entries(pricing.stars || {}).map(([stars, p]) => (
-                <div key={stars} className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-4 hover:bg-white hover:border-yellow-200 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group/price">
+                <div key={stars} className="p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-4 hover:bg-white hover:border-yellow-200 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group/price">
                   <div className="flex gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                      <Star key={i} size={12} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                     ))}
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Valor por diária</p>
+                    <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Valor por diária</p>
                   </div>
                 </div>
               ))
@@ -1356,11 +1382,11 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
                 const isToday = day === todayName;
                 return (
-                  <div key={day} className={`p-8 rounded-[2rem] border flex flex-col items-center gap-4 transition-all group/price ${isToday ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>{day}</span>
+                  <div key={day} className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border flex flex-col items-center gap-4 transition-all group/price ${isToday ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5'}`}>
+                    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>{day}</span>
                     <div className="text-center">
-                      <p className={`text-2xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
-                      <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${isToday ? 'text-blue-200' : 'text-slate-400'}`}>Valor por diária</p>
+                      <p className={`text-xl sm:text-2xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
+                      <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-1 ${isToday ? 'text-blue-200' : 'text-slate-400'}`}>Valor por diária</p>
                     </div>
                   </div>
                 );
@@ -1371,68 +1397,111 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold">Escalas do Dia</h3>
-            <button className="text-blue-600 text-sm font-semibold hover:underline">Ver todas</button>
+        <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
+                <Calendar size={20} />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Escalas do Dia</h3>
+            </div>
+            <button 
+              onClick={() => setActiveTab('agency_staffing')}
+              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-lg"
+            >
+              Ver todas
+            </button>
           </div>
-          <div className="space-y-4">
-            {todayAssignments.map(as => {
-              const emp = employees.find(e => e.id === as.employeeId);
-              const cli = MOCK_CLIENTS.find(c => c.id === as.clientId);
-              return (
-                <div key={as.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                      {emp?.firstName[0]}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{emp?.firstName} {emp?.lastName}</p>
-                      <p className="text-xs text-gray-500">{cli?.name}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm text-green-600">R$ {as.value.toFixed(2)}</p>
-                    <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase">Confirmado</span>
-                  </div>
+          <div className="space-y-4 relative z-10">
+            {todayAssignments.length === 0 ? (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                  <Calendar size={32} />
                 </div>
-              );
-            })}
+                <p className="text-slate-400 font-medium text-sm italic">Nenhuma escala para hoje.</p>
+              </div>
+            ) : (
+              todayAssignments.map(as => {
+                const emp = employees.find(e => e.id === as.employeeId);
+                const cli = clients.find(c => c.id === as.clientId);
+                return (
+                  <div key={as.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:shadow-blue-500/5 transition-all group/item">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover/item:scale-105 transition-transform">
+                        <img 
+                          src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900 text-sm">{emp?.firstName} {emp?.lastName}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <MapPin size={10} className="text-blue-600" />
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight line-clamp-1">{cli?.name}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-sm text-emerald-600">R$ {as.value.toFixed(2)}</p>
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <div className={`w-1.5 h-1.5 rounded-full ${as.confirmed ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${as.confirmed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {as.confirmed ? 'Confirmado' : 'Pendente'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold">Novos Contatos</h3>
-            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-lg">Aguardando</span>
+        <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+                <MessageSquare size={20} />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Novos Contatos</h3>
+            </div>
+            <span className="px-3 py-1.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg">
+              Aguardando
+            </span>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 relative z-10">
             {contacts.filter(c => c.status === 'PENDING').map(c => (
-              <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-dashed border-gray-300">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                    <Phone size={18} />
+              <div key={c.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50/30 hover:bg-white hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 transition-all group/contact">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm border border-amber-100 group-hover/contact:scale-105 transition-transform">
+                    <Phone size={20} />
                   </div>
                   <div>
-                    <p className="font-bold text-sm">{c.name}</p>
-                    <p className="text-xs text-gray-500">{c.phone}</p>
+                    <p className="font-black text-slate-900 text-sm">{c.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{c.phone}</p>
                   </div>
                 </div>
-                <button className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button className="p-3 bg-slate-900 text-white rounded-xl hover:bg-black transition-all shadow-lg active:scale-95">
                   <ChevronRight size={16} />
                 </button>
               </div>
             ))}
             {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
-              <div key={r.id} className="flex items-center justify-between p-4 rounded-xl border border-dashed border-green-300 bg-green-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                    <UserIcon size={18} />
+              <div key={r.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-emerald-100 bg-emerald-50/30 hover:bg-white hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 transition-all group/reg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm border border-emerald-100 group-hover/reg:scale-105 transition-transform">
+                    <UserIcon size={20} />
                   </div>
                   <div>
-                    <p className="font-bold text-sm">{r.firstName} {r.lastName}</p>
-                    <p className="text-xs text-gray-500">{r.phone}</p>
-                    <p className="text-[10px] text-green-600 font-bold">Nova Solicitação</p>
+                    <p className="font-black text-slate-900 text-sm">{r.firstName} {r.lastName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{r.phone}</p>
+                      <span className="text-[9px] px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg font-black uppercase">Novo Cadastro</span>
+                    </div>
                   </div>
                 </div>
                 <button 
@@ -1440,12 +1509,20 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                     setSelectedRegistration(r);
                     setShowProcessRegistrationModal(true);
                   }}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-lg active:scale-95"
                 >
                   <ChevronRight size={16} />
                 </button>
               </div>
             ))}
+            {contacts.filter(c => c.status === 'PENDING').length === 0 && employeeRegistrations.filter(r => r.status === 'PENDING').length === 0 && (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                  <MessageSquare size={32} />
+                </div>
+                <p className="text-slate-400 font-medium text-sm italic">Nenhum contato pendente.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1582,12 +1659,12 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
   
   if (!employee) {
     return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <UserIcon size={40} />
+      <div className="bg-white p-8 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <UserIcon size={32} />
         </div>
-        <h3 className="text-xl font-black text-slate-900">Perfil não encontrado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
+        <h3 className="text-lg sm:text-xl font-black text-slate-900">Perfil não encontrado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto text-sm sm:text-base">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
       </div>
     );
   }
@@ -1603,22 +1680,22 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-bold text-gray-900">Agenda do Funcionário</h2>
-        <p className="text-gray-500">Gerencie suas escalas e informe sua disponibilidade.</p>
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Agenda do Funcionário</h2>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Gerencie suas escalas e informe sua disponibilidade.</p>
       </div>
 
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-xl w-fit">
+      <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SCHEDULE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'SCHEDULE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Minhas Escalas
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Indisponibilidade
         </button>
@@ -1627,30 +1704,30 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
       {activeTab === 'SCHEDULE' ? (
         <div className="grid grid-cols-1 gap-4">
           {myAssignments.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl border border-dashed border-gray-200 text-center">
-              <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">Você não tem escalas agendadas no momento.</p>
+            <div className="bg-white p-8 sm:p-12 rounded-[2rem] sm:rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center">
+              <Calendar size={40} className="mx-auto mb-4 text-slate-200" />
+              <p className="text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Você não tem escalas agendadas no momento.</p>
             </div>
           ) : (
             myAssignments.map(as => {
               const cli = MOCK_CLIENTS.find(c => c.id === as.clientId);
               return (
-                <div key={as.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div key={as.id} className="bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                      <Building2 size={24} />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+                      <Building2 size={24} sm:size={28} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-lg">{cli?.name}</h4>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                        <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(as.date).toLocaleDateString('pt-BR')}</span>
-                        <span className="flex items-center gap-1"><Clock size={14} /> 08:00 - 17:00</span>
+                      <h4 className="font-black text-slate-900 text-base sm:text-lg">{cli?.name}</h4>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-blue-500" /> {new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                        <span className="flex items-center gap-1.5"><Clock size={12} className="text-blue-500" /> 08:00 - 17:00</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-green-600">R$ {as.value.toFixed(2)}</p>
-                    <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase">Confirmado</span>
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-50">
+                    <p className="text-xl sm:text-2xl font-black text-emerald-600">R$ {as.value.toFixed(2)}</p>
+                    <span className="text-[9px] sm:text-[10px] px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-black uppercase tracking-widest border border-blue-100">Confirmado</span>
                   </div>
                 </div>
               );
@@ -1658,11 +1735,11 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
           )}
         </div>
       ) : (
-        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
-          <h3 className="text-xl font-bold mb-6">Selecione os dias que você NÃO está disponível</h3>
-          <div className="grid grid-cols-7 gap-2">
+        <div className="bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 sm:mb-8 tracking-tight">Selecione os dias que você NÃO está disponível</h3>
+          <div className="grid grid-cols-7 gap-1 sm:gap-4">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-              <div key={d} className="text-center text-xs font-bold text-gray-400 py-2">{d}</div>
+              <div key={d} className="text-center text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest py-2">{d}</div>
             ))}
             {[...Array(31)].map((_, i) => {
               const day = i + 1;
@@ -1672,10 +1749,10 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
                 <button 
                   key={i}
                   onClick={() => toggleUnavailability(dateStr)}
-                  className={`aspect-square rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                  className={`aspect-square rounded-lg sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-sm transition-all active:scale-90 ${
                     isUnavailable 
-                      ? 'bg-red-100 text-red-600 border-2 border-red-200' 
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      ? 'bg-rose-50 text-rose-600 border-2 border-rose-100 shadow-sm shadow-rose-100/50' 
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-transparent'
                   }`}
                 >
                   {day}
@@ -1683,10 +1760,10 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
               );
             })}
           </div>
-          <div className="mt-8 flex items-center gap-4 p-4 bg-blue-50 rounded-2xl">
-            <AlertCircle className="text-blue-600" size={24} />
-            <p className="text-sm text-blue-800">
-              Os dias marcados em <strong>vermelho</strong> indicam que você não poderá ser escalado pela agência.
+          <div className="mt-8 sm:mt-10 flex items-start gap-3 sm:gap-4 p-4 sm:p-5 bg-blue-50 rounded-[1.25rem] sm:rounded-[1.5rem] border border-blue-100">
+            <AlertCircle className="text-blue-600 shrink-0 mt-0.5" size={18} sm:size={20} />
+            <p className="text-[11px] sm:text-sm text-blue-800 font-medium leading-relaxed">
+              Os dias marcados em <strong className="text-rose-600">vermelho</strong> indicam que você não poderá ser escalado pela agência. Informe com antecedência para evitar conflitos.
             </p>
           </div>
         </div>
@@ -1697,40 +1774,39 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
 function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Feedback[], employees: Employee[], clients: Client[] }) {
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 sm:space-y-8"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-bold text-gray-900">Feedback dos Clientes</h2>
-        <p className="text-gray-500">Avaliações enviadas pelos gerentes das unidades.</p>
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Feedback dos Clientes</h2>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Avaliações enviadas pelos gerentes das unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-6">
         {feedbacks.map(f => {
           const emp = employees.find(e => e.id === f.employeeId);
           return (
-            <div key={f.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-6">
-              <div className="flex items-center gap-4 min-w-[200px]">
-                <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden">
-                  <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" />
+            <div key={f.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-6 sm:gap-10">
+              <div className="flex items-center gap-4 sm:min-w-[220px]">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-sm shrink-0">
+                  <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div>
-                  <p className="font-bold">{emp?.firstName} {emp?.lastName}</p>
-                  <div className="flex gap-0.5 mt-1">
+                  <p className="font-black text-slate-900 text-base sm:text-lg">{emp?.firstName} {emp?.lastName}</p>
+                  <div className="flex gap-1 mt-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                      <Star key={i} size={14} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="flex-1 border-l border-gray-100 pl-6">
-                <p className="text-gray-600 italic">"{f.comment}"</p>
-                <div className="flex items-center gap-2 mt-4 text-xs text-gray-400">
-                  <Clock size={12} />
-                  <span>{new Date(f.date).toLocaleDateString('pt-BR')}</span>
-                  <span className="mx-2">•</span>
-                  <span>Avaliado por: {clients.find(c => c.id === f.managerId)?.managerName || 'Empresa Parceira'}</span>
+              <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-10 flex flex-col justify-center">
+                <p className="text-slate-600 font-medium italic text-sm sm:text-lg leading-relaxed">"{f.comment}"</p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 sm:mt-6 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span className="flex items-center gap-1.5"><Clock size={12} sm:size={14} className="text-blue-500" /> {new Date(f.date).toLocaleDateString('pt-BR')}</span>
+                  <span className="hidden sm:inline text-slate-200">•</span>
+                  <span className="flex items-center gap-1.5"><Building2 size={12} sm:size={14} className="text-blue-500" /> {clients.find(c => c.id === f.managerId)?.managerName || 'Empresa Parceira'}</span>
                 </div>
               </div>
             </div>
@@ -2171,22 +2247,22 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
           />
         )}
       </AnimatePresence>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
-          <p className="text-slate-500 font-medium">Cadastre novos talentos ou gerencie os atuais.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Cadastre novos talentos ou gerencie os atuais.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
           <button 
             onClick={() => setShowLinkModal(true)}
-            className="flex items-center gap-3 px-6 py-4 border-2 border-blue-600 text-blue-600 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all active:scale-95"
+            className="flex items-center justify-center gap-3 px-6 py-3.5 sm:py-4 border-2 border-blue-600 text-blue-600 rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-50 transition-all active:scale-95 w-full sm:w-auto"
           >
             <LinkIcon size={18} />
             Enviar Link
           </button>
           <button 
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+            className="flex items-center justify-center gap-3 px-6 py-3.5 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 w-full sm:w-auto"
           >
             <UserPlus size={18} />
             Novo Cadastro
@@ -2262,14 +2338,14 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleRegister} className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-2 gap-6">
+            <form onSubmit={handleRegister} className="p-6 sm:p-8 space-y-6 sm:space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome</label>
                   <input 
                     required
                     type="text" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.firstName}
                     onChange={e => setFormData({...formData, firstName: e.target.value})}
                   />
@@ -2279,20 +2355,20 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                   <input 
                     required
                     type="text" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.lastName}
                     onChange={e => setFormData({...formData, lastName: e.target.value})}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">CPF</label>
                   <input 
                     required
                     type="text" 
                     placeholder="000.000.000-00"
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.cpf}
                     onChange={e => setFormData({...formData, cpf: e.target.value})}
                   />
@@ -2302,7 +2378,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                   <input 
                     required
                     type="date" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.birthDate}
                     onChange={e => setFormData({...formData, birthDate: e.target.value})}
                   />
@@ -2467,7 +2543,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden sm:block">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white border-b border-slate-100">
@@ -2490,7 +2566,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-sm border-2 border-white shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
                         {emp.photoUrl ? (
-                          <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" />
+                          <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           emp.firstName[0]
                         )}
@@ -2537,7 +2613,6 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                       <button 
                         onClick={() => {
                           onImpersonate(emp.id);
-                          alert(`Agora visualizando como ${emp.firstName}`);
                         }}
                         className={`p-2.5 rounded-xl transition-all ${impersonatedId === emp.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
                         title="Visualizar como este Funcionário"
@@ -2567,6 +2642,92 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
             </tbody>
           </table>
         </div>
+
+        {/* Mobile List View */}
+        <div className="sm:hidden divide-y divide-slate-100">
+          {employees.map(emp => (
+            <div 
+              key={emp.id} 
+              className="p-6 space-y-4 active:bg-slate-50 transition-colors"
+              onClick={() => setSelectedEmployee(emp)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-sm border-2 border-white shadow-sm overflow-hidden">
+                    {emp.photoUrl ? (
+                      <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      emp.firstName[0]
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-900 text-base">{emp.firstName} {emp.lastName}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.phone}</p>
+                  </div>
+                </div>
+                <span className={`text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border ${
+                  emp.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                  emp.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                  'bg-slate-50 text-slate-400 border-slate-100'
+                }`}>
+                  {emp.status === 'ACTIVE' ? 'Ativo' : emp.status === 'PENDING' ? 'Pendente' : 'Inativo'}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Documento</p>
+                  <p className="text-xs font-bold text-slate-600">{emp.cpf}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance</p>
+                  <div className="flex items-center gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={10} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-4" onClick={e => e.stopPropagation()}>
+                {emp.status === 'PENDING' && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEmployeeToCreateUserFor(emp);
+                      setShowCreateUserModal(true);
+                    }}
+                    className="flex-1 min-w-[120px] text-[9px] bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-100"
+                  >
+                    Criar Usuário
+                  </button>
+                )}
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button 
+                    onClick={() => onImpersonate(emp.id)}
+                    className={`flex-1 p-2.5 rounded-xl border transition-all flex items-center justify-center gap-2 ${impersonatedId === emp.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-400 border-slate-200'}`}
+                  >
+                    <Scan size={16} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Visualizar</span>
+                  </button>
+                  <button 
+                    onClick={() => handleEdit(emp)}
+                    className="flex-1 p-2.5 bg-white text-slate-400 border border-slate-200 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <UserPlus size={16} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Editar</span>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteEmployee(emp)}
+                    className="p-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl flex items-center justify-center"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <ConfirmationModal 
@@ -2595,36 +2756,36 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                   <X size={20} />
                 </button>
               </div>
-              <div className="px-10 pb-10">
-                <div className="relative -mt-16 mb-8 flex items-end gap-8">
-                  <div className="w-40 h-40 rounded-[2rem] border-8 border-white bg-slate-100 overflow-hidden shadow-2xl">
+              <div className="px-6 sm:px-10 pb-8 sm:pb-10">
+                <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8 flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-8">
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[1.5rem] sm:rounded-[2rem] border-4 sm:border-8 border-white bg-slate-100 overflow-hidden shadow-2xl shrink-0">
                     <img src={selectedEmployee.photoUrl || `https://picsum.photos/seed/${selectedEmployee.id}/400`} alt="" className="w-full h-full object-cover" />
                   </div>
-                  <div className="pb-4">
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
-                    <div className="flex items-center gap-3 mt-2">
+                  <div className="pb-2 sm:pb-4 text-center sm:text-left">
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
+                    <div className="flex items-center justify-center sm:justify-start gap-3 mt-2">
                       <div className="flex gap-0.5 bg-slate-50 px-2 py-1 rounded-lg">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={14} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                          <Star key={i} size={12} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                         ))}
                       </div>
-                      <span className="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">({selectedEmployee.rating}.0)</span>
+                      <span className="text-[10px] sm:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">({selectedEmployee.rating}.0)</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-10">
-                  <div className="space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10">
+                  <div className="space-y-6 sm:space-y-8">
                     <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Informações Gerais</h4>
+                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Informações Gerais</h4>
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                             <CreditCard size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Documento</p>
-                            <p className="text-sm font-mono font-bold text-slate-700">{selectedEmployee.cpf}</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Documento</p>
+                            <p className="text-xs sm:text-sm font-mono font-bold text-slate-700">{selectedEmployee.cpf}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -2632,8 +2793,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                             <Calendar size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Nascimento</p>
-                            <p className="text-sm font-bold text-slate-700">{new Date(selectedEmployee.birthDate).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Nascimento</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-700">{new Date(selectedEmployee.birthDate).toLocaleDateString('pt-BR')}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -2641,15 +2802,15 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                             <Phone size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">WhatsApp</p>
-                            <p className="text-sm font-bold text-slate-700">{selectedEmployee.phone}</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">WhatsApp</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-700">{selectedEmployee.phone}</p>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Status Operacional</h4>
-                      <span className={`text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest border shadow-sm ${
+                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Status Operacional</h4>
+                      <span className={`text-[9px] sm:text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest border shadow-sm ${
                         selectedEmployee.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                         selectedEmployee.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                         'bg-slate-50 text-slate-400 border-slate-100'
@@ -2658,22 +2819,22 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-8">
+                  <div className="space-y-6 sm:space-y-8">
                     <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Histórico & Feedback</h4>
-                      <div className="bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100 relative overflow-hidden group">
+                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Histórico & Feedback</h4>
+                      <div className="bg-slate-50 p-5 sm:p-6 rounded-[1.5rem] border border-slate-100 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/5 rounded-full -mr-10 -mt-10 transition-all group-hover:scale-150"></div>
                         <div className="flex items-center gap-3 text-rose-600 mb-4">
                           <AlertCircle size={18} />
-                          <span className="text-xs font-black uppercase tracking-wider">{selectedEmployee.complaints} Reclamações</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">{selectedEmployee.complaints} Reclamações</span>
                         </div>
-                        <p className="text-xs text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas escalas, porém precisa melhorar a pontualidade."</p>
+                        <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas escalas, porém precisa melhorar a pontualidade."</p>
                       </div>
                     </div>
                     <div className="pt-4">
                       <button 
                         onClick={() => handleDeleteEmployee(selectedEmployee)}
-                        className="w-full py-4 bg-white border-2 border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-rose-100/50"
+                        className="w-full py-4 bg-white border-2 border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-rose-100/50"
                       >
                         <Trash2 size={18} />
                         Excluir Registro
@@ -2734,27 +2895,27 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-8"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
-          <p className="text-slate-500 font-medium">Distribua sua equipe com base em performance e disponibilidade.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Distribua sua equipe com base em performance e disponibilidade.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem] border border-slate-200">
+        <div className="flex bg-slate-100 p-1 rounded-2xl sm:rounded-[1.5rem] border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
           <button 
             onClick={() => setActiveSubTab('STAFFING')}
-            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Escalar
           </button>
           <button 
             onClick={() => setActiveSubTab('CONFIRMED')}
-            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'CONFIRMED' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'CONFIRMED' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Confirmados
           </button>
           <button 
             onClick={() => setActiveSubTab('REQUESTS')}
-            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Solicitações
           </button>
@@ -2763,9 +2924,9 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
       {activeSubTab === 'STAFFING' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-1 space-y-8">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+          <div className="lg:col-span-1 space-y-6 sm:space-y-8">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
                 Data da Escala
               </h3>
@@ -2773,121 +2934,121 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                 type="date" 
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                className="w-full p-4 sm:p-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
               />
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
-              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
                 Selecionar Parceiro
               </h3>
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {clients.map(cli => (
                   <button 
                     key={cli.id}
                     onClick={() => setSelectedClientId(cli.id)}
-                    className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all border-2 ${
+                    className={`w-full p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-all border-2 ${
                       selectedClientId === cli.id 
                         ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 translate-x-1' 
                         : 'bg-slate-50 border-transparent text-slate-600 hover:bg-white hover:border-blue-100'
                     }`}
                   >
                     <div className="text-left">
-                      <p className="font-black text-sm uppercase tracking-tight">{cli.name}</p>
-                      <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedClientId === cli.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                      <p className="font-black text-xs sm:text-sm uppercase tracking-tight">{cli.name}</p>
+                      <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedClientId === cli.id ? 'text-blue-100' : 'text-slate-400'}`}>
                         Responsável: {cli.managerName}
                       </p>
                     </div>
-                    {selectedClientId === cli.id && <CheckCircle size={20} className="text-white" />}
+                    {selectedClientId === cli.id && <CheckCircle size={18} className="text-white" />}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
                 Critério de Filtro
               </h3>
               <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
                 <button 
                   onClick={() => setFilterType('RATING')}
-                  className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex flex-col items-center justify-center gap-2 py-3 sm:py-4 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
                     filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  <Star size={18} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
+                  <Star size={16} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
                   Estrelas
                 </button>
                 <button 
                   onClick={() => setFilterType('COMPLAINTS')}
-                  className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex flex-col items-center justify-center gap-2 py-3 sm:py-4 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
                     filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  <AlertCircle size={18} />
+                  <AlertCircle size={16} />
                   Queixas
                 </button>
               </div>
             </div>
           </div>
 
-        <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+        <div className="lg:col-span-2 bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">4</div>
               Equipe Disponível
             </h3>
-            <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+            <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100 w-fit">
+              <span className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">
                 {sortedEmployees.filter(e => !assignments.some(a => a.employeeId === e.id && a.date === selectedDate)).length} Disponíveis
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {sortedEmployees.map(emp => {
               const isAssigned = assignments.some(a => a.employeeId === emp.id && a.date === selectedDate);
               return (
-                <div key={emp.id} className={`p-6 rounded-[2rem] border-2 transition-all relative group ${
+                <div key={emp.id} className={`p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 transition-all relative group ${
                   isAssigned 
                     ? 'bg-slate-50 border-slate-100 opacity-60 grayscale' 
                     : 'bg-white border-slate-50 hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1'
                 }`}>
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-[1.25rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
+                  <div className="flex items-start justify-between mb-4 sm:mb-6">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-[1.25rem] bg-slate-100 overflow-hidden border-2 sm:border-4 border-white shadow-lg group-hover:scale-105 transition-transform">
                         <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 text-lg leading-tight">{emp.firstName}</p>
+                        <p className="font-black text-slate-900 text-base sm:text-lg leading-tight">{emp.firstName}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <div className="flex gap-0.5">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} size={10} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                              <Star key={i} size={8} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                             ))}
                           </div>
-                          <span className="text-[10px] font-black text-slate-400">({emp.rating}.0)</span>
+                          <span className="text-[9px] sm:text-[10px] font-black text-slate-400">({emp.rating}.0)</span>
                         </div>
                       </div>
                     </div>
-                    <div className="bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
-                      <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {getScaleValue(emp.rating)}</p>
+                    <div className="bg-blue-50 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-blue-100">
+                      <p className="text-[9px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {getScaleValue(emp.rating)}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-50">
+                  <div className="flex items-center justify-between mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
-                      <span className={`text-xs font-bold ${isAssigned ? 'text-rose-500' : 'text-emerald-500'}`}>
-                        {isAssigned ? 'Já escalado neste dia' : 'Disponível'}
+                      <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
+                      <span className={`text-[11px] sm:text-xs font-bold ${isAssigned ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {isAssigned ? 'Já escalado' : 'Disponível'}
                       </span>
                     </div>
                     {!isAssigned && (
                       <button 
                         onClick={() => handleStaff(emp.id)}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
+                        className="px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
                       >
                         Escalar
                       </button>
@@ -2900,21 +3061,21 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
         </div>
       </div>
       ) : activeSubTab === 'CONFIRMED' ? (
-        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-10">
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
             <div className="flex flex-col gap-1">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Profissionais Confirmados</h3>
-              <p className="text-slate-400 text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Profissionais Confirmados</h3>
+              <p className="text-slate-400 text-xs sm:text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <input 
                 type="date" 
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 text-sm outline-none focus:border-blue-600"
+                className="w-full sm:w-auto p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 text-sm outline-none focus:border-blue-600"
               />
-              <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+              <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100 w-fit">
+                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest">
                   {assignments.filter(a => a.confirmed && a.date === selectedDate).length} Confirmados
                 </span>
               </div>
@@ -2929,28 +3090,28 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
               <p className="text-slate-400 font-medium">Nenhuma confirmação para esta data ainda.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {assignments.filter(a => a.confirmed && a.date === selectedDate).map(as => {
                 const emp = employees.find(e => e.id === as.employeeId);
                 const client = clients.find(c => c.id === as.clientId);
                 if (!emp || !client) return null;
                 return (
-                  <div key={as.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                  <div key={as.id} className="p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm">
                         <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div>
-                        <p className="font-black text-slate-900">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{client.name}</p>
+                        <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">{client.name}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
-                      <div className="flex items-center gap-2 text-emerald-600">
-                        <CheckCircle size={16} />
-                        <span className="text-xs font-black uppercase tracking-widest">Confirmado</span>
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
+                        <CheckCircle size={14} className="sm:w-4 sm:h-4" />
+                        <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">Confirmado</span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400">{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">{new Date(as.date).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
                 );
@@ -2959,14 +3120,14 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
           )}
         </div>
       ) : (
-        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm">
           <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-              <MessageSquare size={24} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+              <MessageSquare size={20} />
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Solicitações das Empresas</h3>
-              <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Pedidos de profissionais para datas específicas</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Solicitações das Empresas</h3>
+              <p className="text-slate-400 text-[9px] sm:text-xs font-black uppercase tracking-widest">Pedidos de profissionais para datas específicas</p>
             </div>
           </div>
 
@@ -2974,40 +3135,40 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             {companyRequests.map(req => {
               const client = clients.find(c => c.id === req.clientId);
               return (
-                <div key={req.id} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-slate-100">
-                      <Building2 size={32} />
+                <div key={req.id} className="p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-slate-100 shrink-0">
+                      <Building2 size={24} />
                     </div>
                     <div>
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight">{client?.name}</h4>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <h4 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{client?.name}</h4>
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1">
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           <Calendar size={12} /> {new Date(req.date).toLocaleDateString('pt-BR')}
                         </span>
-                        <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           <Users size={12} /> {req.quantity} Profissionais
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                     <div className="flex -space-x-3">
                       {req.employeeIds.map(empId => {
                         const emp = employees.find(e => e.id === empId);
                         return (
-                          <div key={empId} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm bg-slate-200" title={emp?.firstName}>
+                          <div key={empId} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white overflow-hidden shadow-sm bg-slate-200" title={emp?.firstName}>
                             <img src={emp?.photoUrl || `https://picsum.photos/seed/${empId}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         );
                       })}
                     </div>
-                    <div className="flex gap-2">
-                      <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95">
-                        Atender Pedido
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95">
+                        Atender
                       </button>
-                      <button className="px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">
+                      <button className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">
                         Recusar
                       </button>
                     </div>
@@ -3049,41 +3210,41 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { p
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Configurações de Preço</h2>
-          <p className="text-slate-500 font-medium">Defina os valores das diárias e o sistema de classificação.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Configurações de Preço</h2>
+          <p className="text-sm sm:text-base text-slate-500 font-medium">Defina os valores das diárias e o sistema de classificação.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner w-full sm:w-auto">
             <button 
               onClick={() => setLocalPricing({ ...localPricing, type: 'STARS' })}
-              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'STARS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'STARS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               Por {localLabel}
             </button>
             <button 
               onClick={() => setLocalPricing({ ...localPricing, type: 'DAILY' })}
-              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               Por Dia
             </button>
           </div>
           <button 
             onClick={handleSave}
-            className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 whitespace-nowrap"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 whitespace-nowrap"
           >
-            <CheckCircle size={20} />
+            <CheckCircle size={18} />
             Salvar Alterações
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm space-y-6 sm:space-y-8">
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-              {localPricing.type === 'STARS' ? <Star size={24} /> : <Calendar size={24} />}
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+              {localPricing.type === 'STARS' ? <Star size={20} /> : <Calendar size={20} />}
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {localPricing.type === 'STARS' ? `Valores por ${localLabel}` : 'Valores por Dia da Semana'}
             </h3>
           </div>
@@ -3184,32 +3345,32 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { p
           </div>
         </div>
 
-        <div className="space-y-10">
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+        <div className="space-y-6 sm:space-y-10">
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm space-y-6 sm:space-y-8">
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 shadow-sm">
-                <LayoutDashboard size={24} />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-purple-600 shadow-sm">
+                <LayoutDashboard size={20} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Sistema de Classificação</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Sistema de Classificação</h3>
             </div>
 
             <div className="space-y-6">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Classificação</label>
+                <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Classificação</label>
                 <input 
                   type="text" 
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-sm sm:text-base text-slate-700"
                   placeholder="Ex: Estrelas, Nível, Categoria"
                   value={localLabel}
                   onChange={e => setLocalLabel(e.target.value)}
                 />
-                <p className="text-[10px] text-slate-400 mt-2 font-medium italic">* Isso mudará como o sistema se refere à pontuação do funcionário.</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-2 font-medium italic">* Isso mudará como o sistema se refere à pontuação do funcionário.</p>
               </div>
 
-              <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+              <div className="p-4 sm:p-6 bg-blue-50 rounded-2xl border border-blue-100">
                 <div className="flex gap-3">
-                  <AlertCircle className="text-blue-600 shrink-0" size={20} />
-                  <p className="text-xs text-blue-700 leading-relaxed font-medium">
+                  <AlertCircle className="text-blue-600 shrink-0" size={18} />
+                  <p className="text-[11px] sm:text-xs text-blue-700 leading-relaxed font-medium">
                     Ao alterar o nome da classificação, todos os dashboards e relatórios serão atualizados automaticamente para refletir o novo termo.
                   </p>
                 </div>
@@ -3217,19 +3378,19 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { p
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 rounded-[3rem] text-white shadow-xl shadow-blue-500/20">
-            <h3 className="text-2xl font-black mb-4 tracking-tight">Resumo de Ganhos</h3>
-            <p className="text-blue-100 mb-8 font-medium leading-relaxed">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] text-white shadow-xl shadow-blue-500/20">
+            <h3 className="text-xl sm:text-2xl font-black mb-4 tracking-tight">Resumo de Ganhos</h3>
+            <p className="text-sm sm:text-base text-blue-100 mb-6 sm:mb-8 font-medium leading-relaxed">
               O valor total cobrado do cliente é a soma do que o funcionário recebe e a taxa da empresa.
             </p>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
-                <span className="text-sm font-bold opacity-80">Média Funcionário</span>
-                <span className="text-xl font-black">R$ 65,00</span>
+                <span className="text-xs sm:text-sm font-bold opacity-80">Média Funcionário</span>
+                <span className="text-lg sm:text-xl font-black">R$ 65,00</span>
               </div>
               <div className="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
-                <span className="text-sm font-bold opacity-80">Média Empresa</span>
-                <span className="text-xl font-black">R$ 15,00</span>
+                <span className="text-xs sm:text-sm font-bold opacity-80">Média Empresa</span>
+                <span className="text-lg sm:text-xl font-black">R$ 15,00</span>
               </div>
             </div>
           </div>
@@ -3377,126 +3538,128 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Gestão de Parceiros</h2>
-          <p className="text-slate-500 font-medium">Controle total sobre empresas, unidades e acessos.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Gestão de Parceiros</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Controle total sobre empresas, unidades e acessos.</p>
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+          className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 w-full sm:w-auto"
         >
           <Plus size={20} />
           Cadastrar Empresa
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {companies.map(company => (
           <div key={company.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full -mr-20 -mt-20 transition-all group-hover:scale-150"></div>
             
-            <div className="flex items-start justify-between mb-8 relative z-10">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[1.5rem] flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner">
-                  <Building2 size={32} />
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8 relative z-10">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-[1.5rem] flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner shrink-0">
+                  <Building2 size={28} className="sm:w-8 sm:h-8" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{company.name}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors line-clamp-1">{company.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">CNPJ: {company.cnpj || 'Não informado'}</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">CNPJ: {company.cnpj || 'Não informado'}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
                 <button 
                   onClick={() => setShowUserModal(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
                   title="Criar Acesso"
                 >
-                  <UserPlus size={20} />
+                  <UserPlus size={18} className="sm:w-5 sm:h-5" />
                 </button>
                 <button 
                   onClick={() => handleSendRegistrationLink(company)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
                   title="Enviar Link de Cadastro"
                 >
-                  <LinkIcon size={20} />
+                  <LinkIcon size={18} className="sm:w-5 sm:h-5" />
                 </button>
                 <button 
                   onClick={() => setShowUnitModal(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
                   title="Adicionar Unidade"
                 >
-                  <Plus size={20} />
+                  <Plus size={18} className="sm:w-5 sm:h-5" />
                 </button>
                 <button 
                   onClick={() => setShowDeleteCompanyConfirm(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm shrink-0"
                   title="Excluir Empresa"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-8 relative z-10">
-              <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Responsável</p>
-                <p className="text-sm font-bold text-slate-700">{company.responsibleName}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 relative z-10">
+              <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100">
+                <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Responsável</p>
+                <p className="text-xs sm:text-sm font-bold text-slate-700">{company.responsibleName}</p>
               </div>
-              <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contato</p>
-                <p className="text-sm font-bold text-slate-700">{company.phone}</p>
+              <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100">
+                <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contato</p>
+                <p className="text-xs sm:text-sm font-bold text-slate-700">{company.phone}</p>
               </div>
             </div>
 
             <div className="space-y-4 relative z-10">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Unidades Operacionais</h4>
-                <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-1 rounded-lg">
+                <h4 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Unidades Operacionais</h4>
+                <span className="bg-blue-50 text-blue-600 text-[9px] sm:text-[10px] font-black px-2 py-1 rounded-lg">
                   {units.filter(u => u.companyId === company.id).length} Unidades
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {units.filter(u => u.companyId === company.id).map(unit => (
-                  <div key={unit.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-500/5 transition-all group/unit">
+                  <div key={unit.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-500/5 transition-all group/unit gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/unit:bg-blue-50 group-hover/unit:text-blue-600 transition-all">
+                      <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/unit:bg-blue-50 group-hover/unit:text-blue-600 transition-all shrink-0">
                         <MapPin size={16} />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-700">{unit.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{unit.location}</p>
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{unit.name}</p>
+                        <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium truncate">{unit.location}</p>
                         {unit.login && (
-                          <p className="text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
+                          <p className="text-[9px] sm:text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-slate-400 uppercase">Gerente</p>
-                        <p className="text-xs font-bold text-slate-600">{unit.managerName}</p>
+                    <div className="flex items-center justify-between sm:justify-end gap-4">
+                      <div className="text-left sm:text-right">
+                        <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase">Gerente</p>
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-600">{unit.managerName}</p>
                       </div>
-                      {unit.clientId && (
+                      <div className="flex items-center gap-2">
+                        {unit.clientId && (
+                          <button 
+                            onClick={() => {
+                              onImpersonate(unit.clientId!);
+                              alert(`Agora visualizando como ${unit.name}`);
+                            }}
+                            className={`p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all ${impersonatedId === unit.clientId ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
+                            title="Visualizar como esta Unidade"
+                          >
+                            <Scan size={14} className="sm:w-4 sm:h-4" />
+                          </button>
+                        )}
                         <button 
-                          onClick={() => {
-                            onImpersonate(unit.clientId!);
-                            alert(`Agora visualizando como ${unit.name}`);
-                          }}
-                          className={`p-2.5 rounded-xl transition-all ${impersonatedId === unit.clientId ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
-                          title="Visualizar como esta Unidade"
+                          onClick={() => setShowDeleteUnitConfirm(unit.id)}
+                          className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
+                          title="Excluir Unidade"
                         >
-                          <Scan size={16} />
+                          <Trash2 size={14} />
                         </button>
-                      )}
-                      <button 
-                        onClick={() => setShowDeleteUnitConfirm(unit.id)}
-                        className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
-                        title="Excluir Unidade"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -3848,64 +4011,96 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Unidade</label>
-              <select 
-                value={selectedUnitId}
-                onChange={(e) => setSelectedUnitId(e.target.value)}
-                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none"
-              >
-                {clientUnits.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+          <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6 sticky top-24">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
+                <Filter size={16} />
+              </div>
+              <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Filtros</h3>
             </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Data Desejada</label>
-              <input 
-                type="date" 
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Quantidade Total</label>
-              <input 
-                type="number" 
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value))}
-                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block">Filtrar por Estrelas</label>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <button 
-                    key={star}
-                    onClick={() => setMinRating(star === minRating ? 0 : star)}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${minRating >= star ? 'bg-yellow-400 text-white' : 'bg-slate-100 text-slate-400'}`}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Unidade</label>
+                <div className="relative group">
+                  <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <select 
+                    value={selectedUnitId}
+                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none shadow-inner"
                   >
-                    <Star size={16} className={minRating >= star ? 'fill-current' : ''} />
-                  </button>
-                ))}
+                    {clientUnits.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Desejada</label>
+                <div className="relative group">
+                  <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <input 
+                    type="date" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Quantidade Total</label>
+                <div className="relative group">
+                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <input 
+                    type="number" 
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value))}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Filtrar por Estrelas</label>
+                <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button 
+                      key={star}
+                      onClick={() => setMinRating(star === minRating ? 0 : star)}
+                      className={`flex-1 h-10 rounded-xl flex items-center justify-center transition-all ${minRating >= star ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/20' : 'bg-white text-slate-300 hover:text-slate-400'}`}
+                    >
+                      <Star size={16} className={minRating >= star ? 'fill-current' : ''} />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+
             <button 
               onClick={handleSubmitRequest}
               disabled={isSubmitting}
-              className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl active:scale-95 disabled:opacity-50"
+              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-600 transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar Profissionais'}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Enviando...</span>
+                </>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>Solicitar Profissionais</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
         <div className="lg:col-span-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredEmployees.map(emp => {
               const available = isEmployeeAvailable(emp.id, selectedDate);
               const isSelected = selectedEmployeeIds.includes(emp.id);
@@ -3913,39 +4108,71 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
                 <div 
                   key={emp.id} 
                   onClick={() => available && handleToggleEmployee(emp.id)}
-                  className={`bg-white p-6 rounded-[2rem] border-2 transition-all group relative cursor-pointer ${
-                    isSelected ? 'border-blue-600 shadow-xl shadow-blue-500/10' : 
-                    available ? 'border-slate-100 hover:border-blue-200' : 'border-slate-100 opacity-60 grayscale'
+                  className={`bg-white p-6 rounded-[2rem] border-2 transition-all group relative cursor-pointer overflow-hidden ${
+                    isSelected ? 'border-blue-600 shadow-xl shadow-blue-500/10 bg-blue-50/5' : 
+                    available ? 'border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-500/5' : 'border-slate-100 opacity-60 grayscale'
                   }`}
                 >
+                  <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all ${isSelected ? 'bg-blue-600/5 scale-150' : 'bg-slate-50 group-hover:scale-150'}`}></div>
+                  
                   {!available && (
-                    <div className="absolute top-4 right-4 bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest z-20">
+                    <div className="absolute top-4 right-4 bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest z-20 border border-rose-100">
                       Indisponível
                     </div>
                   )}
                   {isSelected && (
-                    <div className="absolute top-4 right-4 bg-blue-600 text-white p-1.5 rounded-lg z-20 shadow-lg">
+                    <div className="absolute top-4 right-4 bg-blue-600 text-white p-1.5 rounded-lg z-20 shadow-lg animate-in zoom-in duration-300">
                       <CheckCircle size={14} />
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md">
-                      <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="flex items-center gap-4 mb-6 relative z-10">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform">
+                      <img 
+                        src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} 
+                        alt="" 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer" 
+                      />
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 tracking-tight">{emp.firstName}</h4>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-black text-slate-700">{emp.rating}.0</span>
+                      <h4 className="font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h4>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <Star 
+                              key={s} 
+                              size={10} 
+                              className={s <= emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{emp.rating}.0</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <span className="bg-slate-50 text-slate-500 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                      {available ? 'Disponível' : 'Em outra unidade'}
-                    </span>
+                  <div className="space-y-3 relative z-10">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <span>Especialidade</span>
+                      <span className="text-slate-900">{emp.role === 'DIARISTA' ? 'Diarista' : emp.role}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <span>Status</span>
+                      <span className={available ? 'text-emerald-600' : 'text-rose-600'}>
+                        {available ? 'Disponível' : 'Ocupado'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Diária</span>
+                      <span className="text-sm font-black text-slate-900 tracking-tight">R$ 180,00</span>
+                    </div>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
+                      <ChevronRight size={16} />
+                    </div>
                   </div>
                 </div>
               );
@@ -4021,12 +4248,12 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
       animate={{ opacity: 1, y: 0 }}
       className="space-y-12"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Avaliar Equipe</h2>
-          <p className="text-slate-500 font-medium">Visualize e avalie os profissionais que atuam em suas unidades.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Avaliar Equipe</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Visualize e avalie os profissionais que atuam em suas unidades.</p>
         </div>
-        <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+        <div className="bg-white p-4 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4 self-start lg:self-auto">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
             <Calendar size={20} />
           </div>
@@ -4036,7 +4263,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="font-bold text-slate-700 outline-none bg-transparent"
+              className="font-bold text-slate-700 outline-none bg-transparent text-sm sm:text-base"
             />
           </div>
         </div>
@@ -4044,29 +4271,29 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
 
       <div className="space-y-8">
         <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-2xl ${selectedDate === today ? 'bg-emerald-600' : 'bg-blue-600'} text-white flex items-center justify-center shadow-lg shadow-blue-100`}>
+          <div className={`w-10 h-10 rounded-2xl ${selectedDate === today ? 'bg-emerald-600 shadow-emerald-200' : 'bg-blue-600 shadow-blue-200'} text-white flex items-center justify-center shadow-lg`}>
             <Users size={20} />
           </div>
           <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {selectedDate === today ? 'Equipe de Hoje' : `Equipe de ${new Date(selectedDate).toLocaleDateString('pt-BR')}`}
             </h3>
-            <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">
+            <p className={`${selectedDate === today ? 'text-emerald-600' : 'text-blue-600'} text-[10px] font-black uppercase tracking-widest`}>
               {dateEmployees.length} Profissionais escalados
             </p>
           </div>
         </div>
         
         {dateEmployees.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {dateEmployees.map(emp => {
               const assignment = dateAssignments.find(a => a.employeeId === emp.id);
               return (
-                <div key={emp.id} className={`bg-white p-8 rounded-[2.5rem] border-2 ${selectedDate === today ? 'border-emerald-100' : 'border-blue-100'} shadow-xl shadow-blue-500/5 transition-all group relative overflow-hidden`}>
+                <div key={emp.id} className={`bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-2 ${selectedDate === today ? 'border-emerald-100 shadow-emerald-500/5' : 'border-blue-100 shadow-blue-500/5'} shadow-xl transition-all group relative overflow-hidden`}>
                   <div className={`absolute top-0 right-0 w-32 h-32 ${selectedDate === today ? 'bg-emerald-500/5' : 'bg-blue-500/5'} rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150`}></div>
                   <div className="flex flex-col items-center text-center space-y-6 relative z-10">
                     <div className="relative">
-                      <div className="w-28 h-28 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
                         <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       {assignment?.confirmed && (
@@ -4076,9 +4303,9 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
                       )}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h3>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h3>
                       <div className="flex items-center justify-center gap-2 mt-2">
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${assignment?.confirmed ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                        <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${assignment?.confirmed ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
                           {assignment?.confirmed ? 'Confirmado' : 'Aguardando Confirmação'}
                         </span>
                       </div>
@@ -4104,24 +4331,24 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
 
       <div className="space-y-8">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center shadow-sm">
             <Star size={20} />
           </div>
           <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Histórico da Equipe</h3>
-            <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Profissionais que já atuaram com você</p>
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Histórico da Equipe</h3>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Profissionais que já atuaram com você</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {workedEmployees.map(emp => {
           const empFeedbacks = feedbacks.filter(f => f.employeeId === emp.id && f.managerId === clientId);
           return (
-            <div key={emp.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
+            <div key={emp.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
               
               <div className="flex flex-col items-center text-center space-y-6 relative z-10">
                 <div className="relative">
-                  <div className="w-28 h-28 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
                     <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-xl shadow-lg border border-slate-100">
@@ -4133,7 +4360,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
                 </div>
 
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</h3>
                   <div className="flex items-center justify-center gap-1 mt-2">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={16} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
@@ -4177,12 +4404,12 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
           );
         })}
         {workedEmployees.length === 0 && (
-          <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
-              <Users size={40} />
+          <div className="col-span-full py-16 sm:py-32 text-center bg-white rounded-[2rem] sm:rounded-[3rem] border border-dashed border-slate-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
+              <Users size={32} />
             </div>
-            <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Nenhum profissional encontrado</h3>
-            <p className="text-slate-500 font-medium">Os profissionais aparecerão aqui após trabalharem em suas unidades.</p>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-2">Nenhum profissional encontrado</h3>
+            <p className="text-slate-500 font-medium text-sm sm:text-base">Os profissionais aparecerão aqui após trabalharem em suas unidades.</p>
           </div>
         )}
       </div>
@@ -4195,11 +4422,11 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl"
+              className="bg-white rounded-[2rem] sm:rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl"
             >
-              <div className="p-10 space-y-8">
+              <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Avaliar Profissional</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Avaliar Profissional</h3>
                   <button onClick={() => setEvaluatingEmployee(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                     <X size={24} className="text-slate-400" />
                   </button>
@@ -4316,14 +4543,14 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
       animate={{ opacity: 1, y: 0 }}
       className="space-y-10"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Controle de Acesso</h2>
-          <p className="text-slate-500 font-medium">Gere e gerencie QR Codes para as unidades atendidas.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Controle de Acesso</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Gere e gerencie QR Codes para as unidades atendidas.</p>
         </div>
         <button 
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+          className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 w-full sm:w-auto"
         >
           <Plus size={20} />
           Adicionar Unidade
@@ -4345,24 +4572,24 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
             >
-              <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="p-6 sm:p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Nova Unidade</h3>
-                  <p className="text-xs text-slate-400 font-medium">Gere um QR Code para controle de ponto.</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Nova Unidade</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Gere um QR Code para controle de ponto.</p>
                 </div>
                 <button onClick={() => setShowForm(false)} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
                   <X size={20} />
                 </button>
               </div>
-              <form onSubmit={handleAdd} className="p-8 space-y-6">
+              <form onSubmit={handleAdd} className="p-6 sm:p-8 space-y-6">
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Selecionar Unidade Cadastrada</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Selecionar Unidade Cadastrada</label>
                     <select 
                       required
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none"
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none text-sm"
                       value={selectedUnitId}
                       onChange={e => setSelectedUnitId(e.target.value)}
                     >
@@ -4377,7 +4604,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
                       })}
                     </select>
                     {availableUnits.length === 0 && (
-                      <p className="text-[10px] text-amber-600 font-bold mt-2 italic">
+                      <p className="text-[9px] sm:text-[10px] text-amber-600 font-bold mt-2 italic">
                         Todas as unidades cadastradas já possuem QR Code.
                       </p>
                     )}
@@ -4386,7 +4613,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
                 <button 
                   type="submit" 
                   disabled={!selectedUnitId}
-                  className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-5 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Gerar QR Code
                 </button>
@@ -4396,44 +4623,44 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {[...accessPoints].sort((a, b) => a.location.localeCompare(b.location)).map(ap => (
-          <div key={ap.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden flex flex-col">
+          <div key={ap.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
             
             <div className="flex flex-col items-center text-center space-y-6 flex-1 relative z-10">
-              <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-xl group-hover:scale-105 transition-transform relative">
-                <QRCodeSVG value={ap.qrCodeValue} size={180} />
+              <div className="p-4 sm:p-6 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-xl group-hover:scale-105 transition-transform relative">
+                <QRCodeSVG value={ap.qrCodeValue} size={120} className="sm:w-[180px] sm:h-[180px]" />
                 <div className="hidden">
                   <QRCodeCanvas id={`canvas-${ap.id}`} value={ap.qrCodeValue} size={512} />
                 </div>
               </div>
               
               <div className="space-y-2 w-full">
-                <h4 className="font-black text-xl text-slate-900 tracking-tight line-clamp-2 min-h-[3.5rem] flex items-center justify-center">{ap.location}</h4>
+                <h4 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight line-clamp-2 min-h-[3rem] sm:min-h-[3.5rem] flex items-center justify-center">{ap.location}</h4>
                 <div className="flex items-center justify-center gap-2 text-slate-500 font-medium">
                   <Users size={14} className="text-blue-600" />
-                  <span className="text-sm">Gestor: {ap.managerName}</span>
+                  <span className="text-xs sm:text-sm">Gestor: {ap.managerName}</span>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg">
+              <div className="flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg">
                 <Calendar size={12} />
                 <span>Criado em {new Date(ap.createdAt).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>
 
-            <div className="mt-8 pt-8 border-t border-slate-100 flex gap-3 relative z-10">
+            <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-100 flex gap-3 relative z-10">
               <button 
                 onClick={() => downloadQRCode(ap.id, ap.location)}
-                className="flex-1 py-4 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                className="flex-1 py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
               >
                 <Download size={16} />
                 Baixar
               </button>
               <button 
                 onClick={() => setShowDeleteConfirm(ap.id)}
-                className="p-4 bg-red-50 text-red-600 rounded-[1.25rem] hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                className="p-3 sm:p-4 bg-rose-50 text-rose-600 rounded-xl sm:rounded-[1.25rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95"
                 title="Excluir Empresa"
               >
                 <Trash2 size={18} />
@@ -4471,171 +4698,235 @@ function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: s
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto space-y-10"
+      className="max-w-5xl mx-auto space-y-8"
     >
-      <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Meu Perfil</h2>
-        <p className="text-slate-500 font-medium">Gerencie suas informações e confirme suas escalas.</p>
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Meu Perfil</h2>
+        <p className="text-slate-500 font-medium text-sm">Gerencie suas informações e acompanhe seu desempenho.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-8">
-          <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm text-center space-y-6">
-            <div className="relative mx-auto w-40 h-40">
-              <div className="w-full h-full rounded-[2.5rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
-                <img 
-                  src={employee.photoUrl || `https://picsum.photos/seed/${employee.id}/400`} 
-                  alt="" 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-3 rounded-2xl shadow-lg border-4 border-white">
-                <CheckCircle size={20} />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-900">{employee.firstName} {employee.lastName}</h3>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Funcionário Ativo</p>
-            </div>
-            <div className="flex items-center justify-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={16} className={i < employee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
-              ))}
-            </div>
+      {/* Profile Hero Card */}
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 z-0" />
+        
+        <div className="relative z-10 shrink-0">
+          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
+            <img 
+              src={employee.photoUrl || `https://picsum.photos/seed/${employee.id}/400`} 
+              alt="" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
           </div>
-
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Informações de Contato</h4>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Phone size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Telefone</p>
-                  <p className="text-sm font-bold text-slate-700">{employee.phone}</p>
-                </div>
-              </div>
-              {employee.personalEmail && (
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Mail size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">E-mail Pessoal</p>
-                    <p className="text-sm font-bold text-slate-700">{employee.personalEmail}</p>
-                  </div>
-                </div>
-              )}
-              {employee.username && (
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <UserIcon size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Usuário da Plataforma</p>
-                    <p className="text-sm font-bold text-slate-700">{employee.username}</p>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <CreditCard size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento (CPF)</p>
-                  <p className="text-sm font-bold text-slate-700">{employee.cpf}</p>
-                </div>
-              </div>
-              {employee.docUrl && (
-                <a 
-                  href={employee.docUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white text-slate-400 group-hover:text-blue-600 flex items-center justify-center shadow-sm">
-                    <Eye size={18} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">Ver Comprovante</span>
-                </a>
-              )}
-            </div>
+          <div className={`absolute -bottom-1 -right-1 ${employee.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'} text-white p-2 rounded-xl shadow-lg border-2 border-white`}>
+            {employee.status === 'ACTIVE' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
           </div>
         </div>
 
-        <div className="lg:col-span-2 space-y-8">
-          {pendingAssignments.length > 0 && (
-            <div className="bg-blue-600 p-10 rounded-[3rem] text-white shadow-xl shadow-blue-200">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <Calendar size={24} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black tracking-tight">Escalas Pendentes</h3>
-                  <p className="text-blue-100 text-sm font-medium">Confirme sua presença para as próximas escalas.</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {pendingAssignments.map(as => (
-                  <div key={as.id} className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-1">Data da Escala</p>
-                      <p className="text-xl font-black">{new Date(as.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleConfirm(as.id)}
-                      className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all shadow-lg active:scale-95"
-                    >
-                      Confirmar Presença
-                    </button>
-                  </div>
-                ))}
-              </div>
+        <div className="relative z-10 flex-1 text-center md:text-left space-y-4">
+          <div>
+            <h3 className="text-3xl font-black text-slate-900 leading-tight">{employee.firstName} {employee.lastName}</h3>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
+              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${employee.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                {employee.status === 'ACTIVE' ? 'Funcionário Ativo' : 'Cadastro Pendente'}
+              </span>
+              {employee.role && (
+                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                  {employee.role}
+                </span>
+              )}
             </div>
+          </div>
+          
+          <div className="flex items-center justify-center md:justify-start gap-1">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={18} className={i < employee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+            ))}
+            <span className="ml-2 text-sm font-bold text-slate-400">({employee.rating.toFixed(1)})</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 hidden lg:block">
+          {employee.docUrl && (
+            <a 
+              href={employee.docUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+            >
+              <Eye size={18} />
+              Ver Comprovante
+            </a>
           )}
+        </div>
+      </div>
 
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                <Lock size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Privacidade e Dados (LGPD)</h3>
-                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Lei Geral de Proteção de Dados</p>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Personal Data Card */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center">
+              <Cake size={16} />
             </div>
-            <div className="prose prose-slate max-w-none">
-              <p className="text-slate-600 leading-relaxed font-medium">
-                Em conformidade com a <strong>Lei nº 13.709/2018 (LGPD)</strong>, informamos que seus dados pessoais (nome, CPF, foto e contato) são utilizados exclusivamente para as seguintes finalidades dentro da nossa plataforma:
-              </p>
-              <ul className="space-y-3 mt-4">
-                <li className="flex gap-3 text-sm text-slate-600 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                  <span><strong>Identificação Profissional:</strong> Para que as empresas contratantes saibam quem irá realizar o serviço.</span>
-                </li>
-                <li className="flex gap-3 text-sm text-slate-600 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                  <span><strong>Controle de Ponto:</strong> Sua foto é utilizada no reconhecimento facial para garantir a autenticidade do registro de jornada.</span>
-                </li>
-                <li className="flex gap-3 text-sm text-slate-600 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                  <span><strong>Comunicação:</strong> Seu telefone é utilizado para envio de escalas e avisos importantes via WhatsApp.</span>
-                </li>
-                <li className="flex gap-3 text-sm text-slate-600 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                  <span><strong>Segurança:</strong> Seus documentos são armazenados para fins de conformidade legal e verificação de antecedentes.</span>
-                </li>
-              </ul>
-              <p className="text-slate-500 text-[10px] mt-8 italic font-medium">
-                * Seus dados são armazenados em ambiente seguro e não são compartilhados com terceiros fora do ecossistema de contratação da plataforma.
-              </p>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Dados Pessoais</h4>
+          </div>
+          
+          <div className="space-y-4">
+            <ProfileInfoItem 
+              icon={<Cake size={18} />} 
+              label="Data de Nascimento" 
+              value={new Date(employee.birthDate).toLocaleDateString('pt-BR')} 
+            />
+            <ProfileInfoItem 
+              icon={<CreditCard size={18} />} 
+              label="Documento (CPF)" 
+              value={employee.cpf} 
+            />
+            <ProfileInfoItem 
+              icon={<Lock size={18} />} 
+              label="Status LGPD" 
+              value={employee.lgpdAuthorized ? 'Autorizado' : 'Não Autorizado'}
+              valueColor={employee.lgpdAuthorized ? 'text-emerald-600' : 'text-rose-600'}
+            />
+          </div>
+        </div>
+
+        {/* Contact Info Card */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Phone size={16} />
             </div>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Informações de Contato</h4>
+          </div>
+
+          <div className="space-y-4">
+            <ProfileInfoItem 
+              icon={<Phone size={18} />} 
+              label="Telefone" 
+              value={employee.phone} 
+              color="blue"
+            />
+            {employee.personalEmail && (
+              <ProfileInfoItem 
+                icon={<Mail size={18} />} 
+                label="E-mail Pessoal" 
+                value={employee.personalEmail} 
+                color="blue"
+              />
+            )}
+            {employee.loginEmail && (
+              <ProfileInfoItem 
+                icon={<Mail size={18} />} 
+                label="E-mail de Login" 
+                value={employee.loginEmail} 
+                color="blue"
+              />
+            )}
+            {employee.username && (
+              <ProfileInfoItem 
+                icon={<UserIcon size={18} />} 
+                label="Usuário" 
+                value={employee.username} 
+                color="blue"
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {/* Privacy & Data Card */}
+      <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+            <Lock size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Privacidade e Dados (LGPD)</h3>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Lei Geral de Proteção de Dados</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="prose prose-slate max-w-none">
+            <p className="text-slate-600 leading-relaxed font-medium text-sm">
+              Em conformidade com a <strong>Lei nº 13.709/2018 (LGPD)</strong>, informamos que seus dados pessoais (nome, CPF, foto e contato) são utilizados exclusivamente para as seguintes finalidades dentro da nossa plataforma:
+            </p>
+            <p className="text-[10px] text-slate-400 italic mt-6 font-medium">
+              * Seus dados são armazenados em ambiente seguro e não são compartilhados com terceiros fora do ecossistema de contratação da plataforma.
+            </p>
+          </div>
+          
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <PrivacyListItem title="Identificação Profissional" description="Para que as empresas saibam quem irá realizar o serviço." />
+            <PrivacyListItem title="Controle de Ponto" description="Sua foto é utilizada no reconhecimento facial para autenticidade." />
+            <PrivacyListItem title="Comunicação" description="Seu telefone é usado para envio de escalas via WhatsApp." />
+            <PrivacyListItem title="Segurança" description="Documentos armazenados para conformidade e antecedentes." />
+          </ul>
+        </div>
+      </div>
+
+      {/* Mobile Doc Link */}
+      <div className="lg:hidden">
+        {employee.docUrl && (
+          <a 
+            href={employee.docUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 px-6 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+          >
+            <Eye size={18} />
+            Ver Comprovante
+          </a>
+        )}
+      </div>
+
+      {/* Unavailable Dates Card */}
+      {employee.unavailableDates && employee.unavailableDates.length > 0 && (
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-4">Datas Indisponíveis</h4>
+          <div className="flex flex-wrap gap-3">
+            {employee.unavailableDates.map(date => (
+              <span key={date} className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl border border-slate-100">
+                {new Date(date).toLocaleDateString('pt-BR')}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
+  );
+}
+
+function ProfileInfoItem({ icon, label, value, color = 'slate', valueColor }: { icon: React.ReactNode, label: string, value: string, color?: 'slate' | 'blue', valueColor?: string }) {
+  const bgColor = color === 'blue' ? 'bg-blue-50/50' : 'bg-slate-50/50';
+  const iconBg = color === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400';
+  
+  return (
+    <div className={`group p-4 ${bgColor} rounded-2xl border border-slate-100/50 hover:bg-white hover:shadow-md transition-all duration-300`}>
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform`}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+          <p className={`text-sm font-bold truncate ${valueColor || 'text-slate-700'}`} title={value}>{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrivacyListItem({ title, description }: { title: string, description: string }) {
+  return (
+    <li className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 space-y-1">
+      <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+        <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{title}</p>
+      </div>
+      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{description}</p>
+    </li>
   );
 }
 
@@ -4982,15 +5273,17 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
         />
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase tracking-widest text-xs">Histórico de Escalas</h3>
-          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            <div className="w-2 h-2 bg-blue-600 rounded-full" />
+      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 sm:p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 gap-4">
+          <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Histórico de Escalas</h3>
+          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-slate-100 self-start sm:self-auto">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
             <span>Atualizado em tempo real</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white">
@@ -5038,21 +5331,59 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
                   </tr>
                 );
               })}
-              {myAssignments.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="p-12 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-300">
-                        <Calendar size={40} />
-                      </div>
-                      <p className="text-sm text-slate-400 font-medium italic">Nenhuma escala encontrada para suas unidades.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
+            const emp = employees.find(e => e.id === as.employeeId);
+            return (
+              <div key={as.id} className="p-6 space-y-4 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs border border-blue-100">
+                      {emp?.firstName[0]}
+                    </div>
+                    <div>
+                      <p className="font-black text-slate-900 text-sm tracking-tight">{emp?.firstName} {emp?.lastName}</p>
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Profissional</p>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] ${
+                    as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 
+                    as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600' :
+                    'bg-slate-100 text-slate-400'
+                  }`}>
+                    {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 pt-2 border-t border-slate-50">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={12} className="text-blue-600" />
+                    <span>{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={12} className="text-blue-600" />
+                    <span>08:00 - 17:00</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {myAssignments.length === 0 && (
+          <div className="p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-300">
+                <Calendar size={40} />
+              </div>
+              <p className="text-sm text-slate-400 font-medium italic">Nenhuma escala encontrada para suas unidades.</p>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -5972,79 +6303,79 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
           </div>
         </div>
         
-        <div className="pt-16 p-12 space-y-8">
+        <div className="pt-12 sm:pt-16 p-6 sm:p-12 space-y-6 sm:space-y-8">
           <div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
-            <p className="text-slate-500 font-medium uppercase tracking-widest text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
+            <p className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700">
+              <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
                 {loginEmail}
               </div>
             </div>
             {personalEmail && (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700">
+                <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
                   {personalEmail}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="pt-8 border-t border-slate-100">
+          <div className="pt-6 sm:pt-8 border-t border-slate-100">
             {!isResetting ? (
               <button 
                 onClick={() => {
                   setIsResetting(true);
                   setResetEmail(personalEmail || loginEmail || '');
                 }}
-                className="flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"
               >
                 <Lock size={18} />
                 Redefinir Minha Senha
               </button>
             ) : (
-              <div className="space-y-6 bg-slate-50 p-8 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Alterar Senha</h4>
-                  <button onClick={() => setIsResetting(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+              <div className="space-y-6 bg-slate-50 p-6 sm:p-8 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">Alterar Senha</h4>
+                  <button onClick={() => setIsResetting(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar E-mail para Link</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar E-mail para Link</label>
                     <input 
                       type="email" 
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                      className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
                       placeholder="seu@email.com"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nova Senha</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nova Senha</label>
                       <input 
                         type="password" 
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
                         placeholder="••••••••"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar Senha</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar Senha</label>
                       <input 
                         type="password" 
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
                         placeholder="••••••••"
                       />
                     </div>
@@ -6053,7 +6384,7 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
 
                 <button 
                   onClick={handleResetPassword}
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
                 >
                   Confirmar Nova Senha
                 </button>
