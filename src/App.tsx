@@ -55,6 +55,15 @@ import {
   where
 } from './services/firebaseService';
 
+function formatDateBR(dateString: string) {
+  if (!dateString) return 'Nenhuma';
+  if (dateString.includes('-') && !dateString.includes('T')) {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return new Date(dateString).toLocaleDateString('pt-BR');
+}
+
 class ErrorBoundary extends Component<any, any> {
   state = { hasError: false, error: null };
 
@@ -284,9 +293,9 @@ export default function App() {
     const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', impersonatedEmployeeId || user.uid)] : [];
     const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', setCheckIns, checkInConstraints);
 
-    const unsubCompanies = role === 'AGENCY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
-    const unsubUnits = role === 'AGENCY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
-    const unsubCompanyUsers = role === 'AGENCY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
+    const unsubCompanies = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
+    const unsubUnits = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
+    const unsubCompanyUsers = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
     const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', setCompanyRequests) : () => {};
 
     return () => {
@@ -861,8 +870,8 @@ export default function App() {
                     <SidebarItem 
                       icon={<UserIcon size={20} />} 
                       label="Meu Perfil" 
-                      active={activeTab === 'profile'} 
-                      onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }} 
+                      active={activeTab === 'company_profile'} 
+                      onClick={() => { setActiveTab('company_profile'); setIsMobileMenuOpen(false); }} 
                     />
                   </>
                 )}
@@ -1162,6 +1171,15 @@ export default function App() {
                     />
                   </div>
                 )}
+                {role === 'COMPANY' && activeTab === 'company_profile' && (
+                  <div key="company-profile">
+                    <CompanyProfile 
+                      companyUserId={user.uid}
+                      companyUsers={companyUsers}
+                      companies={companies}
+                    />
+                  </div>
+                )}
                 {role === 'EMPLOYEE' && activeTab === 'employee_schedule' && (
                   <div key="employee-schedule">
                     <EmployeeSchedule 
@@ -1211,7 +1229,7 @@ export default function App() {
                 <BottomNavItem icon={<LayoutDashboard size={20} />} active={activeTab === 'manager_dashboard'} onClick={() => setActiveTab('manager_dashboard')} />
                 <BottomNavItem icon={<Star size={20} />} active={activeTab === 'evaluate_team'} onClick={() => setActiveTab('evaluate_team')} />
                 <BottomNavItem icon={<Users size={20} />} active={activeTab === 'company_diaristas'} onClick={() => setActiveTab('company_diaristas')} />
-                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'company_profile'} onClick={() => setActiveTab('company_profile')} />
                 <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
               </>
             )}
@@ -1276,7 +1294,7 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
 function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData, setActiveTab, clients }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void, setActiveTab: (tab: string) => void, clients: Client[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayAssignments = assignments.filter(a => a.date === today);
   const totalValue = todayAssignments.reduce((acc, curr) => acc + curr.value, 0);
   const activeClients = new Set(todayAssignments.map(a => a.clientId)).size;
@@ -1720,7 +1738,7 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
                     <div>
                       <h4 className="font-black text-slate-900 text-base sm:text-lg">{cli?.name}</h4>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
-                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-blue-500" /> {new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-blue-500" /> {formatDateBR(as.date)}</span>
                         <span className="flex items-center gap-1.5"><Clock size={12} className="text-blue-500" /> 08:00 - 17:00</span>
                       </div>
                     </div>
@@ -1804,7 +1822,7 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
               <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-10 flex flex-col justify-center">
                 <p className="text-slate-600 font-medium italic text-sm sm:text-lg leading-relaxed">"{f.comment}"</p>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 sm:mt-6 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <span className="flex items-center gap-1.5"><Clock size={12} sm:size={14} className="text-blue-500" /> {new Date(f.date).toLocaleDateString('pt-BR')}</span>
+                  <span className="flex items-center gap-1.5"><Clock size={12} sm:size={14} className="text-blue-500" /> {formatDateBR(f.date)}</span>
                   <span className="hidden sm:inline text-slate-200">•</span>
                   <span className="flex items-center gap-1.5"><Building2 size={12} sm:size={14} className="text-blue-500" /> {clients.find(c => c.id === f.managerId)?.managerName || 'Empresa Parceira'}</span>
                 </div>
@@ -2579,7 +2597,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                     </div>
                   </td>
                   <td className="p-6 text-xs text-slate-500 font-mono tracking-tighter">{emp.cpf}</td>
-                  <td className="p-6 text-xs text-slate-500 font-medium">{new Date(emp.birthDate).toLocaleDateString('pt-BR')}</td>
+                  <td className="p-6 text-xs text-slate-500 font-medium">{formatDateBR(emp.birthDate)}</td>
                   <td className="p-6">
                     <div className="flex gap-0.5 bg-slate-50 w-fit px-2 py-1 rounded-lg">
                       {[...Array(5)].map((_, i) => (
@@ -2794,7 +2812,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                           </div>
                           <div>
                             <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Nascimento</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-700">{new Date(selectedEmployee.birthDate).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-700">{formatDateBR(selectedEmployee.birthDate)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -2854,7 +2872,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
 function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[] }) {
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
 
   const sortedEmployees = [...employees].sort((a, b) => {
@@ -2882,11 +2900,11 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     // WhatsApp Notification with confirmation link
     const appUrl = window.location.origin;
     const confirmationLink = `${appUrl}?role=EMPLOYEE&tab=employee_profile`;
-    const message = `Olá ${emp.firstName}! Você foi escalado para atuar na unidade ${client.name}.\n\n📅 Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n✅ Por favor, confirme sua presença clicando no link abaixo:\n${confirmationLink}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa escala!`;
+    const message = `Olá ${emp.firstName}! Você foi escalado para atuar na unidade ${client.name}.\n\n📅 Data: ${formatDateBR(selectedDate)}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n✅ Por favor, confirme sua presença clicando no link abaixo:\n${confirmationLink}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa escala!`;
     const whatsappUrl = `https://wa.me/55${emp.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
 
-    alert(`${emp.firstName} escalado com sucesso para o dia ${new Date(selectedDate).toLocaleDateString('pt-BR')}!`);
+    alert(`${emp.firstName} escalado com sucesso para o dia ${formatDateBR(selectedDate)}!`);
   };
 
   return (
@@ -3111,7 +3129,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                         <CheckCircle size={14} className="sm:w-4 sm:h-4" />
                         <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">Confirmado</span>
                       </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">{formatDateBR(as.date)}</span>
                     </div>
                   </div>
                 );
@@ -3144,7 +3162,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                       <h4 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{client?.name}</h4>
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1">
                         <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          <Calendar size={12} /> {new Date(req.date).toLocaleDateString('pt-BR')}
+                          <Calendar size={12} /> {formatDateBR(req.date)}
                         </span>
                         <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           <Users size={12} /> {req.quantity} Profissionais
@@ -3935,7 +3953,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
 }
 
 function CompanyDiaristas({ clientId, clients, employees, assignments, companies, units }: { clientId: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -4186,12 +4204,12 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
 
 function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedbacks }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
   const client = clients.find(c => c.id === clientId);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
   const handleEvaluate = async () => {
     if (!evaluatingEmployee) return;
@@ -4276,7 +4294,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
           </div>
           <div>
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {selectedDate === today ? 'Equipe de Hoje' : `Equipe de ${new Date(selectedDate).toLocaleDateString('pt-BR')}`}
+              {selectedDate === today ? 'Equipe de Hoje' : `Equipe de ${formatDateBR(selectedDate)}`}
             </h3>
             <p className={`${selectedDate === today ? 'text-emerald-600' : 'text-blue-600'} text-[10px] font-black uppercase tracking-widest`}>
               {dateEmployees.length} Profissionais escalados
@@ -4503,7 +4521,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
       managerName: unit.managerName,
       location: unit.location,
       qrCodeValue: `unit-${unit.id}-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0],
     };
     
     await createDocument('accessPoints', newAP);
@@ -4646,7 +4664,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
               
               <div className="flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg">
                 <Calendar size={12} />
-                <span>Criado em {new Date(ap.createdAt).toLocaleDateString('pt-BR')}</span>
+                <span>Criado em {formatDateBR(ap.createdAt)}</span>
               </div>
             </div>
 
@@ -4668,6 +4686,193 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
             </div>
           </div>
         ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUserId: string, companyUsers: CompanyUser[], companies: Company[] }) {
+  const companyUser = companyUsers.find(cu => cu.id === companyUserId);
+  const company = companies.find(c => c.id === companyUser?.companyId);
+
+  if (!companyUser) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <UserIcon size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Perfil não encontrado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Não foi possível carregar as informações do seu perfil.</p>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-5xl mx-auto space-y-8"
+    >
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Meu Perfil</h2>
+        <p className="text-slate-500 font-medium text-sm">Gerencie suas informações de acesso e dados da empresa.</p>
+      </div>
+
+      {/* Profile Hero Card */}
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full -mr-32 -mt-32 z-0" />
+        
+        <div className="relative z-10 shrink-0">
+          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
+            {companyUser.photoUrl ? (
+              <img 
+                src={companyUser.photoUrl} 
+                alt="" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-600 font-black text-4xl">
+                {companyUser.fullName[0]}
+              </div>
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-2 rounded-xl shadow-lg border-2 border-white">
+            <CheckCircle size={16} />
+          </div>
+        </div>
+
+        <div className="relative z-10 flex-1 text-center md:text-left space-y-4">
+          <div>
+            <h3 className="text-3xl font-black text-slate-900 leading-tight">{companyUser.fullName}</h3>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                Gestor Empresa
+              </span>
+              {company && (
+                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <Building2 size={12} />
+                  {company.name}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center md:justify-start gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-bold text-slate-500">Acesso Ativo</span>
+            </div>
+            <div className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="text-xs font-bold text-slate-400">Desde {formatDateBR(companyUser.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* User Access Card */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Mail size={16} />
+            </div>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Dados de Acesso</h4>
+          </div>
+          
+          <div className="space-y-4">
+            <ProfileInfoItem 
+              icon={<Mail size={18} />} 
+              label="E-mail de Login" 
+              value={companyUser.email} 
+              color="blue"
+            />
+            {companyUser.password && (
+              <ProfileInfoItem 
+                icon={<Lock size={18} />} 
+                label="Senha" 
+                value="••••••••" 
+                color="blue"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Company Info Card */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Building2 size={16} />
+            </div>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Dados da Empresa</h4>
+          </div>
+
+          <div className="space-y-4">
+            {company ? (
+              <>
+                <ProfileInfoItem 
+                  icon={<Building2 size={18} />} 
+                  label="Razão Social" 
+                  value={company.name} 
+                  color="slate"
+                />
+                <ProfileInfoItem 
+                  icon={<CreditCard size={18} />} 
+                  label="CNPJ" 
+                  value={company.cnpj || 'Não informado'} 
+                  color="slate"
+                />
+                <ProfileInfoItem 
+                  icon={<Phone size={18} />} 
+                  label="Telefone Comercial" 
+                  value={company.phone} 
+                  color="slate"
+                />
+                {company.address && (
+                  <ProfileInfoItem 
+                    icon={<MapPin size={18} />} 
+                    label="Endereço" 
+                    value={company.address} 
+                    color="slate"
+                  />
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-slate-400 italic">Informações da empresa não vinculadas.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Privacy & Data Card */}
+      <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+            <Lock size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Privacidade e Segurança</h3>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Gestão de Dados Corporativos</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="prose prose-slate max-w-none">
+            <p className="text-slate-600 leading-relaxed font-medium text-sm">
+              Como gestor, você tem acesso a informações sensíveis de escalas e funcionários. O StaffLink garante que todos os dados sejam tratados com o mais alto nível de segurança e em conformidade com a <strong>LGPD</strong>.
+            </p>
+            <p className="text-[10px] text-slate-400 italic mt-6 font-medium">
+              * O acesso é pessoal e intransferível. Todas as ações realizadas no portal são auditadas para sua segurança.
+            </p>
+          </div>
+          
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <PrivacyListItem title="Acesso Restrito" description="Suas credenciais são criptografadas e protegidas." />
+            <PrivacyListItem title="Auditoria de Ações" description="Registramos logs de alterações para conformidade." />
+            <PrivacyListItem title="Proteção de Dados" description="Dados de funcionários são mascarados quando possível." />
+            <PrivacyListItem title="Segurança de Rede" description="Toda comunicação é feita via túneis SSL/TLS seguros." />
+          </ul>
+        </div>
       </div>
     </motion.div>
   );
@@ -4776,7 +4981,7 @@ function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: s
             <ProfileInfoItem 
               icon={<Cake size={18} />} 
               label="Data de Nascimento" 
-              value={new Date(employee.birthDate).toLocaleDateString('pt-BR')} 
+              value={formatDateBR(employee.birthDate)} 
             />
             <ProfileInfoItem 
               icon={<CreditCard size={18} />} 
@@ -4889,7 +5094,7 @@ function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: s
           <div className="flex flex-wrap gap-3">
             {employee.unavailableDates.map(date => (
               <span key={date} className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl border border-slate-100">
-                {new Date(date).toLocaleDateString('pt-BR')}
+                {formatDateBR(date)}
               </span>
             ))}
           </div>
@@ -5014,7 +5219,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         await createDocument('checkIns', newCheckIn);
 
         // Update Assignment status
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const assignment = assignments.find(a => 
           a.employeeId === employeeId && 
           a.clientId === scannedPoint!.clientId && 
@@ -5238,7 +5443,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
   }
 
   const myAssignments = assignments.filter(a => a.clientId === clientId);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
   return (
@@ -5268,7 +5473,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
         <StatCard 
           icon={<Clock className="text-emerald-600" />} 
           label="Próxima Escala" 
-          value={myAssignments.find(a => a.date > today)?.date ? new Date(myAssignments.find(a => a.date > today)!.date).toLocaleDateString('pt-BR') : 'Nenhuma'} 
+          value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
           color="emerald"
         />
       </div>
@@ -5311,7 +5516,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
                     <td className="p-6">
                       <div className="flex items-center gap-2 text-slate-500 font-bold">
                         <Calendar size={14} className="text-blue-600" />
-                        <span className="text-sm">{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                        <span className="text-sm">{formatDateBR(as.date)}</span>
                       </div>
                     </td>
                     <td className="p-6">
@@ -5362,7 +5567,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 pt-2 border-t border-slate-50">
                   <div className="flex items-center gap-1.5">
                     <Calendar size={12} className="text-blue-600" />
-                    <span>{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                    <span>{formatDateBR(as.date)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock size={12} className="text-blue-600" />
@@ -5468,7 +5673,7 @@ function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { cl
               const emp = employees.find(e => e.id === as.employeeId);
               return (
                 <option key={as.id} value={as.id}>
-                  {emp?.firstName} - {new Date(as.date).toLocaleDateString('pt-BR')}
+                  {emp?.firstName} - {formatDateBR(as.date)}
                 </option>
               );
             })}
@@ -5997,6 +6202,8 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
   const [filter, setFilter] = useState<'EMPLOYEE' | 'COMPANY'>('EMPLOYEE');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string, type: 'EMPLOYEE' | 'COMPANY' } | null>(null);
   const [editData, setEditData] = useState({
     email: '',
     password: ''
@@ -6023,31 +6230,25 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
     alert('Credenciais atualizadas com sucesso!');
   };
 
-  const handleDeleteUser = async (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+  const handleDeleteUser = (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
+    setDeleteTarget({ id, type });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { id, type } = deleteTarget;
     try {
-      const userToDelete = type === 'EMPLOYEE' ? employees.find(e => e.id === id) : companyUsers.find(cu => cu.id === id);
-      const email = type === 'EMPLOYEE' ? (userToDelete as Employee)?.loginEmail : (userToDelete as CompanyUser)?.email;
-
-      console.log(`DEBUG: Deleting user ${id} from Auth...`);
-      // Call API to delete from Firebase Auth
-      const response = await fetch(`${window.location.origin}/api/delete-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: id, email }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error from delete-user API:', errorData);
-      }
-
       await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
       await deleteDocument('users', id);
       alert('Usuário excluído com sucesso!');
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
     } catch (error) {
       console.error('Error deleting user:', error);
       alert('Erro ao excluir usuário.');
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -6204,6 +6405,41 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
           </tbody>
         </table>
       </div>
+
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 p-10 text-center space-y-8"
+            >
+              <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={40} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Excluir usuário?</h3>
+                <p className="text-slate-500 text-sm font-medium">Esta ação não pode ser desfeita. Tem certeza que deseja remover este usuário permanentemente?</p>
+              </div>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-slate-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-rose-700 transition-all shadow-xl shadow-rose-500/20"
+                >
+                  Excluir
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showEditModal && (
