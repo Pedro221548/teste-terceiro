@@ -1,4 +1,4 @@
-export type UserRole = 'AGENCY' | 'MANAGER' | 'EMPLOYEE' | 'REGISTRATION';
+export type UserRole = 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION';
 
 export interface Employee {
   id: string;
@@ -6,17 +6,51 @@ export interface Employee {
   lastName: string;
   cpf: string;
   birthDate: string;
+  phone: string;
   photoUrl?: string;
   docUrl?: string;
   rating: number; // 1 to 5
   status: 'PENDING' | 'ACTIVE' | 'INACTIVE';
   complaints: number;
+  lastAssignmentDate?: string;
+  unavailableDates?: string[];
 }
 
 export interface Client {
   id: string;
   name: string;
   managerName: string;
+  location?: string;
+  activeScales?: number;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  responsibleName: string;
+  cnpj?: string;
+  phone: string;
+  email: string;
+  address?: string;
+  createdAt: string;
+}
+
+export interface Unit {
+  id: string;
+  companyId: string;
+  name: string;
+  managerName: string;
+  location: string;
+  createdAt: string;
+}
+
+export interface CompanyUser {
+  id: string;
+  companyId: string;
+  fullName: string;
+  email: string;
+  role: 'COMPANY';
+  createdAt: string;
 }
 
 export interface Assignment {

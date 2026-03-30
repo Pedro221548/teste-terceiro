@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "A worker registered in the system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "cpf": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "docUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "status": { "type": "string", "enum": ["PENDING", "ACTIVE", "INACTIVE"] },
+        "complaints": { "type": "number" },
+        "lastAssignmentDate": { "type": "string" },
+        "unavailableDates": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["firstName", "lastName", "cpf", "phone", "rating", "status"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "A partner company or unit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "managerName": { "type": "string" },
+        "location": { "type": "string" },
+        "activeScales": { "type": "number" }
+      },
+      "required": ["name", "managerName"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "A client company.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "responsibleName": { "type": "string" },
+        "cnpj": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "responsibleName", "phone", "email", "createdAt"]
+    },
+    "Unit": {
+      "title": "Unit",
+      "description": "A specific unit of a company.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "managerName": { "type": "string" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["companyId", "name", "managerName", "location", "createdAt"]
+    },
+    "CompanyUser": {
+      "title": "CompanyUser",
+      "description": "A user associated with a company.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["COMPANY"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["companyId", "fullName", "email", "role", "createdAt"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "A scheduled shift for an employee at a client's location.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "date": { "type": "string" },
+        "value": { "type": "number" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "COMPLETED", "CANCELLED"] }
+      },
+      "required": ["employeeId", "clientId", "date", "value", "status"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Rating and comment left by a manager for an employee.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "managerId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["assignmentId", "employeeId", "managerId", "rating", "date"]
+    },
+    "ContactRequest": {
+      "title": "ContactRequest",
+      "description": "A request for contact from a potential partner or employee.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "CONTACTED"] },
+        "date": { "type": "string" }
+      },
+      "required": ["name", "phone", "status", "date"]
+    },
+    "AccessPoint": {
+      "title": "AccessPoint",
+      "description": "A physical location with a QR code for clock-ins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "managerName": { "type": "string" },
+        "location": { "type": "string" },
+        "qrCodeValue": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["managerName", "location", "qrCodeValue", "createdAt"]
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "A record of an employee clocking in at an access point.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "accessPointId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["employeeId", "accessPointId", "timestamp", "photoUrl"]
+    }
+  },
+  "firestore": {
+    "/employees": { "schema": "Employee", "description": "Collection of employees." },
+    "/clients": { "schema": "Client", "description": "Collection of partner companies." },
+    "/companies": { "schema": "Company", "description": "Collection of client companies." },
+    "/units": { "schema": "Unit", "description": "Collection of company units." },
+    "/companyUsers": { "schema": "CompanyUser", "description": "Collection of users for companies." },
+    "/assignments": { "schema": "Assignment", "description": "Collection of scheduled assignments." },
+    "/feedbacks": { "schema": "Feedback", "description": "Collection of employee feedbacks." },
+    "/contacts": { "schema": "ContactRequest", "description": "Collection of contact requests." },
+    "/accessPoints": { "schema": "AccessPoint", "description": "Collection of QR code access points." },
+    "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." }
+  }
+}

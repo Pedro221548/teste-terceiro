@@ -1,0 +1,243 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: employees
+    // Fields:
+    //   - firstName: string (required)
+    //   - lastName: string (required)
+    //   - cpf: string (required)
+    //   - birthDate: string
+    //   - phone: string (required)
+    //   - photoUrl: string
+    //   - docUrl: string
+    //   - rating: number (required)
+    //   - status: string (required, enum: ["PENDING", "ACTIVE", "INACTIVE"])
+    //   - complaints: number
+    //   - lastAssignmentDate: string
+    //   - unavailableDates: list (strings)
+    //
+    // Collection: clients
+    // Fields:
+    //   - name: string (required)
+    //   - managerName: string (required)
+    //   - location: string
+    //   - activeScales: number
+    //
+    // Collection: assignments
+    // Fields:
+    //   - employeeId: string (required)
+    //   - clientId: string (required)
+    //   - date: string (required)
+    //   - value: number (required)
+    //   - status: string (required, enum: ["SCHEDULED", "COMPLETED", "CANCELLED"])
+    //
+    // Collection: feedbacks
+    // Fields:
+    //   - assignmentId: string (required)
+    //   - employeeId: string (required)
+    //   - managerId: string (required)
+    //   - rating: number (required)
+    //   - comment: string
+    //   - date: string (required)
+    //
+    // Collection: contacts
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (required)
+    //   - status: string (required, enum: ["PENDING", "CONTACTED"])
+    //   - date: string (required)
+    //
+    // Collection: accessPoints
+    // Fields:
+    //   - managerName: string (required)
+    //   - location: string (required)
+    //   - qrCodeValue: string (required)
+    //   - createdAt: string (required)
+    //
+    // Collection: checkIns
+    // Fields:
+    //   - employeeId: string (required)
+    //   - accessPointId: string (required)
+    //   - timestamp: string (required)
+    //   - photoUrl: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'AGENCY') ||
+         (request.auth.token.email == "pedroass.11577@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidEmployee(data) {
+      return hasRequiredFields(['firstName', 'lastName', 'cpf', 'phone', 'rating', 'status']) &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 100 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 100 &&
+             data.cpf is string && data.cpf.size() == 14 &&
+             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
+             data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+             data.status in ["PENDING", "ACTIVE", "INACTIVE"];
+    }
+
+    function isValidClient(data) {
+      return hasRequiredFields(['name', 'managerName']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.managerName is string && data.managerName.size() > 0 && data.managerName.size() < 100;
+    }
+
+    function isValidAssignment(data) {
+      return hasRequiredFields(['employeeId', 'clientId', 'date', 'value', 'status']) &&
+             data.employeeId is string && data.clientId is string &&
+             data.date is string && data.value is number &&
+             data.status in ["SCHEDULED", "COMPLETED", "CANCELLED"];
+    }
+
+    function isValidFeedback(data) {
+      return hasRequiredFields(['assignmentId', 'employeeId', 'managerId', 'rating', 'date']) &&
+             data.assignmentId is string && data.employeeId is string &&
+             data.managerId is string && data.rating is number &&
+             data.date is string;
+    }
+
+    function isValidContact(data) {
+      return hasRequiredFields(['name', 'phone', 'status', 'date']) &&
+             data.name is string && data.phone is string &&
+             data.status in ["PENDING", "CONTACTED"] &&
+             data.date is string;
+    }
+
+    function isValidAccessPoint(data) {
+      return hasRequiredFields(['managerName', 'location', 'qrCodeValue', 'createdAt']) &&
+             data.managerName is string && data.location is string &&
+             data.qrCodeValue is string && data.createdAt is string;
+    }
+
+    function isValidCheckIn(data) {
+      return hasRequiredFields(['employeeId', 'accessPointId', 'timestamp', 'photoUrl']) &&
+             data.employeeId is string && data.accessPointId is string &&
+             data.timestamp is string && data.photoUrl is string;
+    }
+
+    function isEmployee() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'EMPLOYEE';
+    }
+
+    function isCompany() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'COMPANY';
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || 
+                      (isOwner(employeeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unavailableDates'])) ||
+                      (isCompany() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating']));
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isCompany();
+      allow update: if isAdmin() || isCompany();
+      allow delete: if isAdmin() || isCompany();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || 
+                      (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && 
+                       (resource.data.employeeId == request.auth.uid || resource.data.clientId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    match /feedbacks/{feedbackId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contacts/{contactId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /accessPoints/{accessPointId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isCompany();
+      allow update: if isAdmin() || isCompany();
+      allow delete: if isAdmin() || isCompany();
+    }
+
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /units/{unitId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /companyUsers/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    match /checkIns/{checkInId} {
+      allow read: if isAuthenticated() && (isAdmin() || isCompany() || resource.data.employeeId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

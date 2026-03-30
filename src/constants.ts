@@ -1,5 +1,13 @@
 import { Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn } from './types';
 
+export const PRICING_BY_STARS = {
+  1: 50,
+  2: 60,
+  3: 70,
+  4: 80,
+  5: 90
+};
+
 export const MOCK_EMPLOYEES: Employee[] = [
   {
     id: 'emp1',
@@ -7,9 +15,12 @@ export const MOCK_EMPLOYEES: Employee[] = [
     lastName: 'Silva',
     cpf: '123.456.789-00',
     birthDate: '1990-05-15',
+    phone: '11999999999',
     rating: 4,
     status: 'ACTIVE',
     complaints: 0,
+    lastAssignmentDate: '2026-03-25',
+    unavailableDates: []
   },
   {
     id: 'emp2',
@@ -17,9 +28,12 @@ export const MOCK_EMPLOYEES: Employee[] = [
     lastName: 'Oliveira',
     cpf: '987.654.321-11',
     birthDate: '1985-10-20',
+    phone: '11888888888',
     rating: 5,
     status: 'ACTIVE',
     complaints: 0,
+    lastAssignmentDate: '2026-03-20',
+    unavailableDates: []
   },
   {
     id: 'emp3',
@@ -27,9 +41,12 @@ export const MOCK_EMPLOYEES: Employee[] = [
     lastName: 'Santos',
     cpf: '456.789.123-22',
     birthDate: '1995-02-28',
+    phone: '11777777777',
     rating: 3,
     status: 'ACTIVE',
-    complaints: 1,
+    complaints: 5,
+    lastAssignmentDate: '2026-02-15', // More than 30 days ago
+    unavailableDates: []
   },
 ];
 
