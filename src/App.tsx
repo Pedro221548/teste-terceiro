@@ -39,7 +39,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -347,7 +347,24 @@ export default function App() {
       return;
     }
 
-    setLoginError('E-mail ou senha incorretos.');
+    // 4. Attempt Firebase Authentication
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailInput, passwordInput);
+      const firebaseUser = userCredential.user;
+      
+      // Fetch role from Firestore
+      const userDoc = await getDocument<{ role: UserRole }>('users', firebaseUser.uid);
+      if (userDoc) {
+        setRole(userDoc.role);
+        setUser(firebaseUser);
+      } else {
+        setLoginError('Usuário não possui perfil configurado.');
+      }
+      return;
+    } catch (error) {
+      console.error('Firebase Auth error:', error);
+      setLoginError('E-mail ou senha incorretos.');
+    }
   };
 
   const handleLogout = async () => {
@@ -1743,36 +1760,50 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
     e.preventDefault();
     setIsSending(true);
     
-    // 1. Create employee record
-    await createDocument('employees', {
-      firstName: registration.firstName,
-      lastName: registration.lastName,
-      cpf: registration.cpf,
-      birthDate: registration.birthDate,
-      phone: registration.phone,
-      personalEmail: registration.personalEmail,
-      lgpdAuthorized: registration.lgpdAuthorized,
-      photoUrl: registration.photoUrl,
-      docUrl: registration.docUrl,
-      username,
-      status: 'ACTIVE',
-      rating: 5,
-      complaints: 0,
-      lastAssignmentDate: "",
-      unavailableDates: []
-    });
+    try {
+      // 1. Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, registration.personalEmail, password);
+      const newUid = userCredential.user.uid;
 
-    // 2. Mark registration as processed
-    await updateDocument('employeeRegistrations', registration.id, { status: 'PROCESSED' });
+      // 2. Create employee record
+      await setDocument('employees', newUid, {
+        firstName: registration.firstName,
+        lastName: registration.lastName,
+        cpf: registration.cpf,
+        birthDate: registration.birthDate,
+        phone: registration.phone,
+        personalEmail: registration.personalEmail,
+        lgpdAuthorized: registration.lgpdAuthorized,
+        photoUrl: registration.photoUrl,
+        docUrl: registration.docUrl,
+        username,
+        status: 'ACTIVE',
+        rating: 5,
+        complaints: 0,
+        lastAssignmentDate: "",
+        unavailableDates: []
+      });
 
-    // 3. Simulate sending credentials
-    console.log(`Enviando credenciais para ${registration.phone}...`);
-    const message = `Olá ${registration.firstName}! Seu cadastro foi aprovado.\n\nUsuário: ${username}\nSenha: ${password}\n\nAcesse o sistema em: ${window.location.origin}`;
-    const whatsappUrl = `https://wa.me/55${registration.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    
-    alert(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
-    onComplete();
+      // 3. Set user role
+      await setDocument('users', newUid, { role: 'EMPLOYEE', email: registration.personalEmail });
+
+      // 4. Mark registration as processed
+      await updateDocument('employeeRegistrations', registration.id, { status: 'PROCESSED' });
+
+      // 5. Simulate sending credentials
+      console.log(`Enviando credenciais para ${registration.phone}...`);
+      const message = `Olá ${registration.firstName}! Seu cadastro foi aprovado.\n\nUsuário: ${username}\nSenha: ${password}\n\nAcesse o sistema em: ${window.location.origin}`;
+      const whatsappUrl = `https://wa.me/55${registration.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      
+      alert(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
+      onComplete();
+    } catch (error) {
+      console.error('Error processing registration:', error);
+      alert('Erro ao processar cadastro. Verifique se o e-mail já está em uso.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
