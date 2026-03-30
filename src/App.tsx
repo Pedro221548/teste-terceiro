@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -100,6 +100,7 @@ export default function App() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [contacts, setContacts] = useState<ContactRequest[]>([]);
+  const [employeeRegistrations, setEmployeeRegistrations] = useState<EmployeeRegistration[]>([]);
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -264,6 +265,7 @@ export default function App() {
     
     // Only agency sees contacts
     const unsubContacts = role === 'AGENCY' ? subscribeToCollection<ContactRequest>('contacts', setContacts) : () => {};
+    const unsubEmployeeRegistrations = role === 'AGENCY' ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', setEmployeeRegistrations) : () => {};
     
     const unsubAccessPoints = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<AccessPoint>('accessPoints', setAccessPoints) : () => {};
     
@@ -282,6 +284,7 @@ export default function App() {
       unsubAssignments();
       unsubFeedbacks();
       unsubContacts();
+      unsubEmployeeRegistrations();
       unsubAccessPoints();
       unsubCheckIns();
       unsubCompanies();
@@ -970,6 +973,7 @@ export default function App() {
                       assignments={assignments}
                       employees={employees}
                       contacts={contacts}
+                      employeeRegistrations={employeeRegistrations}
                       pricing={pricing}
                       ratingLabel={ratingLabel}
                       onSeedData={seedData}
@@ -1147,7 +1151,9 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, pricing, ratingLabel, onSeedData }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void }) {
+  const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
+  const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const today = new Date().toISOString().split('T')[0];
   const todayAssignments = assignments.filter(a => a.date === today);
   const totalValue = todayAssignments.reduce((acc, curr) => acc + curr.value, 0);
@@ -1319,8 +1325,42 @@ function AgencyDashboard({ assignments, employees, contacts, pricing, ratingLabe
                 </button>
               </div>
             ))}
+            {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
+              <div key={r.id} className="flex items-center justify-between p-4 rounded-xl border border-dashed border-green-300 bg-green-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <UserIcon size={18} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">{r.firstName} {r.lastName}</p>
+                    <p className="text-xs text-gray-500">{r.phone}</p>
+                    <p className="text-[10px] text-green-600 font-bold">Nova Solicitação</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedRegistration(r);
+                    setShowProcessRegistrationModal(true);
+                  }}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
+
+        {showProcessRegistrationModal && selectedRegistration && (
+          <ProcessRegistrationModal 
+            registration={selectedRegistration}
+            onClose={() => setShowProcessRegistrationModal(false)}
+            onComplete={() => {
+              setShowProcessRegistrationModal(false);
+              setSelectedRegistration(null);
+            }}
+          />
+        )}
       </div>
     </motion.div>
   );
@@ -1687,6 +1727,108 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
             className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
           >
             {isSending ? 'Criando...' : 'Finalizar e Enviar Acesso'}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function ProcessRegistrationModal({ registration, onClose, onComplete }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void }) {
+  const [username, setUsername] = useState(`${registration.firstName.toLowerCase()}.${registration.lastName.toLowerCase().split(' ')[0]}`);
+  const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
+  const [isSending, setIsSending] = useState(false);
+
+  const handleProcess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSending(true);
+    
+    // 1. Create employee record
+    await createDocument('employees', {
+      firstName: registration.firstName,
+      lastName: registration.lastName,
+      cpf: registration.cpf,
+      birthDate: registration.birthDate,
+      phone: registration.phone,
+      personalEmail: registration.personalEmail,
+      lgpdAuthorized: registration.lgpdAuthorized,
+      photoUrl: registration.photoUrl,
+      docUrl: registration.docUrl,
+      username,
+      status: 'ACTIVE',
+      rating: 5,
+      complaints: 0,
+      lastAssignmentDate: "",
+      unavailableDates: []
+    });
+
+    // 2. Mark registration as processed
+    await updateDocument('employeeRegistrations', registration.id, { status: 'PROCESSED' });
+
+    // 3. Simulate sending credentials
+    console.log(`Enviando credenciais para ${registration.phone}...`);
+    const message = `Olá ${registration.firstName}! Seu cadastro foi aprovado.\n\nUsuário: ${username}\nSenha: ${password}\n\nAcesse o sistema em: ${window.location.origin}`;
+    const whatsappUrl = `https://wa.me/55${registration.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    
+    alert(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
+    onComplete();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+      >
+        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Processar Cadastro</h3>
+            <p className="text-xs text-slate-400 font-medium">Finalizar cadastro de {registration.firstName}.</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleProcess} className="p-8 space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome de Usuário</label>
+              <input 
+                required
+                type="text" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha Temporária</label>
+              <div className="relative">
+                <input 
+                  required
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setPassword(Math.random().toString(36).slice(-8))}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700 font-bold text-xs"
+                >
+                  Gerar Nova
+                </button>
+              </div>
+            </div>
+          </div>
+          <button 
+            type="submit" 
+            disabled={isSending}
+            className="w-full py-5 bg-green-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-green-700 transition-all shadow-xl shadow-green-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+          >
+            {isSending ? 'Processando...' : 'Finalizar e Enviar Acesso'}
           </button>
         </form>
       </motion.div>

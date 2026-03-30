@@ -124,3 +124,18 @@ export interface CompanyRequest {
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   createdAt: string;
 }
+
+export interface EmployeeRegistration {
+  id: string;
+  firstName: string;
+  lastName: string;
+  cpf: string;
+  birthDate: string;
+  phone: string;
+  personalEmail: string;
+  lgpdAuthorized: boolean;
+  photoUrl?: string;
+  docUrl?: string;
+  status: 'PENDING' | 'PROCESSED';
+  createdAt: string;
+}
