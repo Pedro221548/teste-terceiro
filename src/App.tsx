@@ -39,7 +39,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -88,8 +88,11 @@ class ErrorBoundary extends Component<any, any> {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>('AGENCY');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -121,6 +124,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!isAuthReady || !user) return;
     const unsubPricing = subscribeToCollection<any>('settings', (docs) => {
       const pricingDoc = docs.find(d => d.id === 'pricing');
       const labelDoc = docs.find(d => d.id === 'ratingLabel');
@@ -135,7 +139,7 @@ export default function App() {
       if (labelDoc) setRatingLabel(labelDoc.value);
     });
     return () => unsubPricing();
-  }, []);
+  }, [isAuthReady, user]);
 
   const seedData = async () => {
     try {
@@ -212,7 +216,7 @@ export default function App() {
   useEffect(() => {
     testConnection();
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+      if (firebaseUser && !firebaseUser.isAnonymous) {
         const urlParams = new URLSearchParams(window.location.search);
         const urlRole = urlParams.get('role') as UserRole;
 
@@ -233,8 +237,13 @@ export default function App() {
           });
           setRole(defaultRole);
         }
+        setUser(firebaseUser);
+      } else if (firebaseUser && firebaseUser.isAnonymous) {
+        // Keep the custom user state if it exists
+        setUser(prev => (prev as any)?.isCustom ? prev : null);
+      } else {
+        setUser(prev => (prev as any)?.isCustom ? prev : null);
       }
-      setUser(firebaseUser);
       setIsAuthReady(true);
     });
 
@@ -285,14 +294,90 @@ export default function App() {
 
   const handleLogin = async () => {
     try {
+      setLoginError(null);
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Login error:', error);
+      setLoginError('Erro ao autenticar com Google.');
     }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    // 1. Check in companyUsers
+    const cUser = companyUsers.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
+    if (cUser) {
+      try {
+        await signInAnonymously(auth);
+        setUser({
+          uid: cUser.id,
+          email: cUser.email,
+          displayName: cUser.fullName,
+          isCustom: true,
+          customRole: 'COMPANY'
+        });
+        setRole('COMPANY');
+        if (cUser.unitId) setImpersonatedClientId(units.find(u => u.id === cUser.unitId)?.clientId || null);
+      } catch (err) {
+        console.error('Anonymous sign-in error:', err);
+        setLoginError('Erro ao iniciar sessão segura. Verifique se o login anônimo está ativado no Firebase.');
+      }
+      return;
+    }
+
+    // 2. Check in employees
+    const eUser = employees.find(e => e.loginEmail?.toLowerCase() === emailInput.toLowerCase() && e.password === passwordInput);
+    if (eUser) {
+      try {
+        await signInAnonymously(auth);
+        setUser({
+          uid: eUser.id,
+          email: eUser.loginEmail,
+          displayName: `${eUser.firstName} ${eUser.lastName}`,
+          isCustom: true,
+          customRole: 'EMPLOYEE'
+        });
+        setRole('EMPLOYEE');
+      } catch (err) {
+        console.error('Anonymous sign-in error:', err);
+        setLoginError('Erro ao iniciar sessão segura.');
+      }
+      return;
+    }
+
+    // 3. Check for default Agency (Demo)
+    if (emailInput === 'admin@stafflink.com' && passwordInput === 'admin123') {
+      try {
+        await signInAnonymously(auth);
+        setUser({
+          uid: 'agency-admin',
+          email: 'admin@stafflink.com',
+          displayName: 'Administrador StaffLink',
+          isCustom: true,
+          customRole: 'AGENCY'
+        });
+        setRole('AGENCY');
+      } catch (err) {
+        console.error('Anonymous sign-in error:', err);
+        setLoginError('Erro ao iniciar sessão segura.');
+      }
+      return;
+    }
+
+    setLoginError('E-mail ou senha incorretos.');
   };
 
   const handleLogout = async () => {
     try {
+      setEmailInput('');
+      setPasswordInput('');
+      if (user?.isCustom) {
+        setUser(null);
+        setRole('AGENCY');
+        return;
+      }
       await signOut(auth);
     } catch (error) {
       console.error('Logout error:', error);
@@ -487,7 +572,7 @@ export default function App() {
                 <p className="text-slate-500 font-medium px-4">Faça login para acessar o sistema de gestão de diaristas.</p>
               </div>
 
-              <form className="space-y-6 relative z-10" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Usuário ou E-mail</label>
                   <div className="relative group">
@@ -497,6 +582,8 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="seu@email.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
                       className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
                     />
                   </div>
@@ -514,10 +601,19 @@ export default function App() {
                     <input 
                       type="password" 
                       placeholder="••••••••"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
                       className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
                     />
                   </div>
                 </div>
+
+                {loginError && (
+                  <div className="flex items-center gap-2 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle size={14} />
+                    {loginError}
+                  </div>
+                )}
 
                 <button 
                   type="submit"
@@ -525,6 +621,12 @@ export default function App() {
                 >
                   Entrar no Sistema
                 </button>
+
+                <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Acesso de Demonstração (Admin)</p>
+                  <p className="text-[10px] font-bold text-slate-600">E-mail: <span className="text-blue-600">admin@stafflink.com</span></p>
+                  <p className="text-[10px] font-bold text-slate-600">Senha: <span className="text-blue-600">admin123</span></p>
+                </div>
               </form>
 
               <div className="relative my-12">
@@ -5279,6 +5381,32 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
 const UserManagement = ({ employees, companyUsers }: { employees: Employee[], companyUsers: CompanyUser[] }) => {
   const [filter, setFilter] = useState<'EMPLOYEE' | 'COMPANY'>('EMPLOYEE');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showEditModal, setShowEditModal] = useState<string | null>(null);
+  const [editData, setEditData] = useState({
+    email: '',
+    password: ''
+  });
+
+  const handleSaveLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditModal) return;
+
+    if (filter === 'EMPLOYEE') {
+      await updateDocument('employees', showEditModal, {
+        loginEmail: editData.email,
+        password: editData.password
+      });
+    } else {
+      await updateDocument('companyUsers', showEditModal, {
+        email: editData.email,
+        password: editData.password
+      });
+    }
+
+    setShowEditModal(null);
+    setEditData({ email: '', password: '' });
+    alert('Credenciais atualizadas com sucesso!');
+  };
 
   const filteredEmployees = employees.filter(emp => 
     `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -5361,7 +5489,13 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                     </span>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                    <button 
+                      onClick={() => {
+                        setShowEditModal(emp.id);
+                        setEditData({ email: emp.loginEmail || '', password: emp.password || '' });
+                      }}
+                      className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                    >
                       <Lock size={18} />
                     </button>
                   </td>
@@ -5387,7 +5521,13 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
                     </span>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                    <button 
+                      onClick={() => {
+                        setShowEditModal(cu.id);
+                        setEditData({ email: cu.email, password: cu.password || '' });
+                      }}
+                      className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                    >
                       <Lock size={18} />
                     </button>
                   </td>
@@ -5397,6 +5537,65 @@ const UserManagement = ({ employees, companyUsers }: { employees: Employee[], co
           </tbody>
         </table>
       </div>
+
+      <AnimatePresence>
+        {showEditModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100"
+            >
+              <div className="p-10 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                      <Lock size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Editar Acesso</h3>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Defina as credenciais de login</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowEditModal(null)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveLogin} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
+                    <input 
+                      type="email" 
+                      required
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      value={editData.email}
+                      onChange={e => setEditData({ ...editData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Senha de Acesso</label>
+                    <input 
+                      type="text" 
+                      required
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      value={editData.password}
+                      onChange={e => setEditData({ ...editData, password: e.target.value })}
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95"
+                  >
+                    Salvar Credenciais
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

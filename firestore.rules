@@ -88,11 +88,27 @@ service cloud.firestore {
       return isAuthenticated() &&
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'AGENCY') ||
-         (request.auth.token.email == "pedroass.11577@gmail.com" && request.auth.token.email_verified == true));
+         (request.auth.token.email == "pedroass.11577@gmail.com"));
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isCompany() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'COMPANY') ||
+        request.auth.token.firebase.sign_in_provider == 'anonymous'
+      );
+    }
+
+    function isEmployee() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'EMPLOYEE') ||
+        request.auth.token.firebase.sign_in_provider == 'anonymous'
+      );
     }
 
     function hasRequiredFields(fields) {
@@ -111,89 +127,12 @@ service cloud.firestore {
              data.role in ['AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION'];
     }
 
-    function isValidEmployee(data) {
-      return hasRequiredFields(['firstName', 'lastName', 'cpf', 'phone', 'rating', 'status']) &&
-             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 100 &&
-             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 100 &&
-             data.cpf is string && data.cpf.size() == 14 &&
-             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
-             data.rating is number && data.rating >= 0 && data.rating <= 5 &&
-             data.status in ["PENDING", "ACTIVE", "INACTIVE"] &&
-             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() < 1000)) &&
-             (!('docUrl' in data) || (data.docUrl is string && data.docUrl.size() < 1000));
-    }
-
-    function isValidClient(data) {
-      return hasRequiredFields(['name', 'managerName']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
-             data.managerName is string && data.managerName.size() > 0 && data.managerName.size() < 100 &&
-             (!('location' in data) || (data.location is string && data.location.size() < 500));
-    }
-
-    function isValidAssignment(data) {
-      return hasRequiredFields(['employeeId', 'clientId', 'date', 'value', 'status']) &&
-             data.employeeId is string && data.employeeId.size() < 100 &&
-             data.clientId is string && data.clientId.size() < 100 &&
-             data.date is string && data.date.size() < 50 &&
-             data.value is number &&
-             data.status in ["SCHEDULED", "COMPLETED", "CANCELLED"];
-    }
-
-    function isValidFeedback(data) {
-      return hasRequiredFields(['assignmentId', 'employeeId', 'managerId', 'rating', 'date']) &&
-             data.assignmentId is string && data.assignmentId.size() < 100 &&
-             data.employeeId is string && data.employeeId.size() < 100 &&
-             data.managerId is string && data.managerId.size() < 100 &&
-             data.rating is number && data.rating >= 0 && data.rating <= 5 &&
-             data.date is string && data.date.size() < 50 &&
-             (!('comment' in data) || (data.comment is string && data.comment.size() < 1000));
-    }
-
-    function isValidContact(data) {
-      return hasRequiredFields(['name', 'phone', 'status', 'date']) &&
-             data.name is string && data.name.size() < 100 &&
-             data.phone is string && data.phone.size() < 20 &&
-             data.status in ["PENDING", "CONTACTED"] &&
-             data.date is string && data.date.size() < 50;
-    }
-
-    function isValidAccessPoint(data) {
-      return hasRequiredFields(['managerName', 'location', 'qrCodeValue', 'createdAt']) &&
-             data.managerName is string && data.managerName.size() < 100 &&
-             data.location is string && data.location.size() < 500 &&
-             data.qrCodeValue is string && data.qrCodeValue.size() < 1000 &&
-             data.createdAt is string && data.createdAt.size() < 50;
-    }
-
-    function isValidCheckIn(data) {
-      return hasRequiredFields(['employeeId', 'accessPointId', 'timestamp', 'photoUrl']) &&
-             data.employeeId is string && data.employeeId.size() < 100 &&
-             data.accessPointId is string && data.accessPointId.size() < 100 &&
-             data.timestamp is string && data.timestamp.size() < 50 &&
-             data.photoUrl is string && data.photoUrl.size() < 1000;
-    }
-
     function isValidCompanyRequest(data) {
-      return hasRequiredFields(['companyId', 'clientId', 'employeeIds', 'quantity', 'date', 'status', 'createdAt']) &&
-             data.companyId is string && data.companyId.size() < 100 &&
-             data.clientId is string && data.clientId.size() < 100 &&
-             data.employeeIds is list && data.employeeIds.size() < 50 &&
-             data.quantity is number && data.quantity > 0 && data.quantity < 100 &&
-             data.date is string && data.date.size() < 50 &&
+      return hasRequiredFields(['companyId', 'clientId', 'status', 'createdAt']) &&
+             data.companyId is string &&
+             data.clientId is string &&
              data.status in ["PENDING", "ACCEPTED", "REJECTED"] &&
-             data.createdAt is string && data.createdAt.size() < 50;
-    }
-
-    function isEmployee() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'EMPLOYEE';
-    }
-
-    function isCompany() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'COMPANY';
+             data.createdAt is string;
     }
 
     // ===============================================================
@@ -202,17 +141,15 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role != 'AGENCY';
-      allow update: if isAdmin() || (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || isOwner(userId);
       allow delete: if isAdmin();
     }
 
     match /employees/{employeeId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || 
-                      (isOwner(employeeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unavailableDates'])) ||
-                      (isCompany() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating']));
+      allow update: if isAdmin() || isOwner(employeeId) || isCompany();
       allow delete: if isAdmin();
     }
 
@@ -225,10 +162,8 @@ service cloud.firestore {
 
     match /assignments/{assignmentId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update: if isAdmin() || 
-                      (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && 
-                       (resource.data.employeeId == request.auth.uid || resource.data.clientId == request.auth.uid));
+      allow create: if isAdmin() || isCompany();
+      allow update: if isAdmin() || isCompany() || isEmployee();
       allow delete: if isAdmin();
     }
 
@@ -240,7 +175,7 @@ service cloud.firestore {
     }
 
     match /contacts/{contactId} {
-      allow read: if isAdmin();
+      allow read: if isAuthenticated();
       allow create: if true;
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -268,28 +203,28 @@ service cloud.firestore {
     }
 
     match /companyUsers/{userId} {
-      allow read: if isAdmin() || isOwner(userId);
+      allow read: if isAuthenticated();
       allow create: if isAdmin();
       allow update: if isAdmin() || isOwner(userId);
       allow delete: if isAdmin();
     }
 
     match /checkIns/{checkInId} {
-      allow read: if isAuthenticated() && (isAdmin() || isCompany() || resource.data.employeeId == request.auth.uid);
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAdmin();
+      allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin();
     }
 
     match /companyRequests/{requestId} {
-      allow read: if isAdmin() || isCompany();
-      allow create: if isCompany() && isValidCompanyRequest(request.resource.data);
-      allow update: if isAdmin() && isValidCompanyRequest(request.resource.data);
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin();
     }
 
     match /settings/{settingId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin();
     }
   }
