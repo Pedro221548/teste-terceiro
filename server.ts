@@ -6,7 +6,7 @@ import serviceAccount from "./firebase-applet-config.json" assert { type: "json"
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
+  credential: admin.credential.cert(serviceAccount as any),
 });
 
 async function startServer() {
