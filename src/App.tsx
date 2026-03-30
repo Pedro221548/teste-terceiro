@@ -31,7 +31,8 @@ import {
   Trash2,
   Mail,
   Lock,
-  Search
+  Search,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -402,69 +403,86 @@ export default function App() {
   const RoleSwitcher = () => {
     const impersonatedClient = clients.find(c => c.id === impersonatedClientId);
     const impersonatedEmployee = employees.find(e => e.id === impersonatedEmployeeId);
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
-      <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
-        {(impersonatedClientId || impersonatedEmployeeId) && (
-          <div className="bg-white px-4 py-2 rounded-2xl shadow-2xl border border-purple-100 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-4">
-            {impersonatedClientId && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresa: <span className="text-slate-900">{impersonatedClient?.name || 'Carregando...'}</span></p>
-                <button onClick={() => setImpersonatedClientId(null)} className="text-slate-300 hover:text-rose-500 transition-colors ml-2">
-                  <X size={12} />
+      <div className="fixed bottom-24 right-4 flex flex-col items-end gap-2 z-50 lg:bottom-4">
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white p-4 rounded-[2rem] shadow-2xl border border-slate-200 flex flex-col gap-4 mb-2 min-w-[240px]"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Simulador de Perfis</h4>
+                <button onClick={() => setIsOpen(false)} className="text-slate-300 hover:text-slate-600 transition-colors">
+                  <X size={16} />
                 </button>
               </div>
-            )}
-            {impersonatedEmployeeId && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Func: <span className="text-slate-900">{impersonatedEmployee?.firstName}</span></p>
-                <button onClick={() => setImpersonatedEmployeeId(null)} className="text-slate-300 hover:text-rose-500 transition-colors ml-2">
-                  <X size={12} />
+
+              <div className="space-y-2">
+                <button 
+                  onClick={() => { setRole('AGENCY'); setActiveTab('dashboard'); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'AGENCY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${role === 'AGENCY' ? 'bg-white' : 'bg-blue-500'}`} />
+                  Agência
+                </button>
+                <button 
+                  onClick={() => { setRole('COMPANY'); setActiveTab('manager_dashboard'); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'COMPANY' ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${role === 'COMPANY' ? 'bg-white' : 'bg-green-500'}`} />
+                  Empresa
+                </button>
+                <button 
+                  onClick={() => { setRole('EMPLOYEE'); setActiveTab('employee_schedule'); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'EMPLOYEE' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${role === 'EMPLOYEE' ? 'bg-white' : 'bg-purple-500'}`} />
+                  Funcionário
+                </button>
+                <button 
+                  onClick={() => { setRole('REGISTRATION'); setActiveTab('registration_form'); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'REGISTRATION' ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${role === 'REGISTRATION' ? 'bg-white' : 'bg-orange-500'}`} />
+                  Registro
                 </button>
               </div>
-            )}
-          </div>
-        )}
-        <div className="flex gap-2 bg-white p-2 rounded-full shadow-2xl border border-gray-200">
-          <button 
-            onClick={() => {
-              setRole('AGENCY');
-              setActiveTab('dashboard');
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'AGENCY' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-          >
-            Agência
-          </button>
-          <button 
-            onClick={() => {
-              setRole('COMPANY');
-              setActiveTab('manager_dashboard');
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'COMPANY' ? 'bg-green-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-          >
-            Empresa
-          </button>
-          <button 
-            onClick={() => {
-              setRole('EMPLOYEE');
-              setActiveTab('employee_schedule');
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'EMPLOYEE' ? 'bg-purple-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-          >
-            Funcionário
-          </button>
-          <button 
-            onClick={() => {
-              setRole('REGISTRATION');
-              setActiveTab('registration_form');
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'REGISTRATION' ? 'bg-orange-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-          >
-            Registro
-          </button>
-        </div>
+
+              {(impersonatedClientId || impersonatedEmployeeId) && (
+                <div className="pt-4 border-t border-slate-100 space-y-2">
+                  {impersonatedClientId && (
+                    <div className="flex items-center justify-between bg-emerald-50 px-3 py-2 rounded-lg">
+                      <p className="text-[9px] font-black text-emerald-600 uppercase truncate max-w-[150px]">{impersonatedClient?.name}</p>
+                      <button onClick={() => setImpersonatedClientId(null)} className="text-emerald-400 hover:text-emerald-600">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  {impersonatedEmployeeId && (
+                    <div className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded-lg">
+                      <p className="text-[9px] font-black text-purple-600 uppercase truncate max-w-[150px]">{impersonatedEmployee?.firstName}</p>
+                      <button onClick={() => setImpersonatedEmployeeId(null)} className="text-purple-400 hover:text-purple-600">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-14 h-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-4 border-white"
+        >
+          <Settings size={24} className={isOpen ? 'rotate-90 transition-transform' : 'transition-transform'} />
+        </button>
       </div>
     );
   };
@@ -865,29 +883,37 @@ export default function App() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 lg:ml-72 min-h-screen bg-slate-50/30">
-            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-10 py-6 flex items-center justify-between">
-              <button 
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-3 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all"
-              >
-                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
+          <main className="flex-1 lg:ml-72 min-h-screen bg-slate-50/30 pb-24 lg:pb-0">
+            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="lg:hidden p-2.5 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all"
+                >
+                  {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+                <div className="lg:hidden flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <Building2 size={16} />
+                  </div>
+                  <span className="text-sm font-black tracking-tight text-slate-900">StaffLink</span>
+                </div>
+              </div>
               
-              <div className="flex items-center gap-8 ml-auto">
+              <div className="flex items-center gap-4 sm:gap-8 ml-auto">
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
                     {user.displayName || 'Usuário'}
                   </p>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{role}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
                   <img src={user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" />
                 </div>
               </div>
             </header>
 
-            <div className="p-10 max-w-7xl mx-auto">
+            <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto">
               {role === 'EMPLOYEE' && (
                 <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
                   <div className="flex items-center gap-4">
@@ -1144,9 +1170,56 @@ export default function App() {
               </AnimatePresence>
             </div>
           </main>
+
+          {/* Bottom Navigation for Mobile */}
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200 px-6 py-3 flex items-center justify-between pb-safe">
+            {role === 'AGENCY' && (
+              <>
+                <BottomNavItem icon={<LayoutDashboard size={20} />} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+                <BottomNavItem icon={<Calendar size={20} />} active={activeTab === 'staffing'} onClick={() => setActiveTab('staffing')} />
+                <BottomNavItem icon={<Building2 size={20} />} active={activeTab === 'companies'} onClick={() => setActiveTab('companies')} />
+                <BottomNavItem icon={<UserPlus size={20} />} active={activeTab === 'registrations'} onClick={() => setActiveTab('registrations')} />
+                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+              </>
+            )}
+            {role === 'COMPANY' && (
+              <>
+                <BottomNavItem icon={<LayoutDashboard size={20} />} active={activeTab === 'manager_dashboard'} onClick={() => setActiveTab('manager_dashboard')} />
+                <BottomNavItem icon={<Star size={20} />} active={activeTab === 'evaluate_team'} onClick={() => setActiveTab('evaluate_team')} />
+                <BottomNavItem icon={<Users size={20} />} active={activeTab === 'company_diaristas'} onClick={() => setActiveTab('company_diaristas')} />
+                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+              </>
+            )}
+            {role === 'EMPLOYEE' && (
+              <>
+                <BottomNavItem icon={<Calendar size={20} />} active={activeTab === 'employee_schedule'} onClick={() => setActiveTab('employee_schedule')} />
+                <BottomNavItem icon={<Scan size={20} />} active={activeTab === 'employee_ponto'} onClick={() => setActiveTab('employee_ponto')} />
+                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+              </>
+            )}
+          </nav>
         </div>
       </div>
     </ErrorBoundary>
+  );
+}
+
+function BottomNavItem({ icon, active, onClick }: { icon: React.ReactNode, active: boolean, onClick: () => void }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`p-3 rounded-2xl transition-all relative ${active ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:bg-slate-50'}`}
+    >
+      {icon}
+      {active && (
+        <motion.div 
+          layoutId="bottom-nav-active"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-600"
+        />
+      )}
+    </button>
   );
 }
 
