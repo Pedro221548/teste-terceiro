@@ -387,18 +387,175 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-          <Building2 size={48} className="mx-auto text-blue-600 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal de Gestão</h1>
-          <p className="text-gray-600 mb-8">Faça login para acessar o sistema de gestão de diaristas.</p>
-          <button 
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm"
+      <div className="min-h-screen flex bg-slate-50 overflow-hidden">
+        {/* Left Side: Purpose/Branding - Website Style */}
+        <div className="hidden lg:flex lg:w-1/2 bg-slate-900 p-16 flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full -mr-64 -mt-64 blur-[120px]" />
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/20 rounded-full -ml-64 -mb-64 blur-[120px]" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-16">
+              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40 transform -rotate-6">
+                <Building2 size={32} />
+              </div>
+              <h1 className="text-4xl font-black tracking-tighter text-white">StaffLink</h1>
+            </div>
+            
+            <div className="space-y-10 max-w-xl">
+              <motion.h2 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-6xl font-black text-white leading-[1.1] tracking-tight"
+              >
+                A revolução na <br />
+                <span className="text-blue-500">Gestão de Diaristas.</span>
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-xl text-slate-400 font-medium leading-relaxed"
+              >
+                O StaffLink é o ecossistema completo para agências que buscam excelência operacional, automação de escalas e controle total em tempo real.
+              </motion.p>
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15 }}
+                className="relative rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl"
+              >
+                <img 
+                  src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
+                  alt="StaffLink Purpose" 
+                  className="w-full h-auto object-cover opacity-90 hover:opacity-100 transition-opacity"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="grid grid-cols-2 gap-8 pt-10"
+              >
+                <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all group">
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                    <Calendar size={24} />
+                  </div>
+                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Escalas Inteligentes</h4>
+                  <p className="text-slate-500 text-sm font-medium">Distribua sua equipe com precisão cirúrgica.</p>
+                </div>
+                <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all group">
+                  <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
+                    <QrCode size={24} />
+                  </div>
+                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Ponto Digital</h4>
+                  <p className="text-slate-500 text-sm font-medium">Segurança e transparência via QR Code.</p>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+          
+          <div className="relative z-10 flex items-center gap-6 text-slate-500 text-xs font-bold uppercase tracking-widest">
+            <span>© 2026 StaffLink</span>
+            <div className="w-1 h-1 rounded-full bg-slate-700" />
+            <span>Privacidade</span>
+            <div className="w-1 h-1 rounded-full bg-slate-700" />
+            <span>Termos</span>
+          </div>
+        </div>
+
+        {/* Right Side: Login Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-white lg:bg-slate-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md"
           >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            Entrar com Google
-          </button>
+            <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200 border border-slate-100 relative overflow-hidden">
+              {/* Decorative background for the card */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 opacity-50" />
+              
+              <div className="text-center mb-12 relative z-10">
+                <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mx-auto mb-8 shadow-inner transform hover:rotate-12 transition-transform duration-500">
+                  <Building2 size={48} />
+                </div>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Portal de Gestão</h3>
+                <p className="text-slate-500 font-medium px-4">Faça login para acessar o sistema de gestão de diaristas.</p>
+              </div>
+
+              <form className="space-y-6 relative z-10" onSubmit={(e) => e.preventDefault()}>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Usuário ou E-mail</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                      <Mail size={20} />
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="seu@email.com"
+                      className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center px-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                    <button type="button" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors">Esqueceu?</button>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                      <Lock size={20} />
+                    </div>
+                    <input 
+                      type="password" 
+                      placeholder="••••••••"
+                      className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-[0.98] mt-4"
+                >
+                  Entrar no Sistema
+                </button>
+              </form>
+
+              <div className="relative my-12">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-100"></div>
+                </div>
+                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
+                  <span className="bg-white px-6 text-slate-400">Ou autentique com</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleLogin}
+                className="w-full flex items-center justify-center gap-4 bg-white border-2 border-slate-100 text-slate-700 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98] shadow-sm"
+              >
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                Entrar com Google
+              </button>
+
+              <div className="mt-12 pt-8 border-t border-slate-50 text-center">
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+                  Novo por aqui? <button className="text-blue-600 hover:text-blue-800 transition-colors ml-1">Solicite Acesso</button>
+                </p>
+              </div>
+            </div>
+            
+            {/* Mobile Purpose Text */}
+            <div className="lg:hidden mt-12 text-center px-6">
+              <h4 className="text-xl font-black text-slate-900 mb-2">StaffLink</h4>
+              <p className="text-slate-500 text-sm font-medium">Gestão inteligente para agências de diaristas.</p>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
