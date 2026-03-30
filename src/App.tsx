@@ -39,7 +39,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -216,7 +216,9 @@ export default function App() {
   useEffect(() => {
     testConnection();
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser);
       if (firebaseUser) {
+        console.log('User is authenticated:', firebaseUser.uid);
         const urlParams = new URLSearchParams(window.location.search);
         const urlRole = urlParams.get('role') as UserRole;
 

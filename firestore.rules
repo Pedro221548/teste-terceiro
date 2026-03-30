@@ -147,28 +147,28 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAdmin() || isOwner(employeeId) || isCompany();
       allow delete: if isAdmin();
     }
 
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() || isCompany();
       allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin() || isCompany();
     }
 
     match /assignments/{assignmentId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() || isCompany();
       allow update: if isAdmin() || isCompany() || isEmployee();
       allow delete: if isAdmin();
     }
 
     match /feedbacks/{feedbackId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -182,7 +182,7 @@ service cloud.firestore {
     }
 
     match /accessPoints/{accessPointId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin() || isCompany();
       allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin() || isCompany();
@@ -210,14 +210,14 @@ service cloud.firestore {
     }
 
     match /checkIns/{checkInId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin();
     }
 
     match /companyRequests/{requestId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAdmin() || isCompany();
       allow delete: if isAdmin();
