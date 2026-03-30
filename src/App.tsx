@@ -5060,8 +5060,6 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     birthDate: '',
     phone: '',
     personalEmail: '',
-    password: '',
-    confirmPassword: '',
     lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
@@ -5109,16 +5107,12 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) {
-      alert("As senhas não coincidem!");
-      return;
-    }
     if (!formData.photo) {
       alert("Por favor, tire uma foto para o cadastro.");
       return;
     }
 
-    const userCredential = await createUserWithEmailAndPassword(auth, formData.personalEmail, formData.password);
+    const userCredential = await signInAnonymously(auth);
     const newUid = userCredential.user.uid;
 
     const names = formData.fullName.split(' ');
@@ -5225,29 +5219,6 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 value={formData.personalEmail}
                 onChange={e => setFormData({...formData, personalEmail: e.target.value})}
               />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
-                <input 
-                  required
-                  type="password" 
-                  className="input-field"
-                  value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                <input 
-                  required
-                  type="password" 
-                  className="input-field"
-                  value={formData.confirmPassword}
-                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
