@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Component } from 'react';
 import { 
   Users, 
+  User as UserIcon,
   LayoutDashboard, 
   MessageSquare, 
   UserPlus, 
@@ -34,8 +35,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser } from './types';
-import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, calculateValue, PRICING_BY_STARS } from './constants';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
+import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { 
@@ -100,19 +101,130 @@ export default function App() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
+  const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
+  const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
+  const [ratingLabel, setRatingLabel] = useState('Estrelas');
+  const [impersonatedClientId, setImpersonatedClientId] = useState<string | null>(null);
+  const [impersonatedEmployeeId, setImpersonatedEmployeeId] = useState<string | null>(null);
+
+  const getScaleValue = (rating: number) => {
+    if (pricing.type === 'STARS') {
+      const p = pricing.stars?.[rating.toString()];
+      return p ? p.employee + p.company : 0;
+    } else {
+      const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+      const day = daysOfWeek[new Date().getDay()];
+      const p = pricing.weekly?.[day];
+      return p ? p.employee + p.company : 0;
+    }
+  };
+
+  useEffect(() => {
+    const unsubPricing = subscribeToCollection<any>('settings', (docs) => {
+      const pricingDoc = docs.find(d => d.id === 'pricing');
+      const labelDoc = docs.find(d => d.id === 'ratingLabel');
+      if (pricingDoc) {
+        setPricing({
+          ...DEFAULT_PRICING,
+          ...pricingDoc.values,
+          stars: { ...DEFAULT_PRICING.stars, ...(pricingDoc.values?.stars || {}) },
+          weekly: { ...DEFAULT_PRICING.weekly, ...(pricingDoc.values?.weekly || {}) }
+        });
+      }
+      if (labelDoc) setRatingLabel(labelDoc.value);
+    });
+    return () => unsubPricing();
+  }, []);
+
+  const seedData = async () => {
+    try {
+      // 1. Create a fictitious company
+      const companyId = await createDocument('companies', {
+        name: "Restaurante Sabor Real",
+        responsibleName: "Maria Oliveira",
+        cnpj: "12.345.678/0001-90",
+        phone: "(11) 3333-4444",
+        email: "contato@saborreal.com.br",
+        address: "Rua das Flores, 123 - São Paulo, SP",
+        createdAt: new Date().toISOString()
+      });
+
+      if (companyId) {
+        // 2. Create a unit for this company
+        const unitId = await createDocument('units', {
+          companyId,
+          name: "Unidade Centro",
+          managerName: "Carlos Santos",
+          location: "Centro, São Paulo",
+          createdAt: new Date().toISOString()
+        });
+
+        if (unitId) {
+          // 3. Create an access point for this unit
+          await createDocument('accessPoints', {
+            managerName: "Carlos Santos",
+            location: "Unidade Centro - Restaurante Sabor Real",
+            qrCodeValue: `UNIT_${unitId}`,
+            createdAt: new Date().toISOString()
+          });
+
+          // 4. Create a Client entry for the staffing system
+          const clientId = await createDocument('clients', {
+            name: "Restaurante Sabor Real - Unidade Centro",
+            managerName: "Carlos Santos",
+            location: "Centro, São Paulo",
+            activeScales: 0
+          });
+          if (clientId) {
+            setImpersonatedClientId(clientId);
+            await updateDocument('units', unitId, { clientId });
+          }
+        }
+      }
+
+      // 5. Create a fictitious employee
+      const employeeId = await createDocument('employees', {
+        firstName: "João",
+        lastName: "Silva",
+        cpf: "123.456.789-00",
+        birthDate: "1990-05-15",
+        phone: "(11) 98765-4321",
+        rating: 5,
+        status: "ACTIVE",
+        complaints: 0,
+        photoUrl: "https://picsum.photos/seed/joao/200",
+        lastAssignmentDate: "",
+        unavailableDates: []
+      });
+
+      if (employeeId) setImpersonatedEmployeeId(employeeId);
+
+      alert("Dados fictícios cadastrados com sucesso!");
+    } catch (error) {
+      console.error("Erro ao cadastrar dados fictícios:", error);
+      alert("Erro ao cadastrar dados fictícios. Verifique o console.");
+    }
+  };
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     testConnection();
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRole = urlParams.get('role') as UserRole;
+
         // Fetch or create user profile
         const userDoc = await getDocument<{ role: UserRole }>('users', firebaseUser.uid);
         if (userDoc) {
           setRole(userDoc.role);
         } else {
-          // Default role based on email
-          const defaultRole: UserRole = firebaseUser.email === 'pedroass.11577@gmail.com' ? 'AGENCY' : 'EMPLOYEE';
+          // Default role based on email or URL param
+          let defaultRole: UserRole = firebaseUser.email === 'pedroass.11577@gmail.com' ? 'AGENCY' : 'EMPLOYEE';
+          if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION') {
+            defaultRole = urlRole;
+          }
           await setDocument('users', firebaseUser.uid, {
             email: firebaseUser.email,
             role: defaultRole,
@@ -132,11 +244,11 @@ export default function App() {
     if (!isAuthReady || !user) return;
 
     const unsubEmployees = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Employee>('employees', setEmployees) : () => {};
-    const unsubClients = role === 'AGENCY' ? subscribeToCollection<Client>('clients', setClients) : () => {};
+    const unsubClients = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Client>('clients', setClients) : () => {};
     
     // Role-based assignments subscription
-    const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : 
-                                 role === 'COMPANY' ? [where('clientId', '==', user.uid)] : [];
+    const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', impersonatedEmployeeId || user.uid)] : 
+                                 role === 'COMPANY' ? [where('clientId', '==', impersonatedClientId || user.uid)] : [];
     const unsubAssignments = subscribeToCollection<Assignment>('assignments', setAssignments, assignmentConstraints);
     
     const unsubFeedbacks = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Feedback>('feedbacks', setFeedbacks) : () => {};
@@ -147,12 +259,13 @@ export default function App() {
     const unsubAccessPoints = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<AccessPoint>('accessPoints', setAccessPoints) : () => {};
     
     // Role-based check-ins subscription
-    const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
+    const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', impersonatedEmployeeId || user.uid)] : [];
     const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', setCheckIns, checkInConstraints);
 
     const unsubCompanies = role === 'AGENCY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
     const unsubUnits = role === 'AGENCY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
     const unsubCompanyUsers = role === 'AGENCY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
+    const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', setCompanyRequests) : () => {};
 
     return () => {
       unsubEmployees();
@@ -165,6 +278,7 @@ export default function App() {
       unsubCompanies();
       unsubUnits();
       unsubCompanyUsers();
+      unsubCompanyRequests();
     };
   }, [isAuthReady, user, role]);
 
@@ -193,34 +307,75 @@ export default function App() {
   }, []);
 
   // Role Switcher for Demo
-  const RoleSwitcher = () => (
-    <div className="fixed bottom-4 right-4 flex gap-2 bg-white p-2 rounded-full shadow-2xl border border-gray-200 z-50">
-      <button 
-        onClick={() => setRole('AGENCY')}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'AGENCY' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-      >
-        Agência
-      </button>
-      <button 
-        onClick={() => setRole('COMPANY')}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'COMPANY' ? 'bg-green-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-      >
-        Empresa
-      </button>
-      <button 
-        onClick={() => setRole('EMPLOYEE')}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'EMPLOYEE' ? 'bg-purple-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-      >
-        Funcionário
-      </button>
-      <button 
-        onClick={() => setRole('REGISTRATION')}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'REGISTRATION' ? 'bg-orange-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
-      >
-        Registro
-      </button>
-    </div>
-  );
+  const RoleSwitcher = () => {
+    const impersonatedClient = clients.find(c => c.id === impersonatedClientId);
+    const impersonatedEmployee = employees.find(e => e.id === impersonatedEmployeeId);
+
+    return (
+      <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
+        {(impersonatedClientId || impersonatedEmployeeId) && (
+          <div className="bg-white px-4 py-2 rounded-2xl shadow-2xl border border-purple-100 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-4">
+            {impersonatedClientId && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresa: <span className="text-slate-900">{impersonatedClient?.name || 'Carregando...'}</span></p>
+                <button onClick={() => setImpersonatedClientId(null)} className="text-slate-300 hover:text-rose-500 transition-colors ml-2">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            {impersonatedEmployeeId && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Func: <span className="text-slate-900">{impersonatedEmployee?.firstName}</span></p>
+                <button onClick={() => setImpersonatedEmployeeId(null)} className="text-slate-300 hover:text-rose-500 transition-colors ml-2">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex gap-2 bg-white p-2 rounded-full shadow-2xl border border-gray-200">
+          <button 
+            onClick={() => {
+              setRole('AGENCY');
+              setActiveTab('dashboard');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'AGENCY' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+          >
+            Agência
+          </button>
+          <button 
+            onClick={() => {
+              setRole('COMPANY');
+              setActiveTab('manager_dashboard');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'COMPANY' ? 'bg-green-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+          >
+            Empresa
+          </button>
+          <button 
+            onClick={() => {
+              setRole('EMPLOYEE');
+              setActiveTab('employee_schedule');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'EMPLOYEE' ? 'bg-purple-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+          >
+            Funcionário
+          </button>
+          <button 
+            onClick={() => {
+              setRole('REGISTRATION');
+              setActiveTab('registration_form');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${role === 'REGISTRATION' ? 'bg-orange-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+          >
+            Registro
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   if (!isAuthReady) {
     return (
@@ -262,6 +417,19 @@ export default function App() {
     );
   }
 
+  if (role === 'COMPANY_REGISTRATION') {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+          <RoleSwitcher />
+          <CompanyRegistrationForm 
+            onComplete={() => setRole('COMPANY')} 
+          />
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
@@ -269,21 +437,21 @@ export default function App() {
         
         <div className="flex">
           {/* Sidebar */}
-          <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="h-full flex flex-col">
               <div className="p-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-slate-200">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                     <Building2 size={22} />
                   </div>
-                  <h1 className="text-xl font-bold tracking-tight text-slate-900">StaffLink</h1>
+                  <h1 className="text-xl font-bold tracking-tight text-white">StaffLink</h1>
                 </div>
               </div>
 
-              <nav className="flex-1 px-4 space-y-1.5">
+              <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
                 {role === 'AGENCY' && (
                   <>
-                    <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Principal</div>
+                    <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Principal</div>
                     <SidebarItem 
                       icon={<LayoutDashboard size={18} />} 
                       label="Dashboard" 
@@ -316,6 +484,12 @@ export default function App() {
                       onClick={() => setActiveTab('access_control')} 
                     />
                     <SidebarItem 
+                      icon={<CreditCard size={18} />} 
+                      label="Precificação" 
+                      active={activeTab === 'pricing'} 
+                      onClick={() => setActiveTab('pricing')} 
+                    />
+                    <SidebarItem 
                       icon={<MessageSquare size={18} />} 
                       label="Feedbacks" 
                       active={activeTab === 'feedbacks'} 
@@ -334,14 +508,14 @@ export default function App() {
                     <SidebarItem 
                       icon={<Star size={20} />} 
                       label="Avaliar Equipe" 
-                      active={activeTab === 'manager_feedback'} 
-                      onClick={() => setActiveTab('manager_feedback')} 
-                    />
-                    <SidebarItem 
-                      icon={<Users size={20} />} 
-                      label="Minha Equipe" 
                       active={activeTab === 'evaluate_team'} 
                       onClick={() => setActiveTab('evaluate_team')} 
+                    />
+                    <SidebarItem 
+                      icon={<div className="flex items-center gap-1">Diaristas <Star size={14} className="fill-yellow-400 text-yellow-400" /></div>} 
+                      label="" 
+                      active={activeTab === 'company_diaristas'} 
+                      onClick={() => setActiveTab('company_diaristas')} 
                     />
                   </>
                 )}
@@ -369,10 +543,10 @@ export default function App() {
                 )}
               </nav>
 
-              <div className="p-6 border-t border-slate-100">
+              <div className="p-6 border-t border-slate-800">
                 <button 
                   onClick={handleLogout}
-                  className="flex items-center gap-4 w-full p-4 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all group"
+                  className="flex items-center gap-4 w-full p-4 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all group"
                 >
                   <div className="group-hover:scale-110 transition-transform">
                     <LogOut size={20} />
@@ -407,89 +581,238 @@ export default function App() {
             </header>
 
             <div className="p-10 max-w-7xl mx-auto">
+              {role === 'EMPLOYEE' && (
+                <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-200">
+                      <UserIcon size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-purple-900 uppercase tracking-tight">Modo de Teste: Selecionar Perfil</h3>
+                      <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Escolha um funcionário cadastrado para simular o portal.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <select 
+                      value={impersonatedEmployeeId || ''} 
+                      onChange={(e) => {
+                        const val = e.target.value || null;
+                        setImpersonatedEmployeeId(val);
+                        if (val) {
+                          const emp = employees.find(e => e.id === val);
+                          if (emp) alert(`Simulando como: ${emp.firstName}`);
+                        }
+                      }}
+                      className="flex-1 sm:w-64 px-4 py-3 bg-white border-2 border-purple-100 rounded-xl text-xs font-bold text-slate-700 focus:border-purple-400 outline-none transition-all shadow-sm"
+                    >
+                      <option value="">Meu Perfil (Padrão)</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.status})</option>
+                      ))}
+                    </select>
+                    {impersonatedEmployeeId && (
+                      <button 
+                        onClick={() => setImpersonatedEmployeeId(null)}
+                        className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Limpar Seleção"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {role === 'COMPANY' && (
+                <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
+                      <Building2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-tight">Modo de Teste: Selecionar Empresa</h3>
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Escolha uma empresa cadastrada para simular o portal.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <select 
+                      value={impersonatedClientId || ''} 
+                      onChange={(e) => {
+                        const val = e.target.value || null;
+                        setImpersonatedClientId(val);
+                        if (val) {
+                          const client = clients.find(c => c.id === val);
+                          if (client) alert(`Simulando como: ${client.name}`);
+                        }
+                      }}
+                      className="flex-1 sm:w-64 px-4 py-3 bg-white border-2 border-emerald-100 rounded-xl text-xs font-bold text-slate-700 focus:border-emerald-400 outline-none transition-all shadow-sm"
+                    >
+                      <option value="">Minha Empresa (Padrão)</option>
+                      {clients.map(client => (
+                        <option key={client.id} value={client.id}>{client.name} ({client.city})</option>
+                      ))}
+                    </select>
+                    {impersonatedClientId && (
+                      <button 
+                        onClick={() => setImpersonatedClientId(null)}
+                        className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Limpar Seleção"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <AnimatePresence mode="wait">
                 {role === 'AGENCY' && activeTab === 'dashboard' && (
-                  <AgencyDashboard 
-                    assignments={assignments}
-                    employees={employees}
-                    contacts={contacts}
-                  />
+                  <div key="agency-dashboard">
+                    <AgencyDashboard 
+                      assignments={assignments}
+                      employees={employees}
+                      contacts={contacts}
+                      pricing={pricing}
+                      ratingLabel={ratingLabel}
+                      onSeedData={seedData}
+                    />
+                  </div>
                 )}
                 {role === 'AGENCY' && activeTab === 'feedbacks' && (
-                  <EmployeeFeedbackView 
-                    feedbacks={feedbacks}
-                    employees={employees}
-                    clients={clients}
-                  />
+                  <div key="agency-feedbacks">
+                    <EmployeeFeedbackView 
+                      feedbacks={feedbacks}
+                      employees={employees}
+                      clients={clients}
+                    />
+                  </div>
                 )}
                 {role === 'AGENCY' && activeTab === 'registrations' && (
-                  <AgencyRegistrations 
-                    employees={employees}
-                    clients={clients}
-                  />
+                  <div key="agency-registrations">
+                    <AgencyRegistrations 
+                      employees={employees}
+                      clients={clients}
+                      ratingLabel={ratingLabel}
+                      onImpersonate={setImpersonatedEmployeeId}
+                      impersonatedId={impersonatedEmployeeId}
+                    />
+                  </div>
                 )}
                 {role === 'AGENCY' && activeTab === 'staffing' && (
-                  <AgencyStaffing 
-                    employees={employees}
-                    assignments={assignments}
-                    clients={clients}
-                  />
+                  <div key="agency-staffing">
+                    <AgencyStaffing 
+                      employees={employees}
+                      assignments={assignments}
+                      clients={clients}
+                      getScaleValue={getScaleValue}
+                      companyRequests={companyRequests}
+                    />
+                  </div>
                 )}
                 {role === 'AGENCY' && activeTab === 'access_control' && (
-                  <AgencyAccessControl 
-                    accessPoints={accessPoints}
-                    clients={clients}
-                  />
+                  <div key="agency-access-control">
+                    <AgencyAccessControl 
+                      accessPoints={accessPoints}
+                      clients={clients}
+                      units={units}
+                      companies={companies}
+                    />
+                  </div>
                 )}
                 {role === 'AGENCY' && activeTab === 'companies' && (
-                  <AgencyCompanies 
-                    companies={companies}
-                    units={units}
-                    companyUsers={companyUsers}
-                  />
+                  <div key="agency-companies">
+                    <AgencyCompanies 
+                      companies={companies}
+                      units={units}
+                      companyUsers={companyUsers}
+                      clients={clients}
+                      onImpersonate={setImpersonatedClientId}
+                      impersonatedId={impersonatedClientId}
+                    />
+                  </div>
+                )}
+                {role === 'AGENCY' && activeTab === 'pricing' && (
+                  <div key="agency-pricing">
+                    <AgencyPricing 
+                      pricing={pricing}
+                      ratingLabel={ratingLabel}
+                      setPricing={setPricing}
+                      setRatingLabel={setRatingLabel}
+                    />
+                  </div>
                 )}
                 
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
-                  <CompanyDashboard 
-                    clientId={user.uid} 
-                    assignments={assignments}
-                    employees={employees}
-                  />
+                  <div key="company-dashboard">
+                    <CompanyDashboard 
+                      clientId={impersonatedClientId || user.uid} 
+                      clients={clients}
+                      assignments={assignments}
+                      employees={employees}
+                    />
+                  </div>
                 )}
                 {role === 'COMPANY' && activeTab === 'manager_feedback' && (
-                  <CompanyFeedbackForm 
-                    clientId={user.uid}
-                    assignments={assignments}
-                    employees={employees}
-                  />
+                  <div key="company-feedback">
+                    <CompanyFeedbackForm 
+                      clientId={impersonatedClientId || user.uid}
+                      clients={clients}
+                      assignments={assignments}
+                      employees={employees}
+                    />
+                  </div>
+                )}
+                {role === 'COMPANY' && activeTab === 'company_diaristas' && (
+                  <div key="company-diaristas">
+                    <CompanyDiaristas 
+                      clientId={impersonatedClientId || user.uid}
+                      clients={clients}
+                      employees={employees}
+                      assignments={assignments}
+                      companies={companies}
+                      units={units}
+                    />
+                  </div>
                 )}
                 {role === 'COMPANY' && activeTab === 'evaluate_team' && (
-                  <CompanyEvaluateTeam 
-                    clientId={user.uid}
-                    assignments={assignments}
-                    employees={employees}
-                    feedbacks={feedbacks}
-                  />
+                  <div key="company-evaluate">
+                    <CompanyEvaluateTeam 
+                      clientId={impersonatedClientId || user.uid}
+                      clients={clients}
+                      assignments={assignments}
+                      employees={employees}
+                      feedbacks={feedbacks}
+                    />
+                  </div>
                 )}
                 {role === 'EMPLOYEE' && activeTab === 'employee_schedule' && (
-                  <EmployeeSchedule 
-                    employeeId={user.uid} 
-                    employees={employees}
-                    assignments={assignments}
-                  />
+                  <div key="employee-schedule">
+                    <EmployeeSchedule 
+                      employeeId={impersonatedEmployeeId || user.uid} 
+                      employees={employees}
+                      assignments={assignments}
+                    />
+                  </div>
                 )}
                 {role === 'EMPLOYEE' && activeTab === 'employee_profile' && (
-                  <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500">
-                    <Users size={48} className="mb-4 opacity-20" />
-                    <p className="text-lg">Seu perfil profissional.</p>
+                  <div key="employee-profile">
+                    <EmployeeProfile 
+                      employeeId={impersonatedEmployeeId || user.uid}
+                      employees={employees}
+                      assignments={assignments}
+                    />
                   </div>
                 )}
                 {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
-                  <EmployeePonto 
-                    accessPoints={accessPoints}
-                    checkIns={checkIns}
-                    assignments={assignments}
-                  />
+                  <div key="employee-ponto">
+                    <EmployeePonto 
+                      employeeId={impersonatedEmployeeId || user.uid}
+                      employees={employees}
+                      accessPoints={accessPoints}
+                      checkIns={checkIns}
+                      assignments={assignments}
+                    />
+                  </div>
                 )}
               </AnimatePresence>
             </div>
@@ -506,8 +829,8 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
       onClick={onClick}
       className={`flex items-center gap-4 w-full p-4 rounded-2xl transition-all group relative overflow-hidden ${
         active 
-          ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' 
-          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+          ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
+          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
       }`}
     >
       <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -526,12 +849,15 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[] }) {
+function AgencyDashboard({ assignments, employees, contacts, pricing, ratingLabel, onSeedData }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const todayAssignments = assignments.filter(a => a.date === today);
   const totalValue = todayAssignments.reduce((acc, curr) => acc + curr.value, 0);
   const activeClients = new Set(todayAssignments.map(a => a.clientId)).size;
   const pendingContacts = contacts.filter(c => c.status === 'PENDING').length;
+
+  const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const todayName = daysOfWeek[new Date().getDay()];
 
   return (
     <motion.div 
@@ -540,9 +866,17 @@ function AgencyDashboard({ assignments, employees, contacts }: { assignments: As
       exit={{ opacity: 0, y: -20 }}
       className="space-y-10"
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 relative">
         <h2 className="text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
         <p className="text-slate-500 font-medium">Acompanhe o desempenho da sua agência hoje.</p>
+        
+        <button 
+          onClick={onSeedData}
+          className="absolute top-0 right-0 px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-black transition-all shadow-lg active:scale-95 flex items-center gap-2"
+        >
+          <Plus size={16} />
+          Cadastrar Dados de Teste
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -557,7 +891,7 @@ function AgencyDashboard({ assignments, employees, contacts }: { assignments: As
           icon={<TrendingUp size={24} />} 
           label="Valor Agregado (Hoje)" 
           value={`R$ ${totalValue.toFixed(2)}`} 
-          trend="Média R$ 85/func"
+          trend={`Média R$ ${(totalValue / (todayAssignments.length || 1)).toFixed(2)}/func`}
           color="emerald"
         />
         <StatCard 
@@ -584,29 +918,52 @@ function AgencyDashboard({ assignments, employees, contacts }: { assignments: As
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500 shadow-inner">
-                <Star size={32} className="fill-yellow-400" />
+                {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400" /> : <Calendar size={32} />}
               </div>
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tabela de Preços por Estrelas</h3>
-                <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na reputação do profissional.</p>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                  Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia da Semana'}
+                </h3>
+                <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual.</p>
               </div>
             </div>
+            {pricing.type === 'DAILY' && (
+              <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                Hoje: {todayName}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {Object.entries(PRICING_BY_STARS).map(([stars, price]) => (
-              <div key={stars} className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-4 hover:bg-white hover:border-yellow-200 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group/price">
-                <div className="flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={14} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
-                  ))}
+            {pricing.type === 'STARS' ? (
+              Object.entries(pricing.stars || {}).map(([stars, p]) => (
+                <div key={stars} className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-4 hover:bg-white hover:border-yellow-200 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group/price">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                    ))}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Valor por diária</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-slate-900 tracking-tight">R$ {price.toFixed(2)}</p>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Valor por escala</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map(day => {
+                const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
+                const isToday = day === todayName;
+                return (
+                  <div key={day} className={`p-8 rounded-[2rem] border flex flex-col items-center gap-4 transition-all group/price ${isToday ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>{day}</span>
+                    <div className="text-center">
+                      <p className={`text-2xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
+                      <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${isToday ? 'text-blue-200' : 'text-slate-400'}`}>Valor por diária</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -671,6 +1028,74 @@ function AgencyDashboard({ assignments, employees, contacts }: { assignments: As
   );
 }
 
+function ConfirmationModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  title, 
+  message, 
+  confirmText = 'Confirmar', 
+  cancelText = 'Cancelar',
+  variant = 'danger' 
+}: { 
+  isOpen: boolean, 
+  onClose: () => void, 
+  onConfirm: () => void, 
+  title: string, 
+  message: string, 
+  confirmText?: string, 
+  cancelText?: string,
+  variant?: 'danger' | 'primary' | 'warning'
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden p-10 text-center"
+          >
+            <div className={`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center ${
+              variant === 'danger' ? 'bg-rose-50 text-rose-600' : 
+              variant === 'warning' ? 'bg-amber-50 text-amber-600' : 
+              'bg-blue-50 text-blue-600'
+            }`}>
+              {variant === 'danger' ? <Trash2 size={40} /> : 
+               variant === 'warning' ? <AlertCircle size={40} /> : 
+               <CheckCircle size={40} />}
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-4">{title}</h3>
+            <p className="text-slate-500 font-medium mb-10">{message}</p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button 
+                onClick={onClose}
+                className="flex-1 py-4 px-6 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all active:scale-95"
+              >
+                {cancelText}
+              </button>
+              <button 
+                onClick={() => {
+                  onConfirm();
+                  onClose();
+                }}
+                className={`flex-1 py-4 px-6 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg ${
+                  variant === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-200' : 
+                  variant === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200' : 
+                  'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                }`}
+              >
+                {confirmText}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' }) {
   const colorClasses = {
     blue: 'from-blue-50 to-indigo-50 text-blue-600 border-blue-100',
@@ -719,6 +1144,18 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
   const employee = employees.find(e => e.id === employeeId);
   
+  if (!employee) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <UserIcon size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Perfil não encontrado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
+      </div>
+    );
+  }
+
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
 
   const toggleUnavailability = async (date: string) => {
@@ -868,14 +1305,111 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
   );
 }
 
-function AgencyRegistrations({ employees, clients }: { employees: Employee[], clients: Client[] }) {
+function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee, onClose: () => void, onComplete: (username: string) => void }) {
+  const [username, setUsername] = useState(`${employee.firstName.toLowerCase()}.${employee.lastName.toLowerCase().split(' ')[0]}`);
+  const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
+  const [isSending, setIsSending] = useState(false);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSending(true);
+    
+    // Simulate email sending
+    console.log(`Enviando e-mail para ${employee.personalEmail || 'N/A'}...`);
+    console.log(`Credenciais: Usuário: ${username}, Senha: ${password}`);
+    
+    await updateDocument('employees', employee.id, { 
+      username, 
+      status: 'ACTIVE' 
+    });
+
+    // In a real app, you'd call a backend service here to send the actual email
+    // and create the auth user.
+    
+    alert(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
+    onComplete(username);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+      >
+        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Criar Usuário</h3>
+            <p className="text-xs text-slate-400 font-medium">Defina as credenciais de acesso para {employee.firstName}.</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleCreate} className="p-8 space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome de Usuário</label>
+              <input 
+                required
+                type="text" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha Temporária</label>
+              <div className="relative">
+                <input 
+                  required
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setPassword(Math.random().toString(36).slice(-8))}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700 font-bold text-xs"
+                >
+                  Gerar Nova
+                </button>
+              </div>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+              <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                Um e-mail será enviado para <span className="underline">{employee.personalEmail || 'e-mail não informado'}</span> com estas credenciais.
+              </p>
+            </div>
+          </div>
+          <button 
+            type="submit" 
+            disabled={isSending}
+            className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+          >
+            {isSending ? 'Criando...' : 'Finalizar e Enviar Acesso'}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, impersonatedId }: { employees: Employee[], clients: Client[], ratingLabel: string, onImpersonate: (id: string | null) => void, impersonatedId: string | null }) {
   const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkPhone, setLinkPhone] = useState('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [employeeToCreateUserFor, setEmployeeToCreateUserFor] = useState<Employee | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -883,9 +1417,39 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
     cpf: '',
     birthDate: '',
     phone: '',
+    personalEmail: '',
+    lgpdAuthorized: false,
     photoUrl: '',
     docUrl: '',
   });
+
+  const handleEdit = (emp: Employee) => {
+    setFormData({
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      cpf: emp.cpf,
+      birthDate: emp.birthDate,
+      phone: emp.phone,
+      personalEmail: emp.personalEmail || '',
+      lgpdAuthorized: emp.lgpdAuthorized || false,
+      photoUrl: emp.photoUrl || '',
+      docUrl: emp.docUrl || '',
+    });
+    setIsEditing(true);
+    setShowForm(true);
+    setSelectedEmployee(emp);
+  };
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, photoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const inactiveEmployees = employees.filter(emp => {
     if (!emp.lastAssignmentDate) return false;
@@ -897,9 +1461,15 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
 
   const highComplaintEmployees = employees.filter(emp => emp.complaints >= 3);
 
-  const handleDeleteEmployee = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este cadastro?')) {
-      await deleteDocument('employees', id);
+  const handleDeleteEmployee = (id: string) => {
+    setDeleteId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteId) {
+      await deleteDocument('employees', deleteId);
+      setDeleteId(null);
       setSelectedEmployee(null);
     }
   };
@@ -979,16 +1549,24 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
       return;
     }
 
-    const newEmp: Omit<Employee, 'id'> = {
-      ...formData,
-      rating: 1,
-      status: 'PENDING',
-      complaints: 0,
-    };
+    if (isEditing && selectedEmployee) {
+      await updateDocument('employees', selectedEmployee.id, formData);
+      alert('Cadastro atualizado com sucesso!');
+    } else {
+      const newEmp: Omit<Employee, 'id'> = {
+        ...formData,
+        rating: 1,
+        status: 'PENDING',
+        complaints: 0,
+      };
+      await createDocument('employees', newEmp);
+      alert('Funcionário cadastrado com sucesso!');
+    }
 
-    await createDocument('employees', newEmp);
     setShowForm(false);
-    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', photoUrl: '', docUrl: '' });
+    setIsEditing(false);
+    setSelectedEmployee(null);
+    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '' });
   };
 
   return (
@@ -997,6 +1575,21 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
       animate={{ opacity: 1 }}
       className="space-y-10"
     >
+      <AnimatePresence>
+        {showCreateUserModal && employeeToCreateUserFor && (
+          <CreateUserModal 
+            employee={employeeToCreateUserFor}
+            onClose={() => {
+              setShowCreateUserModal(false);
+              setEmployeeToCreateUserFor(null);
+            }}
+            onComplete={() => {
+              setShowCreateUserModal(false);
+              setEmployeeToCreateUserFor(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
@@ -1081,10 +1674,10 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
             )}
             <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Cadastro Direto</h3>
-                <p className="text-xs text-slate-400 font-medium">Preencha os dados do novo talento.</p>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{isEditing ? 'Editar Cadastro' : 'Cadastro Direto'}</h3>
+                <p className="text-xs text-slate-400 font-medium">{isEditing ? 'Atualize os dados do profissional.' : 'Preencha os dados do novo talento.'}</p>
               </div>
-              <button onClick={() => setShowForm(false)} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
+              <button onClick={() => { setShowForm(false); setIsEditing(false); setSelectedEmployee(null); }} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
                 <X size={20} />
               </button>
             </div>
@@ -1134,32 +1727,67 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">E-mail Pessoal</label>
+                <input 
+                  required
+                  type="email" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  value={formData.personalEmail}
+                  onChange={e => setFormData({...formData, personalEmail: e.target.value})}
+                />
+              </div>
+              <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <input 
+                  required
+                  type="checkbox" 
+                  id="lgpd-agency"
+                  className="mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  checked={formData.lgpdAuthorized}
+                  onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
+                />
+                <label htmlFor="lgpd-agency" className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                  O colaborador autoriza o uso dos dados pessoais conforme a LGPD.
+                </label>
+              </div>
               <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Foto Profissional</label>
-                <div 
-                  onClick={startCamera}
-                  className="w-full p-10 border-4 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all overflow-hidden bg-slate-50/50 group"
-                >
-                  {formData.photoUrl ? (
-                    <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white">
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    onClick={startCamera}
+                    className="p-8 border-4 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all bg-slate-50/50 group"
+                  >
+                    <Camera size={32} className="mb-2 group-hover:scale-110 transition-transform" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Câmera</p>
+                  </div>
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-8 border-4 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center text-slate-300 hover:border-emerald-400 hover:text-emerald-400 cursor-pointer transition-all bg-slate-50/50 group"
+                  >
+                    <Upload size={32} className="mb-2 group-hover:scale-110 transition-transform" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Galeria</p>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleGalleryUpload} 
+                    />
+                  </div>
+                </div>
+                {formData.photoUrl && (
+                  <div className="flex justify-center mt-4">
+                    <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
                       <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Camera size={32} className="text-white" />
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                        <Camera size={40} />
-                      </div>
-                      <p className="text-sm font-black uppercase tracking-widest">Capturar Foto 3x4</p>
-                      <p className="text-[10px] font-medium mt-1">Clique para abrir a câmera</p>
-                    </>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
-                Finalizar Cadastro
+                {isEditing ? 'Salvar Alterações' : 'Finalizar Cadastro'}
               </button>
             </form>
           </motion.div>
@@ -1289,6 +1917,7 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
                       <div>
                         <p className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</p>
                         <p className="text-[10px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
+                        {emp.personalEmail && <p className="text-[10px] text-blue-500 font-bold tracking-tight">{emp.personalEmail}</p>}
                       </div>
                     </div>
                   </td>
@@ -1314,15 +1943,33 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
                     <div className="flex items-center justify-end gap-3">
                       {emp.status === 'PENDING' && (
                         <button 
-                          onClick={async () => {
-                            await updateDocument('employees', emp.id, { status: 'ACTIVE' });
-                            alert(`${emp.firstName} aprovado com sucesso!`);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEmployeeToCreateUserFor(emp);
+                            setShowCreateUserModal(true);
                           }}
-                          className="text-[10px] bg-emerald-600 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                          className="text-[10px] bg-blue-600 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
                         >
-                          Aprovar
+                          Criar Usuário
                         </button>
                       )}
+                      <button 
+                        onClick={() => {
+                          onImpersonate(emp.id);
+                          alert(`Agora visualizando como ${emp.firstName}`);
+                        }}
+                        className={`p-2.5 rounded-xl transition-all ${impersonatedId === emp.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
+                        title="Visualizar como este Funcionário"
+                      >
+                        <Scan size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(emp)}
+                        className="p-2.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                        title="Editar Cadastro"
+                      >
+                        <UserPlus size={18} />
+                      </button>
                       <button 
                         onClick={() => handleDeleteEmployee(emp.id)}
                         className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
@@ -1340,6 +1987,14 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
           </table>
         </div>
       </div>
+
+      <ConfirmationModal 
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Cadastro"
+        message="Tem certeza que deseja excluir este cadastro? Esta ação não pode ser desfeita."
+      />
 
       <AnimatePresence>
         {selectedEmployee && (
@@ -1454,9 +2109,11 @@ function AgencyRegistrations({ employees, clients }: { employees: Employee[], cl
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients }: { employees: Employee[], assignments: Assignment[], clients: Client[] }) {
+function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[] }) {
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
 
   const sortedEmployees = [...employees].sort((a, b) => {
     if (filterType === 'RATING') return b.rating - a.rating;
@@ -1471,20 +2128,23 @@ function AgencyStaffing({ employees, assignments, clients }: { employees: Employ
     const newAs: Omit<Assignment, 'id'> = {
       employeeId: empId,
       clientId: selectedClientId,
-      date: new Date().toISOString().split('T')[0],
-      value: calculateValue(emp.rating),
-      status: 'SCHEDULED'
+      date: selectedDate,
+      value: getScaleValue(emp.rating),
+      status: 'SCHEDULED',
+      confirmed: false
     };
 
     await createDocument('assignments', newAs);
-    await updateDocument('employees', empId, { lastAssignmentDate: new Date().toISOString().split('T')[0] });
+    await updateDocument('employees', empId, { lastAssignmentDate: selectedDate });
     
-    // WhatsApp Notification
-    const message = `Olá ${emp.firstName}! Você foi escalado para atuar na unidade ${client.name}.\n\n📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa escala!`;
+    // WhatsApp Notification with confirmation link
+    const appUrl = window.location.origin;
+    const confirmationLink = `${appUrl}?role=EMPLOYEE&tab=employee_profile`;
+    const message = `Olá ${emp.firstName}! Você foi escalado para atuar na unidade ${client.name}.\n\n📅 Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n✅ Por favor, confirme sua presença clicando no link abaixo:\n${confirmationLink}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa escala!`;
     const whatsappUrl = `https://wa.me/55${emp.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
 
-    alert(`${emp.firstName} escalado com sucesso!`);
+    alert(`${emp.firstName} escalado com sucesso para o dia ${new Date(selectedDate).toLocaleDateString('pt-BR')}!`);
   };
 
   return (
@@ -1493,85 +2153,121 @@ function AgencyStaffing({ employees, assignments, clients }: { employees: Employ
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-8"
     >
-      <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
-        <p className="text-slate-500 font-medium">Distribua sua equipe com base em performance e feedback.</p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
+          <p className="text-slate-500 font-medium">Distribua sua equipe com base em performance e disponibilidade.</p>
+        </div>
+        <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem] border border-slate-200">
+          <button 
+            onClick={() => setActiveSubTab('STAFFING')}
+            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Escalar
+          </button>
+          <button 
+            onClick={() => setActiveSubTab('CONFIRMED')}
+            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'CONFIRMED' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Confirmados
+          </button>
+          <button 
+            onClick={() => setActiveSubTab('REQUESTS')}
+            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Solicitações
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-1 space-y-8">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
-            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
-              Selecionar Parceiro
-            </h3>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {clients.map(cli => (
+      {activeSubTab === 'STAFFING' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-1 space-y-8">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
+                Data da Escala
+              </h3>
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+              />
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
+              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
+                Selecionar Parceiro
+              </h3>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {clients.map(cli => (
+                  <button 
+                    key={cli.id}
+                    onClick={() => setSelectedClientId(cli.id)}
+                    className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all border-2 ${
+                      selectedClientId === cli.id 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 translate-x-1' 
+                        : 'bg-slate-50 border-transparent text-slate-600 hover:bg-white hover:border-blue-100'
+                    }`}
+                  >
+                    <div className="text-left">
+                      <p className="font-black text-sm uppercase tracking-tight">{cli.name}</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedClientId === cli.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                        Responsável: {cli.managerName}
+                      </p>
+                    </div>
+                    {selectedClientId === cli.id && <CheckCircle size={20} className="text-white" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
+                Critério de Filtro
+              </h3>
+              <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
                 <button 
-                  key={cli.id}
-                  onClick={() => setSelectedClientId(cli.id)}
-                  className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all border-2 ${
-                    selectedClientId === cli.id 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 translate-x-1' 
-                      : 'bg-slate-50 border-transparent text-slate-600 hover:bg-white hover:border-blue-100'
+                  onClick={() => setFilterType('RATING')}
+                  className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  <div className="text-left">
-                    <p className="font-black text-sm uppercase tracking-tight">{cli.name}</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedClientId === cli.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                      Responsável: {cli.managerName}
-                    </p>
-                  </div>
-                  {selectedClientId === cli.id && <CheckCircle size={20} className="text-white" />}
+                  <Star size={18} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
+                  Estrelas
                 </button>
-              ))}
+                <button 
+                  onClick={() => setFilterType('COMPLAINTS')}
+                  className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <AlertCircle size={18} />
+                  Queixas
+                </button>
+              </div>
             </div>
           </div>
-
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
-              Critério de Filtro
-            </h3>
-            <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
-              <button 
-                onClick={() => setFilterType('RATING')}
-                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Star size={18} className={filterType === 'RATING' ? 'fill-blue-600' : ''} />
-                Estrelas
-              </button>
-              <button 
-                onClick={() => setFilterType('COMPLAINTS')}
-                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <AlertCircle size={18} />
-                Queixas
-              </button>
-            </div>
-          </div>
-        </div>
 
         <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative">
           <div className="flex items-center justify-between mb-10">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">3</div>
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">4</div>
               Equipe Disponível
             </h3>
             <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100">
               <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                {sortedEmployees.filter(e => !assignments.some(a => a.employeeId === e.id && a.date === new Date().toISOString().split('T')[0])).length} Disponíveis
+                {sortedEmployees.filter(e => !assignments.some(a => a.employeeId === e.id && a.date === selectedDate)).length} Disponíveis
               </span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {sortedEmployees.map(emp => {
-              const isAssigned = assignments.some(a => a.employeeId === emp.id && a.date === new Date().toISOString().split('T')[0]);
+              const isAssigned = assignments.some(a => a.employeeId === emp.id && a.date === selectedDate);
               return (
                 <div key={emp.id} className={`p-6 rounded-[2rem] border-2 transition-all relative group ${
                   isAssigned 
@@ -1581,7 +2277,7 @@ function AgencyStaffing({ employees, assignments, clients }: { employees: Employ
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-[1.25rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
-                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" />
+                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div>
                         <p className="font-black text-slate-900 text-lg leading-tight">{emp.firstName}</p>
@@ -1596,28 +2292,25 @@ function AgencyStaffing({ employees, assignments, clients }: { employees: Employ
                       </div>
                     </div>
                     <div className="bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
-                      <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {calculateValue(emp.rating)}</p>
+                      <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {getScaleValue(emp.rating)}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-50">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                      emp.complaints > 0 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                    }`}>
-                      {emp.complaints > 0 ? <AlertCircle size={12} /> : <CheckCircle size={12} />}
-                      <span>{emp.complaints} Queixas</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
+                      <span className={`text-xs font-bold ${isAssigned ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {isAssigned ? 'Já escalado neste dia' : 'Disponível'}
+                      </span>
                     </div>
-                    <button 
-                      disabled={isAssigned}
-                      onClick={() => handleStaff(emp.id)}
-                      className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all shadow-lg ${
-                        isAssigned 
-                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
-                          : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:shadow-blue-300 active:scale-95'
-                      }`}
-                    >
-                      {isAssigned ? 'Escalado' : 'Escalar'}
-                    </button>
+                    {!isAssigned && (
+                      <button 
+                        onClick={() => handleStaff(emp.id)}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
+                      >
+                        Escalar
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1625,14 +2318,352 @@ function AgencyStaffing({ employees, assignments, clients }: { employees: Employ
           </div>
         </div>
       </div>
+      ) : activeSubTab === 'CONFIRMED' ? (
+        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Profissionais Confirmados</h3>
+              <p className="text-slate-400 text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 text-sm outline-none focus:border-blue-600"
+              />
+              <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                  {assignments.filter(a => a.confirmed && a.date === selectedDate).length} Confirmados
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {assignments.filter(a => a.confirmed && a.date === selectedDate).length === 0 ? (
+            <div className="py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                <CheckCircle size={40} />
+              </div>
+              <p className="text-slate-400 font-medium">Nenhuma confirmação para esta data ainda.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {assignments.filter(a => a.confirmed && a.date === selectedDate).map(as => {
+                const emp = employees.find(e => e.id === as.employeeId);
+                const client = clients.find(c => c.id === as.clientId);
+                if (!emp || !client) return null;
+                return (
+                  <div key={as.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{client.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <CheckCircle size={16} />
+                        <span className="text-xs font-black uppercase tracking-widest">Confirmado</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">{new Date(as.date).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+              <MessageSquare size={24} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Solicitações das Empresas</h3>
+              <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Pedidos de profissionais para datas específicas</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {companyRequests.map(req => {
+              const client = clients.find(c => c.id === req.clientId);
+              return (
+                <div key={req.id} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-slate-100">
+                      <Building2 size={32} />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 tracking-tight">{client?.name}</h4>
+                      <div className="flex items-center gap-4 mt-1">
+                        <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          <Calendar size={12} /> {new Date(req.date).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          <Users size={12} /> {req.quantity} Profissionais
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="flex -space-x-3">
+                      {req.employeeIds.map(empId => {
+                        const emp = employees.find(e => e.id === empId);
+                        return (
+                          <div key={empId} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm bg-slate-200" title={emp?.firstName}>
+                            <img src={emp?.photoUrl || `https://picsum.photos/seed/${empId}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95">
+                        Atender Pedido
+                      </button>
+                      <button className="px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">
+                        Recusar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {companyRequests.length === 0 && (
+              <div className="py-20 text-center">
+                <p className="text-slate-400 font-medium italic">Nenhuma solicitação pendente.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-function AgencyCompanies({ companies, units, companyUsers }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[] }) {
+function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { pricing: PricingConfig, ratingLabel: string, setPricing: (p: PricingConfig) => void, setRatingLabel: (l: string) => void }) {
+  const [localPricing, setLocalPricing] = useState<PricingConfig>(pricing);
+  const [localLabel, setLocalLabel] = useState(ratingLabel);
+
+  const handleSave = async () => {
+    await setDocument('settings', 'pricing', { values: localPricing });
+    await setDocument('settings', 'ratingLabel', { value: localLabel });
+    setPricing(localPricing);
+    setRatingLabel(localLabel);
+    alert('Configurações salvas com sucesso!');
+  };
+
+  const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-10"
+    >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Configurações de Preço</h2>
+          <p className="text-slate-500 font-medium">Defina os valores das diárias e o sistema de classificação.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+            <button 
+              onClick={() => setLocalPricing({ ...localPricing, type: 'STARS' })}
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'STARS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Por {localLabel}
+            </button>
+            <button 
+              onClick={() => setLocalPricing({ ...localPricing, type: 'DAILY' })}
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Por Dia
+            </button>
+          </div>
+          <button 
+            onClick={handleSave}
+            className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 whitespace-nowrap"
+          >
+            <CheckCircle size={20} />
+            Salvar Alterações
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+              {localPricing.type === 'STARS' ? <Star size={24} /> : <Calendar size={24} />}
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {localPricing.type === 'STARS' ? `Valores por ${localLabel}` : 'Valores por Dia da Semana'}
+            </h3>
+          </div>
+
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+            {localPricing.type === 'STARS' ? (
+              ['1', '2', '3', '4', '5'].map(stars => (
+                <div key={stars} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 hover:border-blue-200 transition-colors group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={14} className={i < Number(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                        ))}
+                      </div>
+                      <span className="text-sm font-bold text-slate-600">{stars} {localLabel}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Funcionário Recebe</label>
+                      <div className="relative group/input">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs group-focus-within/input:text-blue-600 transition-colors">R$</span>
+                        <input 
+                          type="number" 
+                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          value={localPricing.stars?.[stars]?.employee || 0}
+                          onChange={e => {
+                            const newStars = { ...(localPricing.stars || {}) };
+                            newStars[stars] = { ...newStars[stars], employee: Number(e.target.value) };
+                            setLocalPricing({ ...localPricing, stars: newStars });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Empresa Fica</label>
+                      <div className="relative group/input">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs group-focus-within/input:text-blue-600 transition-colors">R$</span>
+                        <input 
+                          type="number" 
+                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          value={localPricing.stars?.[stars]?.company || 0}
+                          onChange={e => {
+                            const newStars = { ...(localPricing.stars || {}) };
+                            newStars[stars] = { ...newStars[stars], company: Number(e.target.value) };
+                            setLocalPricing({ ...localPricing, stars: newStars });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              daysOfWeek.map(day => (
+                <div key={day} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 hover:border-blue-200 transition-colors group">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-600">{day}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Funcionário Recebe</label>
+                      <div className="relative group/input">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs group-focus-within/input:text-blue-600 transition-colors">R$</span>
+                        <input 
+                          type="number" 
+                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          value={localPricing.weekly?.[day]?.employee || 0}
+                          onChange={e => {
+                            const newWeekly = { ...(localPricing.weekly || {}) };
+                            newWeekly[day] = { ...newWeekly[day], employee: Number(e.target.value) };
+                            setLocalPricing({ ...localPricing, weekly: newWeekly });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Empresa Fica</label>
+                      <div className="relative group/input">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs group-focus-within/input:text-blue-600 transition-colors">R$</span>
+                        <input 
+                          type="number" 
+                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          value={localPricing.weekly?.[day]?.company || 0}
+                          onChange={e => {
+                            const newWeekly = { ...(localPricing.weekly || {}) };
+                            newWeekly[day] = { ...newWeekly[day], company: Number(e.target.value) };
+                            setLocalPricing({ ...localPricing, weekly: newWeekly });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-10">
+          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 shadow-sm">
+                <LayoutDashboard size={24} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Sistema de Classificação</h3>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Classificação</label>
+                <input 
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  placeholder="Ex: Estrelas, Nível, Categoria"
+                  value={localLabel}
+                  onChange={e => setLocalLabel(e.target.value)}
+                />
+                <p className="text-[10px] text-slate-400 mt-2 font-medium italic">* Isso mudará como o sistema se refere à pontuação do funcionário.</p>
+              </div>
+
+              <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+                <div className="flex gap-3">
+                  <AlertCircle className="text-blue-600 shrink-0" size={20} />
+                  <p className="text-xs text-blue-700 leading-relaxed font-medium">
+                    Ao alterar o nome da classificação, todos os dashboards e relatórios serão atualizados automaticamente para refletir o novo termo.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 rounded-[3rem] text-white shadow-xl shadow-blue-500/20">
+            <h3 className="text-2xl font-black mb-4 tracking-tight">Resumo de Ganhos</h3>
+            <p className="text-blue-100 mb-8 font-medium leading-relaxed">
+              O valor total cobrado do cliente é a soma do que o funcionário recebe e a taxa da empresa.
+            </p>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
+                <span className="text-sm font-bold opacity-80">Média Funcionário</span>
+                <span className="text-xl font-black">R$ 65,00</span>
+              </div>
+              <div className="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
+                <span className="text-sm font-bold opacity-80">Média Empresa</span>
+                <span className="text-xl font-black">R$ 15,00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonate, impersonatedId }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[], onImpersonate: (id: string | null) => void, impersonatedId: string | null }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUnitModal, setShowUnitModal] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState<string | null>(null);
+  const [showDeleteCompanyConfirm, setShowDeleteCompanyConfirm] = useState<string | null>(null);
+  const [showDeleteUnitConfirm, setShowDeleteUnitConfirm] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     responsibleName: '',
@@ -1651,6 +2682,22 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
     password: '',
     confirmPassword: ''
   });
+
+  const handleSendRegistrationLink = (company: Company) => {
+    const link = `${window.location.origin}?role=COMPANY_REGISTRATION&companyId=${company.id}`;
+    const message = `Olá ${company.responsibleName}! Aqui está o link para completar o cadastro da sua empresa no portal StaffLink: ${link}`;
+    const cleanPhone = company.phone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleDeleteCompany = async (id: string) => {
+    await deleteDocument('companies', id);
+  };
+
+  const handleDeleteUnit = async (id: string) => {
+    await deleteDocument('units', id);
+  };
 
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1683,7 +2730,11 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
       location: unitData.location,
       activeScales: 0
     };
-    await createDocument('clients', newClient);
+    const clientId = await createDocument('clients', newClient);
+
+    if (unitId && clientId) {
+      await updateDocument('units', unitId, { clientId });
+    }
 
     setShowUnitModal(null);
     setUnitData({ name: '', managerName: '', location: '' });
@@ -1769,11 +2820,25 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
                   <UserPlus size={20} />
                 </button>
                 <button 
+                  onClick={() => handleSendRegistrationLink(company)}
+                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                  title="Enviar Link de Cadastro"
+                >
+                  <LinkIcon size={20} />
+                </button>
+                <button 
                   onClick={() => setShowUnitModal(company.id)}
                   className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                   title="Adicionar Unidade"
                 >
                   <Plus size={20} />
+                </button>
+                <button 
+                  onClick={() => setShowDeleteCompanyConfirm(company.id)}
+                  className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                  title="Excluir Empresa"
+                >
+                  <Trash2 size={20} />
                 </button>
               </div>
             </div>
@@ -1808,9 +2873,30 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
                         <p className="text-[10px] text-slate-400 font-medium">{unit.location}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">Gerente</p>
-                      <p className="text-xs font-bold text-slate-600">{unit.managerName}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Gerente</p>
+                        <p className="text-xs font-bold text-slate-600">{unit.managerName}</p>
+                      </div>
+                      {unit.clientId && (
+                        <button 
+                          onClick={() => {
+                            onImpersonate(unit.clientId!);
+                            alert(`Agora visualizando como ${unit.name}`);
+                          }}
+                          className={`p-2.5 rounded-xl transition-all ${impersonatedId === unit.clientId ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
+                          title="Visualizar como esta Unidade"
+                        >
+                          <Scan size={16} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => setShowDeleteUnitConfirm(unit.id)}
+                        className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
+                        title="Excluir Unidade"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1826,6 +2912,22 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
       </div>
 
       {/* Modals */}
+      <ConfirmationModal 
+        isOpen={!!showDeleteCompanyConfirm}
+        onClose={() => setShowDeleteCompanyConfirm(null)}
+        onConfirm={() => showDeleteCompanyConfirm && handleDeleteCompany(showDeleteCompanyConfirm)}
+        title="Excluir Empresa"
+        message="Deseja realmente excluir esta empresa? Todas as unidades e usuários vinculados serão mantidos, mas a empresa não aparecerá mais na lista."
+      />
+
+      <ConfirmationModal 
+        isOpen={!!showDeleteUnitConfirm}
+        onClose={() => setShowDeleteUnitConfirm(null)}
+        onConfirm={() => showDeleteUnitConfirm && handleDeleteUnit(showDeleteUnitConfirm)}
+        title="Excluir Unidade"
+        message="Deseja realmente excluir esta unidade?"
+      />
+
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -2045,10 +3147,67 @@ function AgencyCompanies({ companies, units, companyUsers }: { companies: Compan
   );
 }
 
-function CompanyEvaluateTeam({ clientId, assignments, employees, feedbacks }: { clientId: string, assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
-  const companyAssignments = assignments.filter(a => a.clientId === clientId);
-  const workedEmployeeIds = Array.from(new Set(companyAssignments.map(a => a.employeeId)));
-  const workedEmployees = employees.filter(e => workedEmployeeIds.includes(e.id));
+function CompanyDiaristas({ clientId, clients, employees, assignments, companies, units }: { clientId: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [minRating, setMinRating] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const clientUnits = units.filter(u => u.clientId === clientId);
+  
+  useEffect(() => {
+    if (clientUnits.length > 0 && !selectedUnitId) {
+      setSelectedUnitId(clientUnits[0].id);
+    }
+  }, [clientUnits]);
+
+  const filteredEmployees = employees.filter(emp => {
+    if (emp.status !== 'ACTIVE') return false;
+    if (emp.rating < minRating) return false;
+    return true;
+  });
+
+  const isEmployeeAvailable = (empId: string, date: string) => {
+    return !assignments.some(a => a.employeeId === empId && a.date === date && a.status !== 'CANCELLED');
+  };
+
+  const handleToggleEmployee = (empId: string) => {
+    if (selectedEmployeeIds.includes(empId)) {
+      setSelectedEmployeeIds(prev => prev.filter(id => id !== empId));
+    } else {
+      setSelectedEmployeeIds(prev => [...prev, empId]);
+    }
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!selectedUnitId) {
+      alert('Selecione uma unidade.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const newRequest: Omit<CompanyRequest, 'id'> = {
+        companyId: units.find(u => u.id === selectedUnitId)?.companyId || '',
+        clientId: clientId,
+        employeeIds: selectedEmployeeIds,
+        quantity: Math.max(quantity, selectedEmployeeIds.length),
+        date: selectedDate,
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+      await createDocument('companyRequests', newRequest);
+      alert('Solicitação enviada com sucesso para a agência!');
+      setSelectedEmployeeIds([]);
+      setQuantity(1);
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      alert('Erro ao enviar solicitação.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <motion.div 
@@ -2057,11 +3216,279 @@ function CompanyEvaluateTeam({ clientId, assignments, employees, feedbacks }: { 
       className="space-y-10"
     >
       <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Minha Equipe</h2>
-        <p className="text-slate-500 font-medium">Visualize e avalie os profissionais que já atuaram em suas unidades.</p>
+        <h2 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          Diaristas <Star size={32} className="fill-yellow-400 text-yellow-400" />
+        </h2>
+        <p className="text-slate-500 font-medium">Selecione os profissionais preferidos ou solicite reforço para suas unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Unidade</label>
+              <select 
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none"
+              >
+                {clientUnits.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Data Desejada</label>
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Quantidade Total</label>
+              <input 
+                type="number" 
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value))}
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block">Filtrar por Estrelas</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button 
+                    key={star}
+                    onClick={() => setMinRating(star === minRating ? 0 : star)}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${minRating >= star ? 'bg-yellow-400 text-white' : 'bg-slate-100 text-slate-400'}`}
+                  >
+                    <Star size={16} className={minRating >= star ? 'fill-current' : ''} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button 
+              onClick={handleSubmitRequest}
+              disabled={isSubmitting}
+              className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl active:scale-95 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Enviando...' : 'Solicitar Profissionais'}
+            </button>
+          </div>
+        </div>
+
+        <div className="lg:col-span-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredEmployees.map(emp => {
+              const available = isEmployeeAvailable(emp.id, selectedDate);
+              const isSelected = selectedEmployeeIds.includes(emp.id);
+              return (
+                <div 
+                  key={emp.id} 
+                  onClick={() => available && handleToggleEmployee(emp.id)}
+                  className={`bg-white p-6 rounded-[2rem] border-2 transition-all group relative cursor-pointer ${
+                    isSelected ? 'border-blue-600 shadow-xl shadow-blue-500/10' : 
+                    available ? 'border-slate-100 hover:border-blue-200' : 'border-slate-100 opacity-60 grayscale'
+                  }`}
+                >
+                  {!available && (
+                    <div className="absolute top-4 right-4 bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest z-20">
+                      Indisponível
+                    </div>
+                  )}
+                  {isSelected && (
+                    <div className="absolute top-4 right-4 bg-blue-600 text-white p-1.5 rounded-lg z-20 shadow-lg">
+                      <CheckCircle size={14} />
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md">
+                      <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 tracking-tight">{emp.firstName}</h4>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                        <span className="text-xs font-black text-slate-700">{emp.rating}.0</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-slate-50 text-slate-500 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                      {available ? 'Disponível' : 'Em outra unidade'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedbacks }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
+  const client = clients.find(c => c.id === clientId);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
+  const [evalRating, setEvalRating] = useState(5);
+  const [evalComment, setEvalComment] = useState('');
+  const [isSubmittingEval, setIsSubmittingEval] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
+
+  const handleEvaluate = async () => {
+    if (!evaluatingEmployee) return;
+    setIsSubmittingEval(true);
+    try {
+      const assignment = assignments.find(a => a.clientId === clientId && a.employeeId === evaluatingEmployee.id && a.date === selectedDate);
+      const newFeedback: Omit<Feedback, 'id'> = {
+        employeeId: evaluatingEmployee.id,
+        managerId: clientId,
+        assignmentId: assignment?.id || 'manual',
+        rating: evalRating,
+        comment: evalComment,
+        date: new Date().toISOString()
+      };
+      await createDocument('feedbacks', newFeedback);
+      
+      const newRating = Math.round((evaluatingEmployee.rating + evalRating) / 2);
+      await updateDocument('employees', evaluatingEmployee.id, { rating: newRating });
+      
+      setEvaluatingEmployee(null);
+      setEvalComment('');
+      setEvalRating(5);
+      alert('Avaliação enviada com sucesso!');
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+    } finally {
+      setIsSubmittingEval(false);
+    }
+  };
+
+  if (!client) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <Users size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para avaliar sua equipe.</p>
+      </div>
+    );
+  }
+
+  const companyAssignments = assignments.filter(a => a.clientId === clientId);
+  const dateAssignments = companyAssignments.filter(a => a.date === selectedDate);
+  const dateEmployeeIds = Array.from(new Set(dateAssignments.map(a => a.employeeId)));
+  const dateEmployees = employees.filter(e => dateEmployeeIds.includes(e.id));
+
+  const workedEmployeeIds = Array.from(new Set(companyAssignments.map(a => a.employeeId)));
+  const workedEmployees = employees.filter(e => workedEmployeeIds.includes(e.id) && !dateEmployeeIds.includes(e.id));
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-12"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Avaliar Equipe</h2>
+          <p className="text-slate-500 font-medium">Visualize e avalie os profissionais que atuam em suas unidades.</p>
+        </div>
+        <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Filtrar por Data</label>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="font-bold text-slate-700 outline-none bg-transparent"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        <div className="flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-2xl ${selectedDate === today ? 'bg-emerald-600' : 'bg-blue-600'} text-white flex items-center justify-center shadow-lg shadow-blue-100`}>
+            <Users size={20} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {selectedDate === today ? 'Equipe de Hoje' : `Equipe de ${new Date(selectedDate).toLocaleDateString('pt-BR')}`}
+            </h3>
+            <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">
+              {dateEmployees.length} Profissionais escalados
+            </p>
+          </div>
+        </div>
+        
+        {dateEmployees.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {dateEmployees.map(emp => {
+              const assignment = dateAssignments.find(a => a.employeeId === emp.id);
+              return (
+                <div key={emp.id} className={`bg-white p-8 rounded-[2.5rem] border-2 ${selectedDate === today ? 'border-emerald-100' : 'border-blue-100'} shadow-xl shadow-blue-500/5 transition-all group relative overflow-hidden`}>
+                  <div className={`absolute top-0 right-0 w-32 h-32 ${selectedDate === today ? 'bg-emerald-500/5' : 'bg-blue-500/5'} rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150`}></div>
+                  <div className="flex flex-col items-center text-center space-y-6 relative z-10">
+                    <div className="relative">
+                      <div className="w-28 h-28 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
+                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                      {assignment?.confirmed && (
+                        <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-xl shadow-lg border-2 border-white">
+                          <CheckCircle size={16} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h3>
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${assignment?.confirmed ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                          {assignment?.confirmed ? 'Confirmado' : 'Aguardando Confirmação'}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Evaluation Button for past or current dates */}
+                    <button 
+                      onClick={() => setEvaluatingEmployee(emp)}
+                      className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-600 transition-all shadow-lg active:scale-95"
+                    >
+                      Avaliar Profissional
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-24 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
+            <p className="text-slate-400 font-medium italic">Nenhum profissional escalado para esta data.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+            <Star size={20} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Histórico da Equipe</h3>
+            <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Profissionais que já atuaram com você</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {workedEmployees.map(emp => {
           const empFeedbacks = feedbacks.filter(f => f.employeeId === emp.id && f.managerId === clientId);
           return (
@@ -2135,38 +3562,113 @@ function CompanyEvaluateTeam({ clientId, assignments, employees, feedbacks }: { 
           </div>
         )}
       </div>
+    </div>
+
+      <AnimatePresence>
+        {evaluatingEmployee && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            >
+              <div className="p-10 space-y-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Avaliar Profissional</h3>
+                  <button onClick={() => setEvaluatingEmployee(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
+                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>
+                    <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Profissional</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Sua Nota</label>
+                  <div className="flex items-center justify-center gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setEvalRating(star)}
+                        className="transition-transform active:scale-90"
+                      >
+                        <Star
+                          size={32}
+                          className={star <= evalRating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Comentário (Opcional)</label>
+                  <textarea
+                    value={evalComment}
+                    onChange={(e) => setEvalComment(e.target.value)}
+                    placeholder="Como foi o desempenho do profissional?"
+                    className="w-full p-6 bg-slate-50 rounded-[2rem] border border-slate-100 outline-none focus:border-blue-500 transition-colors min-h-[120px] text-slate-700 font-medium"
+                  />
+                </div>
+
+                <button
+                  onClick={handleEvaluate}
+                  disabled={isSubmittingEval}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10 disabled:opacity-50"
+                >
+                  {isSubmittingEval ? 'Enviando...' : 'Confirmar Avaliação'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function AgencyAccessControl({ accessPoints, clients }: { accessPoints: AccessPoint[], clients: Client[] }) {
+function AgencyAccessControl({ accessPoints, clients, units, companies }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[] }) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    managerName: '',
-    location: '',
-  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
+
+  const availableUnits = units.filter(u => !accessPoints.some(ap => ap.location === u.location));
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    const unit = units.find(u => u.id === selectedUnitId);
+    const company = companies.find(c => c.id === unit?.companyId);
+    if (!unit || !company) return;
+
     const newAP: Omit<AccessPoint, 'id'> = {
-      managerName: formData.managerName,
-      location: formData.location,
-      qrCodeValue: `unit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      managerName: unit.managerName,
+      location: unit.location,
+      qrCodeValue: `unit-${unit.id}-${Date.now()}`,
       createdAt: new Date().toISOString().split('T')[0],
     };
     
-    const newClient: Omit<Client, 'id'> = {
-      name: formData.name || formData.location,
-      managerName: formData.managerName,
-      location: formData.location,
-      activeScales: 0
-    };
-
     await createDocument('accessPoints', newAP);
-    await createDocument('clients', newClient);
     setShowForm(false);
-    setFormData({ name: '', managerName: '', location: '' });
+    setSelectedUnitId('');
+  };
+
+  const handleDeleteAccessPoint = async (id: string) => {
+    const ap = accessPoints.find(a => a.id === id);
+    if (!ap) return;
+    const clientToDelete = clients.find(c => c.location === ap.location);
+    await deleteDocument('accessPoints', id);
+    if (clientToDelete) {
+      await deleteDocument('clients', clientToDelete.id);
+    }
+    setShowDeleteConfirm(null);
   };
 
   const downloadQRCode = (id: string, location: string) => {
@@ -2204,6 +3706,14 @@ function AgencyAccessControl({ accessPoints, clients }: { accessPoints: AccessPo
         </button>
       </div>
 
+      <ConfirmationModal 
+        isOpen={!!showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(null)}
+        onConfirm={() => showDeleteConfirm && handleDeleteAccessPoint(showDeleteConfirm)}
+        title="Excluir Unidade"
+        message="Deseja realmente excluir esta unidade e empresa?"
+      />
+
       <AnimatePresence>
         {showForm && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -2225,40 +3735,35 @@ function AgencyAccessControl({ accessPoints, clients }: { accessPoints: AccessPo
               <form onSubmit={handleAdd} className="p-8 space-y-6">
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Unidade</label>
-                    <input 
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Selecionar Unidade Cadastrada</label>
+                    <select 
                       required
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      placeholder="Ex: Supermercado Alvorada"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome do Gestor</label>
-                    <input 
-                      required
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                      value={formData.managerName}
-                      onChange={e => setFormData({...formData, managerName: e.target.value})}
-                      placeholder="Ex: Ricardo Silva"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Localização da Empresa</label>
-                    <input 
-                      required
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                      value={formData.location}
-                      onChange={e => setFormData({...formData, location: e.target.value})}
-                      placeholder="Ex: Rua das Flores, 123 - Centro"
-                    />
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none"
+                      value={selectedUnitId}
+                      onChange={e => setSelectedUnitId(e.target.value)}
+                    >
+                      <option value="">Selecione uma unidade...</option>
+                      {availableUnits.map(unit => {
+                        const company = companies.find(c => c.id === unit.companyId);
+                        return (
+                          <option key={unit.id} value={unit.id}>
+                            {company?.name} - {unit.name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {availableUnits.length === 0 && (
+                      <p className="text-[10px] text-amber-600 font-bold mt-2 italic">
+                        Todas as unidades cadastradas já possuem QR Code.
+                      </p>
+                    )}
                   </div>
                 </div>
-                <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
+                <button 
+                  type="submit" 
+                  disabled={!selectedUnitId}
+                  className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Gerar QR Code
                 </button>
               </form>
@@ -2303,15 +3808,7 @@ function AgencyAccessControl({ accessPoints, clients }: { accessPoints: AccessPo
                 Baixar
               </button>
               <button 
-                onClick={async () => {
-                  if (confirm('Deseja realmente excluir esta unidade e empresa?')) {
-                    const clientToDelete = clients.find(c => c.location === ap.location);
-                    await deleteDocument('accessPoints', ap.id);
-                    if (clientToDelete) {
-                      await deleteDocument('clients', clientToDelete.id);
-                    }
-                  }
-                }}
+                onClick={() => setShowDeleteConfirm(ap.id)}
                 className="p-4 bg-red-50 text-red-600 rounded-[1.25rem] hover:bg-red-600 hover:text-white transition-all active:scale-95"
                 title="Excluir Empresa"
               >
@@ -2325,11 +3822,217 @@ function AgencyAccessControl({ accessPoints, clients }: { accessPoints: AccessPo
   );
 }
 
-function EmployeePonto({ accessPoints, checkIns, assignments }: { accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[] }) {
+function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: string, employees: Employee[], assignments: Assignment[] }) {
+  const employee = employees.find(e => e.id === employeeId);
+  const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
+
+  if (!employee) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <UserIcon size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para ver o perfil.</p>
+      </div>
+    );
+  }
+
+  const handleConfirm = async (assignmentId: string) => {
+    await updateDocument('assignments', assignmentId, { confirmed: true });
+    alert('Escala confirmada com sucesso!');
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-4xl mx-auto space-y-10"
+    >
+      <div className="flex flex-col gap-2">
+        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Meu Perfil</h2>
+        <p className="text-slate-500 font-medium">Gerencie suas informações e confirme suas escalas.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1 space-y-8">
+          <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm text-center space-y-6">
+            <div className="relative mx-auto w-40 h-40">
+              <div className="w-full h-full rounded-[2.5rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
+                <img 
+                  src={employee.photoUrl || `https://picsum.photos/seed/${employee.id}/400`} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-3 rounded-2xl shadow-lg border-4 border-white">
+                <CheckCircle size={20} />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900">{employee.firstName} {employee.lastName}</h3>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Funcionário Ativo</p>
+            </div>
+            <div className="flex items-center justify-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={16} className={i < employee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Informações de Contato</h4>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Telefone</p>
+                  <p className="text-sm font-bold text-slate-700">{employee.phone}</p>
+                </div>
+              </div>
+              {employee.personalEmail && (
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Mail size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">E-mail Pessoal</p>
+                    <p className="text-sm font-bold text-slate-700">{employee.personalEmail}</p>
+                  </div>
+                </div>
+              )}
+              {employee.username && (
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <UserIcon size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Usuário da Plataforma</p>
+                    <p className="text-sm font-bold text-slate-700">{employee.username}</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <CreditCard size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento (CPF)</p>
+                  <p className="text-sm font-bold text-slate-700">{employee.cpf}</p>
+                </div>
+              </div>
+              {employee.docUrl && (
+                <a 
+                  href={employee.docUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white text-slate-400 group-hover:text-blue-600 flex items-center justify-center shadow-sm">
+                    <Eye size={18} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Ver Comprovante</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 space-y-8">
+          {pendingAssignments.length > 0 && (
+            <div className="bg-blue-600 p-10 rounded-[3rem] text-white shadow-xl shadow-blue-200">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <Calendar size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight">Escalas Pendentes</h3>
+                  <p className="text-blue-100 text-sm font-medium">Confirme sua presença para as próximas escalas.</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {pendingAssignments.map(as => (
+                  <div key={as.id} className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-1">Data da Escala</p>
+                      <p className="text-xl font-black">{new Date(as.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
+                    </div>
+                    <button 
+                      onClick={() => handleConfirm(as.id)}
+                      className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all shadow-lg active:scale-95"
+                    >
+                      Confirmar Presença
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                <Lock size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Privacidade e Dados (LGPD)</h3>
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Lei Geral de Proteção de Dados</p>
+              </div>
+            </div>
+            <div className="prose prose-slate max-w-none">
+              <p className="text-slate-600 leading-relaxed font-medium">
+                Em conformidade com a <strong>Lei nº 13.709/2018 (LGPD)</strong>, informamos que seus dados pessoais (nome, CPF, foto e contato) são utilizados exclusivamente para as seguintes finalidades dentro da nossa plataforma:
+              </p>
+              <ul className="space-y-3 mt-4">
+                <li className="flex gap-3 text-sm text-slate-600 font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                  <span><strong>Identificação Profissional:</strong> Para que as empresas contratantes saibam quem irá realizar o serviço.</span>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-600 font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                  <span><strong>Controle de Ponto:</strong> Sua foto é utilizada no reconhecimento facial para garantir a autenticidade do registro de jornada.</span>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-600 font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                  <span><strong>Comunicação:</strong> Seu telefone é utilizado para envio de escalas e avisos importantes via WhatsApp.</span>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-600 font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                  <span><strong>Segurança:</strong> Seus documentos são armazenados para fins de conformidade legal e verificação de antecedentes.</span>
+                </li>
+              </ul>
+              <p className="text-slate-500 text-[10px] mt-8 italic font-medium">
+                * Seus dados são armazenados em ambiente seguro e não são compartilhados com terceiros fora do ecossistema de contratação da plataforma.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[] }) {
   const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const employee = employees.find(e => e.id === employeeId);
+
+  if (!employee) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <Scan size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para bater o ponto.</p>
+      </div>
+    );
+  }
 
   const API_KEY = "B1pjmJOODdN7OWa5CY9qgqZCLdgCqez4"; // Chave de Reconhecimento Facial
 
@@ -2388,7 +4091,7 @@ function EmployeePonto({ accessPoints, checkIns, assignments }: { accessPoints: 
 
         // Save Check-in
         const newCheckIn: Omit<CheckIn, 'id'> = {
-          employeeId: auth.currentUser?.uid || 'anonymous',
+          employeeId: employeeId,
           accessPointId: scannedPoint!.id,
           timestamp: new Date().toISOString(),
           photoUrl: photo,
@@ -2398,7 +4101,7 @@ function EmployeePonto({ accessPoints, checkIns, assignments }: { accessPoints: 
         // Update Assignment status
         const today = new Date().toISOString().split('T')[0];
         const assignment = assignments.find(a => 
-          a.employeeId === auth.currentUser?.uid && 
+          a.employeeId === employeeId && 
           a.clientId === scannedPoint!.clientId && 
           a.date === today &&
           a.status === 'SCHEDULED'
@@ -2604,7 +4307,21 @@ function EmployeePonto({ accessPoints, checkIns, assignments }: { accessPoints: 
   );
 }
 
-function CompanyDashboard({ clientId, assignments, employees }: { clientId: string, assignments: Assignment[], employees: Employee[] }) {
+function CompanyDashboard({ clientId, clients, assignments, employees }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[] }) {
+  const client = clients.find(c => c.id === clientId);
+
+  if (!client) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <Building2 size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para visualizar o dashboard.</p>
+      </div>
+    );
+  }
+
   const myAssignments = assignments.filter(a => a.clientId === clientId);
   const today = new Date().toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
@@ -2717,7 +4434,21 @@ function CompanyDashboard({ clientId, assignments, employees }: { clientId: stri
   );
 }
 
-function CompanyFeedbackForm({ clientId, assignments, employees }: { clientId: string, assignments: Assignment[], employees: Employee[] }) {
+function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[] }) {
+  const client = clients.find(c => c.id === clientId);
+
+  if (!client) {
+    return (
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+          <MessageSquare size={40} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para enviar feedbacks.</p>
+      </div>
+    );
+  }
+
   const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -2833,12 +4564,159 @@ function CompanyFeedbackForm({ clientId, assignments, employees }: { clientId: s
   );
 }
 
+function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const urlParams = new URLSearchParams(window.location.search);
+  const companyId = urlParams.get('companyId');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert('As senhas não coincidem!');
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      if (companyId) {
+        // Update existing company with user info if needed, or just create the company user
+        await createDocument('companyUsers', {
+          companyId,
+          fullName: formData.fullName,
+          email: formData.email,
+          role: 'COMPANY',
+          createdAt: new Date().toISOString()
+        });
+        
+        // Update user role to COMPANY
+        if (auth.currentUser) {
+          await updateDocument('users', auth.currentUser.uid, { role: 'COMPANY', companyId });
+        }
+      }
+      
+      alert('Cadastro concluído com sucesso!');
+      onComplete();
+    } catch (error) {
+      console.error('Error registering company:', error);
+      alert('Erro ao realizar cadastro. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-xl w-full"
+      >
+        <div className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 to-indigo-600" />
+          
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-purple-50 rounded-3xl flex items-center justify-center text-purple-600 mx-auto mb-4">
+              <Building2 size={40} />
+            </div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Cadastro de Responsável</h2>
+            <p className="text-slate-500 mt-2 font-medium">Complete seu acesso para gerenciar sua empresa.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
+              <input 
+                required
+                type="text" 
+                className="input-field"
+                placeholder="Ex: João Silva Santos"
+                value={formData.fullName}
+                onChange={e => setFormData({...formData, fullName: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label>
+                <input 
+                  required
+                  type="tel" 
+                  className="input-field"
+                  placeholder="(00) 00000-0000"
+                  value={formData.phone}
+                  onChange={e => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                <input 
+                  required
+                  type="email" 
+                  className="input-field"
+                  placeholder="seu@email.com"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+                <input 
+                  required
+                  type="password" 
+                  className="input-field"
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
+                <input 
+                  required
+                  type="password" 
+                  className="input-field"
+                  value={formData.confirmPassword}
+                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="pt-6">
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full py-5 bg-purple-600 text-white rounded-[24px] font-black text-xl hover:bg-purple-700 transition-all shadow-2xl shadow-purple-600/20 active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSubmitting ? 'Processando...' : 'Finalizar Cadastro'}
+              </button>
+              <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">
+                Ao enviar, você concorda com nossos termos de uso e LGPD.
+              </p>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function RegistrationForm({ onComplete }: { onComplete: () => void }) {
   const [formData, setFormData] = useState({
     fullName: '',
     cpf: '',
     birthDate: '',
     phone: '',
+    personalEmail: '',
+    lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
   });
@@ -2900,6 +4778,8 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       cpf: formData.cpf,
       birthDate: formData.birthDate,
       phone: formData.phone,
+      personalEmail: formData.personalEmail,
+      lgpdAuthorized: formData.lgpdAuthorized,
       photoUrl: formData.photo || undefined,
       docUrl: formData.document ? formData.document.name : undefined,
       status: 'PENDING',
@@ -2978,6 +4858,18 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 className="input-field"
                 value={formData.birthDate}
                 onChange={e => setFormData({...formData, birthDate: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Pessoal</label>
+              <input 
+                required
+                type="email" 
+                className="input-field"
+                placeholder="seuemail@exemplo.com"
+                value={formData.personalEmail}
+                onChange={e => setFormData({...formData, personalEmail: e.target.value})}
               />
             </div>
 
@@ -3072,6 +4964,20 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                   </label>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <input 
+                required
+                type="checkbox" 
+                id="lgpd"
+                className="mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                checked={formData.lgpdAuthorized}
+                onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
+              />
+              <label htmlFor="lgpd" className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                Autorizo o uso dos meus dados pessoais para fins de cadastro e escalas de trabalho, conforme as diretrizes da <span className="font-bold text-slate-700">LGPD (Lei Geral de Proteção de Dados)</span>.
+              </label>
             </div>
 
             <div className="pt-6">

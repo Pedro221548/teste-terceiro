@@ -1,11 +1,23 @@
-import { Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn } from './types';
+import { Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, PricingConfig } from './types';
 
-export const PRICING_BY_STARS = {
-  1: 50,
-  2: 60,
-  3: 70,
-  4: 80,
-  5: 90
+export const DEFAULT_PRICING: PricingConfig = {
+  type: 'STARS',
+  stars: {
+    '1': { employee: 40, company: 10 },
+    '2': { employee: 50, company: 10 },
+    '3': { employee: 60, company: 10 },
+    '4': { employee: 70, company: 10 },
+    '5': { employee: 80, company: 10 }
+  },
+  weekly: {
+    'Segunda': { employee: 60, company: 15 },
+    'Terça': { employee: 60, company: 15 },
+    'Quarta': { employee: 60, company: 15 },
+    'Quinta': { employee: 60, company: 15 },
+    'Sexta': { employee: 70, company: 20 },
+    'Sábado': { employee: 80, company: 25 },
+    'Domingo': { employee: 80, company: 25 }
+  }
 };
 
 export const MOCK_EMPLOYEES: Employee[] = [
@@ -16,6 +28,7 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cpf: '123.456.789-00',
     birthDate: '1990-05-15',
     phone: '11999999999',
+    lgpdAuthorized: true,
     rating: 4,
     status: 'ACTIVE',
     complaints: 0,
@@ -29,6 +42,7 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cpf: '987.654.321-11',
     birthDate: '1985-10-20',
     phone: '11888888888',
+    lgpdAuthorized: true,
     rating: 5,
     status: 'ACTIVE',
     complaints: 0,
@@ -42,6 +56,7 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cpf: '456.789.123-22',
     birthDate: '1995-02-28',
     phone: '11777777777',
+    lgpdAuthorized: true,
     rating: 3,
     status: 'ACTIVE',
     complaints: 5,

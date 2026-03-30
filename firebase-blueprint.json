@@ -145,6 +145,32 @@
         "photoUrl": { "type": "string" }
       },
       "required": ["employeeId", "accessPointId", "timestamp", "photoUrl"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Global application settings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "value": { "type": "any" },
+        "values": { "type": "object" }
+      }
+    },
+    "CompanyRequest": {
+      "title": "CompanyRequest",
+      "description": "A request for employees from a company.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "employeeIds": { "type": "array", "items": { "type": "string" } },
+        "quantity": { "type": "number" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED", "REJECTED"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["companyId", "clientId", "employeeIds", "quantity", "date", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -157,6 +183,8 @@
     "/feedbacks": { "schema": "Feedback", "description": "Collection of employee feedbacks." },
     "/contacts": { "schema": "ContactRequest", "description": "Collection of contact requests." },
     "/accessPoints": { "schema": "AccessPoint", "description": "Collection of QR code access points." },
-    "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." }
+    "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." },
+    "/settings": { "schema": "Setting", "description": "Collection of global settings." },
+    "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." }
   }
 }

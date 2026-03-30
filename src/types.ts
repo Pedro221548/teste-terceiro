@@ -1,4 +1,4 @@
-export type UserRole = 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION';
+export type UserRole = 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION' | 'COMPANY_REGISTRATION';
 
 export interface Employee {
   id: string;
@@ -7,6 +7,9 @@ export interface Employee {
   cpf: string;
   birthDate: string;
   phone: string;
+  personalEmail?: string;
+  lgpdAuthorized: boolean;
+  username?: string;
   photoUrl?: string;
   docUrl?: string;
   rating: number; // 1 to 5
@@ -38,6 +41,7 @@ export interface Company {
 export interface Unit {
   id: string;
   companyId: string;
+  clientId?: string; // Link to the Client document for staffing
   name: string;
   managerName: string;
   location: string;
@@ -60,6 +64,7 @@ export interface Assignment {
   date: string;
   value: number;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  confirmed?: boolean;
 }
 
 export interface Feedback {
@@ -94,4 +99,21 @@ export interface CheckIn {
   accessPointId: string;
   timestamp: string;
   photoUrl: string;
+}
+
+export interface PricingConfig {
+  type: 'STARS' | 'DAILY';
+  stars: Record<string, { employee: number, company: number }>;
+  weekly: Record<string, { employee: number, company: number }>;
+}
+
+export interface CompanyRequest {
+  id: string;
+  companyId: string;
+  clientId: string;
+  employeeIds: string[];
+  quantity: number;
+  date: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: string;
 }
