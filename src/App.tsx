@@ -348,6 +348,7 @@ export default function App() {
     }
 
     // 4. Attempt Firebase Authentication
+    console.log("DEBUG: Attempting login with:", emailInput, passwordInput);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, emailInput, passwordInput);
       const firebaseUser = userCredential.user;
@@ -1762,7 +1763,9 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
     
     try {
       // 1. Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, registration.personalEmail, password);
+      const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
+      console.log("DEBUG: Creating user with:", emailForAuth, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, emailForAuth, password);
       const newUid = userCredential.user.uid;
 
       // 2. Create employee record
@@ -1773,6 +1776,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
         birthDate: registration.birthDate,
         phone: registration.phone,
         personalEmail: registration.personalEmail,
+        loginEmail: emailForAuth,
         lgpdAuthorized: registration.lgpdAuthorized,
         photoUrl: registration.photoUrl,
         docUrl: registration.docUrl,
@@ -1798,9 +1802,13 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
       
       alert(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing registration:', error);
-      alert('Erro ao processar cadastro. Verifique se o e-mail já está em uso.');
+      if (error.code === 'auth/email-already-in-use') {
+        alert('Este e-mail já está cadastrado. Tente outro.');
+      } else {
+        alert('Erro ao processar cadastro. Verifique os dados e tente novamente.');
+      }
     } finally {
       setIsSending(false);
     }
@@ -1939,6 +1947,13 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
 
   const confirmDelete = async () => {
     if (deleteId) {
+      // Call API to delete from Firebase Auth
+      await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: deleteId }),
+      });
+      
       await deleteDocument('employees', deleteId);
       setDeleteId(null);
       setSelectedEmployee(null);
@@ -5586,6 +5601,13 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
   const handleDeleteUser = async (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
     try {
+      // Call API to delete from Firebase Auth
+      await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: id }),
+      });
+      
       await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
       alert('Usuário excluído com sucesso!');
     } catch (error) {
