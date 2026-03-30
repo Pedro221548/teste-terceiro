@@ -2,17 +2,23 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import admin from "firebase-admin";
-import serviceAccount from "./firebase-applet-config.json" assert { type: "json" };
-
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  projectId: "gen-lang-client-0020131327",
-});
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Initialize Firebase Admin SDK inside startServer
+  try {
+    if (admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: "gen-lang-client-0020131327",
+      });
+      console.log("Firebase Admin initialized successfully");
+    }
+  } catch (error) {
+    console.error("Error initializing Firebase Admin:", error);
+  }
 
   app.use(express.json());
 
@@ -24,22 +30,52 @@ async function startServer() {
   console.log("NODE_ENV:", process.env.NODE_ENV);
 
   // API routes
-  const apiRouter = express.Router();
-  apiRouter.post("/delete-user", async (req, res) => {
-    console.log("Received request to /api/delete-user", req.method, req.body);
-    const { uid } = req.body;
-    if (!uid) {
-      return res.status(400).json({ error: "UID is required" });
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", env: process.env.NODE_ENV });
+  });
+
+  app.post("/api/delete-user", async (req, res) => {
+    console.log("Received POST request to /api/delete-user");
+    console.log("Request body:", req.body);
+    
+    const { uid, email } = req.body;
+    if (!uid && !email) {
+      console.warn("Delete request missing both UID and Email");
+      return res.status(400).json({ error: "UID or Email is required" });
     }
+
     try {
-      await admin.auth().deleteUser(uid);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      res.status(500).json({ error: "Failed to delete user" });
+      if (uid) {
+        console.log(`Attempting to delete user by UID: ${uid}`);
+        try {
+          await admin.auth().deleteUser(uid);
+          console.log(`Successfully deleted user ${uid} from Firebase Auth`);
+          return res.json({ success: true });
+        } catch (error: any) {
+          if (error.code !== 'auth/user-not-found') throw error;
+          console.log(`User UID ${uid} not found in Auth.`);
+        }
+      }
+
+      if (email) {
+        console.log(`Attempting to delete user by Email: ${email}`);
+        try {
+          const userRecord = await admin.auth().getUserByEmail(email);
+          await admin.auth().deleteUser(userRecord.uid);
+          console.log(`Successfully deleted user with email ${email} (UID: ${userRecord.uid}) from Firebase Auth`);
+          return res.json({ success: true });
+        } catch (error: any) {
+          if (error.code !== 'auth/user-not-found') throw error;
+          console.log(`User email ${email} not found in Auth.`);
+        }
+      }
+
+      res.json({ success: true, message: "User not found in Auth, nothing to delete" });
+    } catch (error: any) {
+      console.error("Error deleting user from Firebase Auth:", error);
+      res.status(500).json({ error: error.message || "Failed to delete user" });
     }
   });
-  app.use("/api", apiRouter);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

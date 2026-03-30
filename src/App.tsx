@@ -216,6 +216,13 @@ export default function App() {
 
   useEffect(() => {
     testConnection();
+    
+    // Check server health
+    fetch('/api/health')
+      .then(r => r.json())
+      .then(d => console.log('Server health check:', d))
+      .catch(e => console.error('Server health check failed:', e));
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('Auth state changed:', firebaseUser);
       if (firebaseUser) {
@@ -1882,8 +1889,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
   const [linkPhone, setLinkPhone] = useState('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [deleteEmployee, setDeleteEmployee] = useState<Employee | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [employeeToCreateUserFor, setEmployeeToCreateUserFor] = useState<Employee | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -1940,22 +1947,37 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
 
   const highComplaintEmployees = employees.filter(emp => emp.complaints >= 3);
 
-  const handleDeleteEmployee = (id: string) => {
-    setDeleteId(id);
+  const handleDeleteEmployee = (emp: Employee) => {
+    setDeleteEmployee(emp);
     setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
-    if (deleteId) {
-      // Call API to delete from Firebase Auth
-      await fetch('/api/delete-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: deleteId }),
-      });
+    if (deleteEmployee) {
+      try {
+        console.log(`DEBUG: Deleting user ${deleteEmployee.id} from Auth...`);
+        const response = await fetch(`${window.location.origin}/api/delete-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            uid: deleteEmployee.id,
+            email: deleteEmployee.loginEmail 
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error from delete-user API:', errorData);
+        } else {
+          console.log('Successfully called delete-user API');
+        }
+      } catch (error) {
+        console.error('Failed to call delete-user API:', error);
+      }
       
-      await deleteDocument('employees', deleteId);
-      setDeleteId(null);
+      await deleteDocument('employees', deleteEmployee.id);
+      await deleteDocument('users', deleteEmployee.id);
+      setDeleteEmployee(null);
       setSelectedEmployee(null);
     }
   };
@@ -2457,7 +2479,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                         <UserPlus size={18} />
                       </button>
                       <button 
-                        onClick={() => handleDeleteEmployee(emp.id)}
+                        onClick={() => handleDeleteEmployee(emp)}
                         className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                       >
                         <Trash2 size={18} />
@@ -2577,7 +2599,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                     </div>
                     <div className="pt-4">
                       <button 
-                        onClick={() => handleDeleteEmployee(selectedEmployee.id)}
+                        onClick={() => handleDeleteEmployee(selectedEmployee)}
                         className="w-full py-4 bg-white border-2 border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-rose-100/50"
                       >
                         <Trash2 size={18} />
@@ -5119,9 +5141,8 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       const newUid = userCredential.user.uid;
 
       if (companyId) {
-        // Update existing company with user info if needed, or just create the company user
-        await createDocument('companyUsers', {
-          id: newUid,
+        // Use setDocument to ensure the document ID is the UID
+        await setDocument('companyUsers', newUid, {
           companyId,
           fullName: formData.fullName,
           email: formData.email,
@@ -5601,14 +5622,24 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
   const handleDeleteUser = async (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
     try {
+      const userToDelete = type === 'EMPLOYEE' ? employees.find(e => e.id === id) : companyUsers.find(cu => cu.id === id);
+      const email = type === 'EMPLOYEE' ? (userToDelete as Employee)?.loginEmail : (userToDelete as CompanyUser)?.email;
+
+      console.log(`DEBUG: Deleting user ${id} from Auth...`);
       // Call API to delete from Firebase Auth
-      await fetch('/api/delete-user', {
+      const response = await fetch(`${window.location.origin}/api/delete-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: id }),
+        body: JSON.stringify({ uid: id, email }),
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error from delete-user API:', errorData);
+      }
+
       await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
+      await deleteDocument('users', id);
       alert('Usuário excluído com sucesso!');
     } catch (error) {
       console.error('Error deleting user:', error);
