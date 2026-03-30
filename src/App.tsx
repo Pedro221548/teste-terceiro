@@ -39,7 +39,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -4903,9 +4903,14 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
     setIsSubmitting(true);
 
     try {
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const newUid = userCredential.user.uid;
+
       if (companyId) {
         // Update existing company with user info if needed, or just create the company user
         await createDocument('companyUsers', {
+          id: newUid,
           companyId,
           fullName: formData.fullName,
           email: formData.email,
@@ -4914,9 +4919,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         });
         
         // Update user role to COMPANY
-        if (auth.currentUser) {
-          await updateDocument('users', auth.currentUser.uid, { role: 'COMPANY', companyId });
-        }
+        await setDocument('users', newUid, { role: 'COMPANY', companyId, email: formData.email });
       }
       
       alert('Cadastro concluído com sucesso!');
@@ -5034,6 +5037,8 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     birthDate: '',
     phone: '',
     personalEmail: '',
+    password: '',
+    confirmPassword: '',
     lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
@@ -5081,10 +5086,17 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (formData.password !== formData.confirmPassword) {
+      alert("As senhas não coincidem!");
+      return;
+    }
     if (!formData.photo) {
       alert("Por favor, tire uma foto para o cadastro.");
       return;
     }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, formData.personalEmail, formData.password);
+    const newUid = userCredential.user.uid;
 
     const names = formData.fullName.split(' ');
     const firstName = names[0];
@@ -5107,8 +5119,9 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       unavailableDates: []
     };
 
-    await createDocument('employees', newEmployee);
-    alert('Cadastro enviado com sucesso! Sua conta está PENDENTE de aprovação pela agência.');
+    await setDocument('employees', newUid, { ...newEmployee, id: newUid });
+    await setDocument('users', newUid, { role: 'EMPLOYEE', email: formData.personalEmail });
+    alert('Cadastro concluído com sucesso!');
     onComplete();
   };
 
@@ -5189,6 +5202,29 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 value={formData.personalEmail}
                 onChange={e => setFormData({...formData, personalEmail: e.target.value})}
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+                <input 
+                  required
+                  type="password" 
+                  className="input-field"
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
+                <input 
+                  required
+                  type="password" 
+                  className="input-field"
+                  value={formData.confirmPassword}
+                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
