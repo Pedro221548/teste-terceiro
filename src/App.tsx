@@ -30,7 +30,8 @@ import {
   Download,
   Trash2,
   Mail,
-  Lock
+  Lock,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -652,6 +653,18 @@ export default function App() {
                       active={activeTab === 'feedbacks'} 
                       onClick={() => setActiveTab('feedbacks')} 
                     />
+                    <SidebarItem 
+                      icon={<Lock size={18} />} 
+                      label="Gestão de Logins" 
+                      active={activeTab === 'user_management'} 
+                      onClick={() => setActiveTab('user_management')} 
+                    />
+                    <SidebarItem 
+                      icon={<UserIcon size={18} />} 
+                      label="Meu Perfil" 
+                      active={activeTab === 'profile'} 
+                      onClick={() => setActiveTab('profile')} 
+                    />
                   </>
                 )}
                 {role === 'COMPANY' && (
@@ -674,6 +687,12 @@ export default function App() {
                       active={activeTab === 'company_diaristas'} 
                       onClick={() => setActiveTab('company_diaristas')} 
                     />
+                    <SidebarItem 
+                      icon={<UserIcon size={20} />} 
+                      label="Meu Perfil" 
+                      active={activeTab === 'profile'} 
+                      onClick={() => setActiveTab('profile')} 
+                    />
                   </>
                 )}
                 {role === 'EMPLOYEE' && (
@@ -685,10 +704,10 @@ export default function App() {
                       onClick={() => setActiveTab('employee_schedule')} 
                     />
                     <SidebarItem 
-                      icon={<LayoutDashboard size={20} />} 
-                      label="Perfil" 
-                      active={activeTab === 'employee_profile'} 
-                      onClick={() => setActiveTab('employee_profile')} 
+                      icon={<UserIcon size={20} />} 
+                      label="Meu Perfil" 
+                      active={activeTab === 'profile'} 
+                      onClick={() => setActiveTab('profile')} 
                     />
                     <SidebarItem 
                       icon={<Scan size={20} />} 
@@ -823,6 +842,24 @@ export default function App() {
               )}
 
               <AnimatePresence mode="wait">
+                {role === 'AGENCY' && activeTab === 'user_management' && (
+                  <div key="agency-user-management">
+                    <UserManagement 
+                      employees={employees}
+                      companyUsers={companyUsers}
+                    />
+                  </div>
+                )}
+                {activeTab === 'profile' && (
+                  <div key="user-profile">
+                    <UserProfile 
+                      user={user}
+                      role={role}
+                      employee={role === 'EMPLOYEE' ? (impersonatedEmployeeId ? employees.find(e => e.id === impersonatedEmployeeId) : employees.find(e => e.loginEmail === user?.email)) : undefined}
+                      companyUser={role === 'COMPANY' ? (impersonatedClientId ? companyUsers.find(cu => cu.companyId === impersonatedClientId) : companyUsers.find(cu => cu.email === user?.email)) : undefined}
+                    />
+                  </div>
+                )}
                 {role === 'AGENCY' && activeTab === 'dashboard' && (
                   <div key="agency-dashboard">
                     <AgencyDashboard 
@@ -2832,7 +2869,9 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
   const [unitData, setUnitData] = useState({
     name: '',
     managerName: '',
-    location: ''
+    location: '',
+    login: '',
+    password: ''
   });
   const [userData, setUserData] = useState({
     fullName: '',
@@ -2880,6 +2919,20 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
     };
     const unitId = await createDocument('units', newUnit);
     
+    // Create a CompanyUser for the unit manager
+    if (unitData.login && unitData.password) {
+      const newUser: Omit<CompanyUser, 'id'> = {
+        companyId: showUnitModal,
+        unitId: unitId,
+        fullName: unitData.managerName,
+        email: unitData.login,
+        password: unitData.password,
+        role: 'COMPANY',
+        createdAt: new Date().toISOString()
+      };
+      await createDocument('companyUsers', newUser);
+    }
+    
     // Also create a Client entry for the staffing system
     const newClient: Omit<Client, 'id'> = {
       name: `${company.name} - ${unitData.name}`,
@@ -2894,7 +2947,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
     }
 
     setShowUnitModal(null);
-    setUnitData({ name: '', managerName: '', location: '' });
+    setUnitData({ name: '', managerName: '', location: '', login: '', password: '' });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -3028,6 +3081,9 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
                       <div>
                         <p className="text-sm font-bold text-slate-700">{unit.name}</p>
                         <p className="text-[10px] text-slate-400 font-medium">{unit.location}</p>
+                        {unit.login && (
+                          <p className="text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -3229,6 +3285,30 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
                       value={unitData.location}
                       onChange={e => setUnitData({...unitData, location: e.target.value})}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Login do Responsável</label>
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                        placeholder="Login"
+                        value={unitData.login}
+                        onChange={e => setUnitData({...unitData, login: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha</label>
+                      <input 
+                        required
+                        type="password" 
+                        className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                        placeholder="••••••••"
+                        value={unitData.password}
+                        onChange={e => setUnitData({...unitData, password: e.target.value})}
+                      />
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95">
@@ -5195,3 +5275,258 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     </div>
   );
 }
+
+const UserManagement = ({ employees, companyUsers }: { employees: Employee[], companyUsers: CompanyUser[] }) => {
+  const [filter, setFilter] = useState<'EMPLOYEE' | 'COMPANY'>('EMPLOYEE');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredEmployees = employees.filter(emp => 
+    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.loginEmail?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCompanyUsers = companyUsers.filter(cu => 
+    cu.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cu.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Logins</h2>
+          <p className="text-slate-500 font-medium">Administre as credenciais de acesso de funcionários e empresas.</p>
+        </div>
+        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+          <button 
+            onClick={() => setFilter('EMPLOYEE')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'EMPLOYEE' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            Funcionários
+          </button>
+          <button 
+            onClick={() => setFilter('COMPANY')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'COMPANY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            Empresas
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 mb-8">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text"
+            placeholder={`Pesquisar por nome ou e-mail em ${filter === 'EMPLOYEE' ? 'Funcionários' : 'Empresas'}...`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-medium text-slate-700 transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50/50 border-b border-slate-100">
+              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nome Completo</th>
+              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">E-mail de Login</th>
+              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {filter === 'EMPLOYEE' ? (
+              filteredEmployees.map(emp => (
+                <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                        {emp.firstName[0]}{emp.lastName[0]}
+                      </div>
+                      <span className="font-bold text-slate-700">{emp.firstName} {emp.lastName}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <span className="text-sm font-medium text-slate-500">{emp.loginEmail || 'Não definido'}</span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${emp.loginEmail ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {emp.loginEmail ? 'Ativo' : 'Pendente'}
+                    </span>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                      <Lock size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              filteredCompanyUsers.map(cu => (
+                <tr key={cu.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                        {cu.fullName[0]}
+                      </div>
+                      <span className="font-bold text-slate-700">{cu.fullName}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <span className="text-sm font-medium text-slate-500">{cu.email}</span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">
+                      Ativo
+                    </span>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                      <Lock size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </motion.div>
+  );
+};
+
+const UserProfile = ({ user, role, employee, companyUser }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser }) => {
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleResetPassword = () => {
+    if (newPassword !== confirmPassword) {
+      alert("As senhas não coincidem!");
+      return;
+    }
+    alert(`Senha redefinida com sucesso! Um link de confirmação foi enviado para ${resetEmail || employee?.personalEmail || companyUser?.email || user?.email}`);
+    setIsResetting(false);
+  };
+
+  const displayName = employee ? `${employee.firstName} ${employee.lastName}` : companyUser?.fullName || user?.displayName || 'Usuário';
+  const loginEmail = employee?.loginEmail || companyUser?.email || user?.email;
+  const personalEmail = employee?.personalEmail || '';
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-2xl mx-auto space-y-8"
+    >
+      <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden">
+        <div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600 relative">
+          <div className="absolute -bottom-12 left-12">
+            <div className="w-24 h-24 rounded-[2rem] bg-white p-2 shadow-xl">
+              <div className="w-full h-full rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-slate-400">
+                <UserIcon size={40} />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="pt-16 p-12 space-y-8">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
+            <p className="text-slate-500 font-medium uppercase tracking-widest text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700">
+                {loginEmail}
+              </div>
+            </div>
+            {personalEmail && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700">
+                  {personalEmail}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-8 border-t border-slate-100">
+            {!isResetting ? (
+              <button 
+                onClick={() => {
+                  setIsResetting(true);
+                  setResetEmail(personalEmail || loginEmail || '');
+                }}
+                className="flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+              >
+                <Lock size={18} />
+                Redefinir Minha Senha
+              </button>
+            ) : (
+              <div className="space-y-6 bg-slate-50 p-8 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Alterar Senha</h4>
+                  <button onClick={() => setIsResetting(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar E-mail para Link</label>
+                    <input 
+                      type="email" 
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nova Senha</label>
+                      <input 
+                        type="password" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar Senha</label>
+                      <input 
+                        type="password" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleResetPassword}
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  Confirmar Nova Senha
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};

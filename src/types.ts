@@ -8,6 +8,8 @@ export interface Employee {
   birthDate: string;
   phone: string;
   personalEmail?: string;
+  loginEmail?: string;
+  password?: string;
   lgpdAuthorized: boolean;
   username?: string;
   photoUrl?: string;
@@ -45,14 +47,18 @@ export interface Unit {
   name: string;
   managerName: string;
   location: string;
+  login?: string;
+  password?: string;
   createdAt: string;
 }
 
 export interface CompanyUser {
   id: string;
   companyId: string;
+  unitId?: string;
   fullName: string;
   email: string;
+  password?: string;
   role: 'COMPANY';
   createdAt: string;
 }
