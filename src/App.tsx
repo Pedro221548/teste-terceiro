@@ -30,6 +30,7 @@ import {
   Camera,
   MapPin,
   Plus,
+  ShieldCheck,
   Download,
   Trash2,
   Mail,
@@ -46,16 +47,24 @@ import {
   TrendingUp as TrendingUpIcon,
   Volume2,
   VolumeX,
+  FileText,
+  Briefcase,
+  CheckCircle2,
+  Unlock,
+  Key,
+  XCircle,
+  Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency } from './types';
 import { DEFAULT_PRICING } from './constants';
-import { auth, googleProvider, sendPasswordResetEmail } from './firebase';
+import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { onSnapshot, doc } from 'firebase/firestore';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -123,7 +132,11 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   userPhoto: string | null,
   handleLogout: () => void
 }) {
-  const menuItems = role === 'ADMIN' || role === 'AGENCY' ? [
+  const menuItems = role === 'ADMIN' ? [
+    { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
+  ] : role === 'AGENCY' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'staffing', label: 'Diaristas', icon: Users },
     { id: 'companies', label: 'Empresas', icon: Building2 },
@@ -236,6 +249,11 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
 }) {
   const getTitle = () => {
     switch (activeTab) {
+      case 'admin_dashboard': return 'Dashboard Super Admin';
+      case 'admin_companies': return 'Gestão de Empresas';
+      case 'admin_users': return 'Gestão de Usuários';
+      case 'admin_documents': return 'Controle de Documentos';
+      case 'admin_services': return 'Monitoramento de Serviços';
       case 'dashboard': return 'Dashboard Geral';
       case 'staffing': return 'Gestão de Diaristas';
       case 'companies': return 'Empresas Parceiras';
@@ -421,10 +439,21 @@ export default function App() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [currentAgencyId, setCurrentAgencyId] = useState<string | null>(null);
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlRole = params.get('role') as UserRole;
+    if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION' || urlRole === 'AGENCY_REGISTRATION') {
+      setRole(urlRole);
+    }
+  }, []);
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -478,21 +507,46 @@ export default function App() {
 
   useEffect(() => {
     if (!isAuthReady || !user) return;
-    const unsubPricing = subscribeToCollection<any>('settings', (docs) => {
-      const pricingDoc = docs.find(d => d.id === 'pricing');
-      const labelDoc = docs.find(d => d.id === 'ratingLabel');
-      if (pricingDoc) {
-        setPricing({
-          ...DEFAULT_PRICING,
-          ...pricingDoc.values,
-          stars: { ...DEFAULT_PRICING.stars, ...(pricingDoc.values?.stars || {}) },
-          weekly: { ...DEFAULT_PRICING.weekly, ...(pricingDoc.values?.weekly || {}) }
-        });
-      }
-      if (labelDoc) setRatingLabel(labelDoc.value);
-    });
-    return () => unsubPricing();
-  }, [isAuthReady, user]);
+    
+    // If it's an agency or admin managing an agency, fetch agency-specific pricing
+    const targetAgencyId = role === 'AGENCY' ? currentAgencyId : (role === 'ADMIN' ? selectedAgencyId : null);
+    
+    if (targetAgencyId) {
+      const unsubAgency = onSnapshot(doc(db, 'agencies', targetAgencyId), (docSnap) => {
+        if (docSnap.exists()) {
+          const agencyData = docSnap.data() as Agency;
+          if (agencyData.pricing) {
+            setPricing({
+              ...DEFAULT_PRICING,
+              ...agencyData.pricing,
+              stars: { ...DEFAULT_PRICING.stars, ...(agencyData.pricing.stars || {}) },
+              weekly: { ...DEFAULT_PRICING.weekly, ...(agencyData.pricing.weekly || {}) }
+            });
+          } else {
+            setPricing(DEFAULT_PRICING);
+          }
+          if (agencyData.ratingLabel) setRatingLabel(agencyData.ratingLabel);
+        }
+      });
+      return () => unsubAgency();
+    } else {
+      // Fallback to global settings for other roles or global admin view
+      const unsubPricing = subscribeToCollection<any>('settings', (docs) => {
+        const pricingDoc = docs.find(d => d.id === 'pricing');
+        const labelDoc = docs.find(d => d.id === 'ratingLabel');
+        if (pricingDoc) {
+          setPricing({
+            ...DEFAULT_PRICING,
+            ...pricingDoc.values,
+            stars: { ...DEFAULT_PRICING.stars, ...(pricingDoc.values?.stars || {}) },
+            weekly: { ...DEFAULT_PRICING.weekly, ...(pricingDoc.values?.weekly || {}) }
+          });
+        }
+        if (labelDoc) setRatingLabel(labelDoc.value);
+      });
+      return () => unsubPricing();
+    }
+  }, [isAuthReady, user, role, currentAgencyId, selectedAgencyId]);
 
   const playNotificationSound = () => {
     if (!audioEnabled) {
@@ -527,20 +581,27 @@ export default function App() {
         const urlRole = urlParams.get('role') as UserRole;
 
         // Fetch or create user profile
-        const userDoc = await getDocument<{ role: UserRole, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
+        const userDoc = await getDocument<{ role: UserRole, agencyId?: string, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
         if (userDoc) {
-          setRole(userDoc.role);
+          let currentRole = userDoc.role;
+          if ((firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') && currentRole !== 'ADMIN') {
+            currentRole = 'ADMIN';
+            await updateDocument('users', firebaseUser.uid, { role: 'ADMIN' });
+          }
+          setRole(currentRole);
+          if (userDoc.agencyId) setCurrentAgencyId(userDoc.agencyId);
           if (userDoc.forcePasswordChange) {
             setNeedsPasswordChange(true);
           }
           let defaultTab = 'dashboard';
-          if ((userDoc.role as string) === 'COMPANY') defaultTab = 'manager_dashboard';
-          if ((userDoc.role as string) === 'EMPLOYEE') defaultTab = 'employee_schedule';
+          if ((currentRole as string) === 'COMPANY') defaultTab = 'manager_dashboard';
+          if ((currentRole as string) === 'EMPLOYEE') defaultTab = 'employee_schedule';
+          if ((currentRole as string) === 'ADMIN') defaultTab = 'admin_dashboard';
           setActiveTab(defaultTab);
         } else {
           // Default role based on email or URL param
-          let defaultRole: UserRole = firebaseUser.email === 'pedroass.11577@gmail.com' ? 'AGENCY' : 'EMPLOYEE';
-          if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION') {
+          let defaultRole: UserRole = (firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') ? 'ADMIN' : 'EMPLOYEE';
+          if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION' || urlRole === 'AGENCY_REGISTRATION') {
             defaultRole = urlRole;
           }
           await setDocument('users', firebaseUser.uid, {
@@ -552,6 +613,7 @@ export default function App() {
           let defaultTab = 'dashboard';
           if ((defaultRole as any) === 'COMPANY') defaultTab = 'manager_dashboard';
           if ((defaultRole as any) === 'EMPLOYEE') defaultTab = 'employee_schedule';
+          if ((defaultRole as any) === 'ADMIN') defaultTab = 'admin_dashboard';
           setActiveTab(defaultTab);
         }
         setUser(firebaseUser);
@@ -567,74 +629,83 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const unsubEmployees = role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE' ? subscribeToCollection<Employee>('employees', setEmployees) : () => {};
-    const unsubClients = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Client>('clients', setClients) : () => {};
+    const unsubs: (() => void)[] = [];
+
+    if (role === 'ADMIN') {
+      unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
+    }
+
+    const filterByAgency = (data: any[]) => {
+      if (role === 'ADMIN') {
+        if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId);
+        return data;
+      }
+      if (role === 'AGENCY') return data.filter(d => d.agencyId === currentAgencyId);
+      // For COMPANY and EMPLOYEE, they are already filtered by their specific constraints in subscribeToCollection if applicable, 
+      // but we should ensure they only see their agency's data if they are linked to one.
+      return data;
+    };
+
+    const unsubEmployees = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE' || role === 'ADMIN') ? subscribeToCollection<Employee>('employees', (data) => setEmployees(filterByAgency(data))) : () => {};
+    const unsubClients = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Client>('clients', (data) => setClients(filterByAgency(data))) : () => {};
     
     // Role-based assignments subscription
     const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : 
                                  role === 'COMPANY' ? [where('clientId', '==', (user as any).clientId || user.uid)] : [];
     const unsubAssignments = subscribeToCollection<Assignment>('assignments', (docs) => {
-      if (role === 'AGENCY') {
+      const filtered = filterByAgency(docs);
+      if (role === 'AGENCY' || role === 'ADMIN') {
         setAssignments(prev => {
-          const changed = docs.some(d => {
+          const changed = filtered.some(d => {
             const p = prev.find(old => old.id === d.id);
             return p && p.status === 'SCHEDULED' && (d.status === 'COMPLETED' || d.status === 'CANCELLED');
           });
           if (changed) playNotificationSound();
-          return docs;
+          return filtered;
         });
       } else {
-        setAssignments(docs);
+        setAssignments(filtered);
       }
     }, assignmentConstraints);
     
-    const unsubFeedbacks = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Feedback>('feedbacks', setFeedbacks) : () => {};
+    const unsubFeedbacks = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Feedback>('feedbacks', (data) => setFeedbacks(filterByAgency(data))) : () => {};
     
-    // Only agency sees contacts
-    const unsubContacts = role === 'AGENCY' ? subscribeToCollection<ContactRequest>('contacts', setContacts) : () => {};
-    const unsubEmployeeRegistrations = role === 'AGENCY' ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', (docs) => {
+    // Only agency/admin sees contacts
+    const unsubContacts = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<ContactRequest>('contacts', (data) => setContacts(filterByAgency(data))) : () => {};
+    const unsubEmployeeRegistrations = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', (docs) => {
+      const filtered = filterByAgency(docs);
       setEmployeeRegistrations(prev => {
-        const newRegs = docs.filter(d => d.status === 'PENDING');
+        const newRegs = filtered.filter(d => d.status === 'PENDING');
         if (newRegs.length > prev.filter(d => d.status === 'PENDING').length) playNotificationSound();
-        return docs;
+        return filtered;
       });
     }) : () => {};
     
-    const unsubAccessPoints = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<AccessPoint>('accessPoints', setAccessPoints) : () => {};
+    const unsubAccessPoints = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<AccessPoint>('accessPoints', (data) => setAccessPoints(filterByAgency(data))) : () => {};
     
     // Role-based check-ins subscription
     const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
     const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', (docs) => {
-      if (role === 'AGENCY') {
+      const filtered = filterByAgency(docs);
+      if (role === 'AGENCY' || role === 'ADMIN') {
         setCheckIns(prev => {
-          if (docs.length > prev.length) playNotificationSound();
-          return docs;
+          if (filtered.length > prev.length) playNotificationSound();
+          return filtered;
         });
       } else {
-        setCheckIns(docs);
+        setCheckIns(filtered);
       }
     }, checkInConstraints);
 
-    const unsubCompanies = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
-    const unsubUnits = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
-    const unsubCompanyUsers = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
-    const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', (docs) => {
-      if (role === 'AGENCY') {
-        setCompanyRequests(prev => {
-          const newRequests = docs.filter(d => d.status === 'PENDING');
-          if (newRequests.length > prev.filter(d => d.status === 'PENDING').length) playNotificationSound();
-          return docs;
-        });
-      } else {
-        setCompanyRequests(docs);
-      }
-    }) : () => {};
-    const notificationConstraints = [where('userId', 'in', [
-      user.uid, 
-      'AGENCY', 
-      ...(role === 'COMPANY' ? ['COMPANY_' + (user as any).companyId] : [])
-    ])];
-    const unsubNotifications = subscribeToCollection<Notification>('notifications', setNotifications, notificationConstraints);
+    const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<Company>('companies', (data) => setCompanies(filterByAgency(data))) : () => {};
+    const unsubUnits = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Unit>('units', (data) => setUnits(filterByAgency(data))) : () => {};
+    const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
+    const unsubCompanyRequests = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyRequest>('companyRequests', (data) => setCompanyRequests(filterByAgency(data))) : () => {};
+
+    const unsubNotifications = subscribeToCollection<Notification>('notifications', (data) => {
+      const filtered = data.filter(n => n.userId === user.uid || (role === 'ADMIN' && n.agencyId === 'ADMIN'));
+      setNotifications(filtered);
+    });
 
     return () => {
       unsubEmployees();
@@ -650,8 +721,9 @@ export default function App() {
       unsubCompanyUsers();
       unsubCompanyRequests();
       unsubNotifications();
+      unsubs.forEach(unsub => unsub());
     };
-  }, [isAuthReady, user, role]);
+  }, [isAuthReady, user, role, currentAgencyId]);
 
   const handleLogin = async () => {
     try {
@@ -779,6 +851,16 @@ export default function App() {
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <CompanyRegistrationForm onComplete={() => window.location.href = '/'} />
+          </div>
+        </ErrorBoundary>
+      );
+    }
+
+    if (roleParam === 'AGENCY_REGISTRATION') {
+      return (
+        <ErrorBoundary>
+          <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <AgencyRegistrationForm onComplete={() => window.location.href = '/'} />
           </div>
         </ErrorBoundary>
       );
@@ -1028,6 +1110,18 @@ export default function App() {
     );
   }
 
+  if (role === 'AGENCY_REGISTRATION') {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+          <AgencyRegistrationForm 
+            onComplete={() => setRole('AGENCY')} 
+          />
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
   if (needsPasswordChange && user) {
     return (
       <ErrorBoundary>
@@ -1085,6 +1179,41 @@ export default function App() {
 
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
               <AnimatePresence mode="wait">
+                {role === 'ADMIN' && activeTab === 'admin_dashboard' && (
+                  <div key="admin-dashboard">
+                    <AgencyDashboard 
+                      assignments={assignments}
+                      employees={employees}
+                      contacts={contacts}
+                      employeeRegistrations={employeeRegistrations}
+                      pricing={pricing}
+                      ratingLabel={ratingLabel}
+                      setActiveTab={setActiveTab}
+                      clients={clients}
+                      feedbacks={feedbacks}
+                      companies={companies}
+                      units={units}
+                      role={role}
+                      agencies={agencies}
+                      selectedAgencyId={selectedAgencyId}
+                      onClearAgency={() => setSelectedAgencyId(null)}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                    />
+                  </div>
+                )}
+                {role === 'ADMIN' && activeTab === 'admin_agencies' && (
+                  <div key="admin-agencies">
+                    <SuperAdminAgencies 
+                      agencies={agencies}
+                      companies={companies}
+                      employees={employees}
+                      onManageAgency={(id) => {
+                        setSelectedAgencyId(id);
+                        setActiveTab('admin_dashboard');
+                      }}
+                    />
+                  </div>
+                )}
                 {role === 'AGENCY' && activeTab === 'user_management' && (
                   <div key="agency-user-management">
                     <UserManagement 
@@ -1118,6 +1247,11 @@ export default function App() {
                       feedbacks={feedbacks}
                       companies={companies}
                       units={units}
+                      role={role}
+                      agencies={agencies}
+                      selectedAgencyId={selectedAgencyId}
+                      onClearAgency={() => setSelectedAgencyId(null)}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
                     />
                   </div>
                 )}
@@ -1136,6 +1270,8 @@ export default function App() {
                       employees={employees}
                       clients={clients}
                       ratingLabel={ratingLabel}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1149,6 +1285,8 @@ export default function App() {
                       companyRequests={companyRequests}
                       companies={companies}
                       units={units}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1161,6 +1299,8 @@ export default function App() {
                       companies={companies}
                       checkIns={checkIns}
                       employees={employees}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1171,6 +1311,10 @@ export default function App() {
                       units={units}
                       companyUsers={companyUsers}
                       clients={clients}
+                      assignments={assignments}
+                      employees={employees}
+                      agencyId={currentAgencyId}
+                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1181,6 +1325,8 @@ export default function App() {
                       ratingLabel={ratingLabel}
                       setPricing={setPricing}
                       setRatingLabel={setRatingLabel}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1308,7 +1454,322 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[] }) {
+function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: { agencies: Agency[], companies: Company[], employees: Employee[], onManageAgency: (id: string) => void }) {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [invitePhone, setInvitePhone] = useState('');
+  const [newAgency, setNewAgency] = useState({ name: '', responsibleName: '', email: '', phone: '' });
+
+  const handleSendInvite = () => {
+    if (!invitePhone) return;
+    const cleanPhone = invitePhone.replace(/\D/g, '');
+    const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
+    const message = encodeURIComponent(`Olá! Você foi convidado para registrar sua agência em nossa plataforma. Acesse o link para completar seu cadastro: ${link}`);
+    window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+    setShowInviteModal(false);
+    setInvitePhone('');
+  };
+
+  const handleAddAgency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const id = Math.random().toString(36).substr(2, 9);
+      await setDocument('agencies', id, {
+        ...newAgency,
+        id,
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        address: {
+          zipCode: '',
+          street: '',
+          number: '',
+          neighborhood: '',
+          city: '',
+          state: ''
+        },
+        tradeName: '',
+        cnpj: '',
+        openingDate: '',
+        segment: [],
+        responsibleCpf: '',
+        responsibleRole: ''
+      });
+      setShowAddModal(false);
+      setNewAgency({ name: '', responsibleName: '', email: '', phone: '' });
+    } catch (error) {
+      console.error('Error adding agency:', error);
+    }
+  };
+
+  const toggleAgencyStatus = async (agency: Agency) => {
+    try {
+      await updateDocument('agencies', agency.id, {
+        status: agency.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'
+      });
+    } catch (error) {
+      console.error('Error toggling agency status:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl"
+          >
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Convidar Agência</h2>
+                <p className="text-slate-500 text-sm font-medium">Envie o link de cadastro via WhatsApp</p>
+              </div>
+              <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp do Responsável</label>
+                <input
+                  required
+                  type="tel"
+                  value={invitePhone}
+                  onChange={e => setInvitePhone(e.target.value)}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  placeholder="(00) 00000-0000"
+                />
+                <p className="text-[10px] text-slate-400 font-medium ml-1 italic text-wrap">O link enviado será: {window.location.origin}?role=AGENCY_REGISTRATION</p>
+              </div>
+
+              <button
+                onClick={handleSendInvite}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Phone size={18} />
+                Abrir WhatsApp
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-950 tracking-tighter font-display">Gestão de Agências</h1>
+          <p className="text-slate-500 font-medium">Controle todas as agências da plataforma</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button 
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-100 transition-all active:scale-95 border border-emerald-100"
+          >
+            <Phone size={18} />
+            Convidar via WhatsApp
+          </button>
+          <button 
+            onClick={() => {
+              const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
+              navigator.clipboard.writeText(link);
+              alert('Link de cadastro copiado para a área de transferência!');
+            }}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-100 transition-all active:scale-95 border border-blue-100"
+          >
+            <LinkIcon size={18} />
+            Copiar Link
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+          >
+            <Plus size={18} />
+            Nova Agência
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {agencies.map(agency => {
+          const agencyCompanies = companies.filter(c => c.agencyId === agency.id);
+          const agencyEmployees = employees.filter(e => e.agencyId === agency.id);
+
+          return (
+            <motion.div
+              key={agency.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all group relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-6">
+                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  agency.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                }`}>
+                  {agency.status === 'ACTIVE' ? 'Ativa' : 'Bloqueada'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-950 group-hover:text-white transition-colors">
+                  <ShieldCheck size={28} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-950 tracking-tight">{agency.name}</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{agency.responsibleName}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Empresas</p>
+                  <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyCompanies.length}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Diaristas</p>
+                  <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyEmployees.length}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-3 text-slate-500">
+                  <Mail size={14} />
+                  <span className="text-xs font-medium">{agency.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-slate-500">
+                  <div className="flex items-center gap-3">
+                    <Phone size={14} />
+                    <span className="text-xs font-medium">{agency.phone}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const cleanPhone = agency.phone.replace(/\D/g, '');
+                      const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
+                      const message = encodeURIComponent(`Olá ${agency.responsibleName}! Aqui está o link para completar o cadastro da agência ${agency.name}: ${link}`);
+                      window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+                    }}
+                    className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all"
+                    title="Reenviar convite via WhatsApp"
+                  >
+                    <Phone size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => onManageAgency(agency.id)}
+                  className="flex-1 py-3 bg-slate-950 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                >
+                  Gerenciar
+                </button>
+                <button 
+                  onClick={() => toggleAgencyStatus(agency)}
+                  className={`flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${
+                    agency.status === 'ACTIVE' 
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                  }`}
+                >
+                  {agency.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear'}
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+          >
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Nova Agência</h2>
+                <p className="text-slate-500 text-sm font-medium">Cadastre uma nova agência no sistema</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddAgency} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Agência</label>
+                  <input
+                    required
+                    type="text"
+                    value={newAgency.name}
+                    onChange={e => setNewAgency({ ...newAgency, name: e.target.value })}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                    placeholder="Ex: Agência Central"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Responsável</label>
+                  <input
+                    required
+                    type="text"
+                    value={newAgency.responsibleName}
+                    onChange={e => setNewAgency({ ...newAgency, responsibleName: e.target.value })}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                    placeholder="Nome do responsável"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                    <input
+                      required
+                      type="email"
+                      value={newAgency.email}
+                      onChange={e => setNewAgency({ ...newAgency, email: e.target.value })}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                      placeholder="email@agencia.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Telefone</label>
+                    <input
+                      required
+                      type="tel"
+                      value={newAgency.phone}
+                      onChange={e => setNewAgency({ ...newAgency, phone: e.target.value })}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-4 text-slate-500 font-black uppercase tracking-widest text-xs hover:bg-slate-50 rounded-2xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                >
+                  Criar Agência
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, agencyId }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, agencyId: string | null }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -1329,6 +1790,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       const assignment = assignments.find(a => a.employeeId === evaluatingEmployee.id && a.date === today);
       
       const newFeedback: Omit<Feedback, 'id'> = {
+        agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
         managerId: assignment?.clientId || 'agency',
         assignmentId: assignment?.id || 'manual',
@@ -1357,6 +1819,14 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
   const totalValue = todayAssignments.reduce((acc, curr) => acc + curr.value, 0);
   const activeClients = new Set(todayAssignments.map(a => a.clientId)).size;
   const pendingContacts = contacts.filter(c => c.status === 'PENDING').length;
+
+  const totalCompanies = companies.length;
+  const activeCompanies = companies.filter(c => c.status === 'ACTIVE').length;
+  const pendingCompanies = companies.filter(c => c.status === 'PENDING').length;
+  const totalEmployees = employees.length;
+  const servicesInProgress = assignments.filter(a => a.status === 'IN_PROGRESS' || a.status === 'SCHEDULED').length;
+  const companiesWithRejectedDocs = companies.filter(c => c.documents?.some(d => d.status === 'REJECTED')).length;
+  const alerts = companies.filter(c => c.status === 'BLOCKED').length + companiesWithRejectedDocs;
 
   const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const todayName = daysOfWeek[new Date().getDay()];
@@ -1389,42 +1859,125 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho da sua agência hoje.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            {role === 'ADMIN' && agencies.find(a => a.id === selectedAgencyId) 
+              ? `Visão Geral: ${agencies.find(a => a.id === selectedAgencyId)?.name}` 
+              : 'Visão Geral'}
+          </h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">
+            {role === 'ADMIN' && selectedAgencyId 
+              ? 'Acompanhe o desempenho desta agência.' 
+              : 'Acompanhe o desempenho da sua agência hoje.'}
+          </p>
         </div>
+        {role === 'ADMIN' && selectedAgencyId && (
+          <button 
+            onClick={() => onClearAgency()}
+            className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all active:scale-95"
+          >
+            Voltar para Visão Global
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {role === 'ADMIN' && (
+          <StatCard 
+            icon={<ShieldCheck size={24} />} 
+            label="Total de Agências" 
+            value={agencies.length.toString()} 
+            trend="Na Plataforma"
+            color="slate"
+            onClick={() => setActiveTab('admin_agencies')}
+          />
+        )}
         <StatCard 
-          icon={<Users size={24} />} 
-          label="Diaristas Agendados" 
-          value={todayAssignments.length.toString()} 
-          trend="+12%"
+          icon={<Building2 size={24} />} 
+          label="Total de Empresas" 
+          value={totalCompanies.toString()} 
+          trend="Cadastradas"
           color="blue"
         />
         <StatCard 
-          icon={<TrendingUp size={24} />} 
-          label="Faturamento Hoje" 
-          value={`R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-          trend={`R$ ${(totalValue / (todayAssignments.length || 1)).toFixed(0)}/avg`}
+          icon={<CheckCircle2 size={24} />} 
+          label="Empresas Ativas" 
+          value={activeCompanies.toString()} 
+          trend="Operando"
           color="emerald"
         />
         <StatCard 
-          icon={<Building2 size={24} />} 
-          label="Empresas Atendidas" 
-          value={activeClients.toString()} 
-          trend="Ativo"
+          icon={<Clock size={24} />} 
+          label="Empresas Pendentes" 
+          value={pendingCompanies.toString()} 
+          trend={pendingCompanies > 0 ? "Aguardando" : "Limpo"}
+          alert={pendingCompanies > 0}
+          color="orange"
+        />
+        <StatCard 
+          icon={<Users size={24} />} 
+          label="Total de Funcionários" 
+          value={totalEmployees.toString()} 
+          trend="Cadastrados"
           color="purple"
         />
         <StatCard 
-          icon={<Phone size={24} />} 
-          label="Novos Contatos" 
-          value={pendingContacts.toString()} 
-          trend={pendingContacts > 0 ? "Urgente" : "Limpo"}
-          alert={pendingContacts > 0}
-          color="orange"
+          icon={<Briefcase size={24} />} 
+          label="Serviços em Andamento" 
+          value={servicesInProgress.toString()} 
+          trend="Ativos"
+          color="indigo"
+        />
+        <StatCard 
+          icon={<AlertTriangle size={24} />} 
+          label="Alertas" 
+          value={alerts.toString()} 
+          trend={alerts > 0 ? "Empresas Irregulares" : "Tudo OK"}
+          alert={alerts > 0}
+          color="rose"
         />
       </div>
+
+      {alerts > 0 && (
+        <div className="bg-rose-50 p-8 sm:p-12 rounded-[2.5rem] border border-rose-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-6 mb-8">
+              <div className="w-16 h-16 bg-rose-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-rose-950/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <AlertTriangle size={32} />
+              </div>
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-black text-rose-900 tracking-tight">Alertas Críticos</h3>
+                <p className="text-sm text-rose-600 font-medium tracking-wide">Empresas com irregularidades que precisam de atenção.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {companies.filter(c => c.status === 'BLOCKED' || c.documents?.some(d => d.status === 'REJECTED')).map(company => (
+                <div key={company.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-rose-100 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{company.name}</p>
+                      <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                        {company.status === 'BLOCKED' ? 'Empresa Bloqueada' : 'Documentos Rejeitados'}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('admin_companies')}
+                    className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
+                  >
+                    Resolver
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
@@ -1697,6 +2250,8 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
               setShowProcessRegistrationModal(false);
               setSelectedRegistration(null);
             }}
+            agencyId={agencyId}
+            selectedAgencyId={selectedAgencyId}
           />
         )}
       </div>
@@ -1840,7 +2395,7 @@ function ConfirmationModal({
   );
 }
 
-function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' }) {
+function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'slate', onClick?: () => void }) {
   const colorClasses: any = {
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
@@ -1848,10 +2403,14 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: 
     orange: 'bg-orange-50 text-orange-600 border-orange-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100',
     rose: 'bg-rose-50 text-rose-600 border-rose-100',
+    slate: 'bg-slate-50 text-slate-900 border-slate-100'
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/20 transition-all group relative overflow-hidden">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/20 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className={`p-3 rounded-2xl ${colorClasses[color]} border transition-transform group-hover:scale-110 duration-500`}>
           {icon}
@@ -2358,7 +2917,7 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
   );
 }
 
-function ProcessRegistrationModal({ registration, onClose, onComplete }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void }) {
+function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId, selectedAgencyId }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void, agencyId: string | null, selectedAgencyId?: string | null }) {
   const [username, setUsername] = useState(`${registration.firstName.toLowerCase()}.${registration.lastName.toLowerCase().split(' ')[0]}`);
   const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
   const [isSending, setIsSending] = useState(false);
@@ -2368,6 +2927,9 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
     setIsSending(true);
     
     try {
+      const targetAgencyId = selectedAgencyId || agencyId || registration.agencyId;
+      if (!targetAgencyId) throw new Error('Agência não identificada');
+
       // 1. Create Firebase Auth user via Admin API to avoid automatic sign-in
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
       console.log("DEBUG: Creating user with:", emailForAuth, password);
@@ -2391,6 +2953,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
 
       // 2. Create employee record
       await setDocument('employees', newUid, {
+        agencyId: targetAgencyId,
         firstName: registration.firstName,
         lastName: registration.lastName,
         cpf: registration.cpf,
@@ -2413,6 +2976,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
       await setDocument('users', newUid, { 
         role: 'EMPLOYEE', 
         email: registration.personalEmail,
+        agencyId: targetAgencyId,
         forcePasswordChange: true,
         createdAt: new Date().toISOString()
       });
@@ -2501,7 +3065,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
   );
 }
 
-function AgencyRegistrations({ employees, clients, ratingLabel }: { employees: Employee[], clients: Client[], ratingLabel: string }) {
+function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, selectedAgencyId }: { employees: Employee[], clients: Client[], ratingLabel: string, agencyId: string | null, selectedAgencyId?: string | null }) {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -2676,12 +3240,19 @@ function AgencyRegistrations({ employees, clients, ratingLabel }: { employees: E
       return;
     }
 
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) {
+      alert('Agência não identificada.');
+      return;
+    }
+
     if (isEditing && selectedEmployee) {
       await updateDocument('employees', selectedEmployee.id, formData);
       alert('Cadastro atualizado com sucesso!');
     } else {
       const newEmp: Omit<Employee, 'id'> = {
         ...formData,
+        agencyId: targetAgencyId,
         rating: 1,
         status: 'PENDING',
         complaints: 0,
@@ -3306,12 +3877,14 @@ function AgencyRegistrations({ employees, clients, ratingLabel }: { employees: E
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[] }) {
+function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
+  const [rejectingRequest, setRejectingRequest] = useState<CompanyRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
 
@@ -3364,12 +3937,49 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     }
   };
 
+  const handleRejectRequest = (req: CompanyRequest) => {
+    setRejectingRequest(req);
+    setRejectReason('');
+  };
+
+  const confirmRejectRequest = async () => {
+    if (!rejectingRequest) return;
+    if (rejectReason.trim() === '') {
+      alert('É necessário informar um motivo para recusar a solicitação.');
+      return;
+    }
+
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) return;
+
+    await updateDocument('companyRequests', rejectingRequest.id, { status: 'REJECTED' });
+
+    await createDocument('notifications', {
+      userId: 'COMPANY_' + rejectingRequest.companyId,
+      agencyId: targetAgencyId,
+      title: 'Solicitação Recusada',
+      message: `Sua solicitação para o dia ${formatDateBR(rejectingRequest.date)} foi recusada. Motivo: ${rejectReason}`,
+      type: 'SYSTEM',
+      read: false,
+      createdAt: new Date().toISOString(),
+      link: 'manager_dashboard'
+    });
+    
+    setRejectingRequest(null);
+    setRejectReason('');
+    alert('Solicitação recusada e empresa notificada.');
+  };
+
   const handleStaff = async (empId: string) => {
     const emp = employees.find(e => e.id === empId);
     const client = clients.find(c => c.id === selectedClientId);
     if (!emp || !client) return;
 
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) return;
+
     const newAs: Omit<Assignment, 'id'> = {
+      agencyId: targetAgencyId,
       employeeId: empId,
       clientId: selectedClientId,
       date: selectedDate,
@@ -3384,6 +3994,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     // Create internal notification
     await createDocument('notifications', {
       userId: empId,
+      agencyId: targetAgencyId,
       title: 'Nova Diaria Agendada',
       message: `Você foi agendado para ${client.name} no dia ${formatDateBR(selectedDate)}.`,
       type: 'ASSIGNMENT',
@@ -3771,7 +4382,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
           </div>
 
           <div className="space-y-6">
-            {companyRequests.map(req => {
+            {companyRequests.filter(req => req.status === 'PENDING').map(req => {
               const client = clients.find(c => c.id === req.clientId);
               return (
                 <div key={req.id} className="p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
@@ -3811,11 +4422,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                         Atender
                       </button>
                       <button 
-                        onClick={async () => {
-                          if (confirm('Deseja recusar esta solicitação?')) {
-                            await updateDocument('companyRequests', req.id, { status: 'REJECTED' });
-                          }
-                        }}
+                        onClick={() => handleRejectRequest(req)}
                         className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95"
                       >
                         Recusar
@@ -3825,7 +4432,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                 </div>
               );
             })}
-            {companyRequests.length === 0 && (
+            {companyRequests.filter(req => req.status === 'PENDING').length === 0 && (
               <div className="py-20 text-center">
                 <p className="text-slate-400 font-medium italic">Nenhuma solicitação pendente.</p>
               </div>
@@ -3833,17 +4440,84 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {rejectingRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setRejectingRequest(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-[2rem] shadow-2xl overflow-hidden z-10"
+            >
+              <div className="p-6 sm:p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Recusar Solicitação</h3>
+                  <button 
+                    onClick={() => setRejectingRequest(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Motivo da Recusa</label>
+                    <textarea 
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Explique o motivo para a empresa..."
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all resize-none h-32"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={() => setRejectingRequest(null)}
+                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={confirmRejectRequest}
+                    className="flex-1 py-3.5 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                  >
+                    Confirmar Recusa
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { pricing: PricingConfig, ratingLabel: string, setPricing: (p: PricingConfig) => void, setRatingLabel: (l: string) => void }) {
+function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agencyId, selectedAgencyId }: { pricing: PricingConfig, ratingLabel: string, setPricing: (p: PricingConfig) => void, setRatingLabel: (l: string) => void, agencyId: string | null, selectedAgencyId?: string | null }) {
   const [localPricing, setLocalPricing] = useState<PricingConfig>(pricing);
   const [localLabel, setLocalLabel] = useState(ratingLabel);
 
   const handleSave = async () => {
-    await setDocument('settings', 'pricing', { values: localPricing });
-    await setDocument('settings', 'ratingLabel', { value: localLabel });
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (targetAgencyId) {
+      await updateDocument('agencies', targetAgencyId, { 
+        pricing: localPricing,
+        ratingLabel: localLabel
+      });
+    } else {
+      await setDocument('settings', 'pricing', { values: localPricing });
+      await setDocument('settings', 'ratingLabel', { value: localLabel });
+    }
     setPricing(localPricing);
     setRatingLabel(localLabel);
     alert('Configurações salvas com sucesso!');
@@ -4049,12 +4723,16 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { p
   );
 }
 
-function AgencyCompanies({ companies, units, companyUsers, clients }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[] }) {
+function AgencyCompanies({ companies, units, companyUsers, clients, assignments, employees, agencyId, selectedAgencyId }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[], assignments: Assignment[], employees: Employee[], agencyId: string | null, selectedAgencyId?: string | null }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING' | 'BLOCKED'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUnitModal, setShowUnitModal] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<Company | null>(null);
   const [showDeleteCompanyConfirm, setShowDeleteCompanyConfirm] = useState<string | null>(null);
   const [showDeleteUnitConfirm, setShowDeleteUnitConfirm] = useState<string | null>(null);
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     responsibleName: '',
@@ -4093,14 +4771,40 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     await deleteDocument('units', id);
   };
 
+  const handleUpdateCompanyStatus = async (id: string, status: 'ACTIVE' | 'PENDING' | 'BLOCKED') => {
+    await updateDocument('companies', id, { status });
+  };
+
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) {
+      alert('Selecione uma agência para gerenciar antes de adicionar uma empresa.');
+      return;
+    }
+
     const newCompany: Omit<Company, 'id'> = {
       ...formData,
+      agencyId: targetAgencyId,
       createdAt: new Date().toISOString()
     };
     await createDocument('companies', newCompany);
     setShowAddModal(false);
+    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '' });
+  };
+
+  const handleEditCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditCompanyModal) return;
+    await updateDocument('companies', showEditCompanyModal.id, {
+      name: formData.name,
+      responsibleName: formData.responsibleName,
+      cnpj: formData.cnpj,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address
+    });
+    setShowEditCompanyModal(null);
     setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '' });
   };
 
@@ -4110,8 +4814,15 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     const company = companies.find(c => c.id === showUnitModal);
     if (!company) return;
 
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) {
+      alert('Agência não identificada.');
+      return;
+    }
+
     const newUnit: Omit<Unit, 'id'> = {
       ...unitData,
+      agencyId: targetAgencyId,
       companyId: showUnitModal,
       createdAt: new Date().toISOString()
     };
@@ -4120,6 +4831,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     // Create a CompanyUser for the unit manager
     if (unitData.login && unitData.password) {
       const newUser: Omit<CompanyUser, 'id'> = {
+        agencyId: targetAgencyId,
         companyId: showUnitModal,
         unitId: unitId,
         fullName: unitData.managerName,
@@ -4133,6 +4845,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     
     // Also create a Client entry for the staffing system
     const newClient: Omit<Client, 'id'> = {
+      agencyId: targetAgencyId,
       name: `${company.name} - ${unitData.name}`,
       managerName: unitData.managerName,
       location: unitData.location,
@@ -4158,10 +4871,17 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     const company = companies.find(c => c.id === showUserModal);
     if (!company) return;
 
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) {
+      alert('Agência não identificada.');
+      return;
+    }
+
     const domain = company.name.toLowerCase().replace(/\s+/g, '') + '.com';
     const login = `${userData.fullName.toLowerCase().replace(/\s+/g, '.')}@${domain}`;
 
     const newUser: Omit<CompanyUser, 'id'> = {
+      agencyId: targetAgencyId,
       companyId: showUserModal,
       unitId: userData.unitId!,
       fullName: userData.fullName,
@@ -4184,6 +4904,13 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     alert(`Usuário criado com sucesso!\nLogin: ${login}`);
   };
 
+  const filteredCompanies = companies.filter(company => {
+    const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (company.cnpj && company.cnpj.includes(searchTerm));
+    const matchesStatus = statusFilter === 'ALL' || company.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -4204,8 +4931,32 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
         </button>
       </div>
 
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input 
+            type="text"
+            placeholder="Buscar por nome ou CNPJ..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all"
+          />
+        </div>
+        <div className="flex w-full md:w-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
+          {(['ALL', 'ACTIVE', 'PENDING', 'BLOCKED'] as const).map(status => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === status ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {status === 'ALL' ? 'Todas' : status === 'ACTIVE' ? 'Ativas' : status === 'PENDING' ? 'Pendentes' : 'Bloqueadas'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        {companies.map(company => (
+        {filteredCompanies.map(company => (
           <div key={company.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full -mr-20 -mt-20 transition-all group-hover:scale-150"></div>
             
@@ -4218,10 +4969,51 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
                   <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors line-clamp-1">{company.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">CNPJ: {company.cnpj || 'Não informado'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      company.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' :
+                      company.status === 'BLOCKED' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {company.status === 'ACTIVE' ? 'ATIVA' : company.status === 'BLOCKED' ? 'BLOQUEADA' : 'PENDENTE'}
+                    </span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+                {company.status === 'PENDING' && (
+                  <button 
+                    onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
+                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
+                    title="Aprovar Empresa"
+                  >
+                    <CheckCircle size={18} className="sm:w-5 sm:h-5" />
+                  </button>
+                )}
+                {company.status === 'ACTIVE' && (
+                  <button 
+                    onClick={() => handleUpdateCompanyStatus(company.id, 'BLOCKED')}
+                    className="p-3 bg-rose-50 text-rose-600 rounded-xl sm:rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm shrink-0"
+                    title="Bloquear Empresa"
+                  >
+                    <Lock size={18} className="sm:w-5 sm:h-5" />
+                  </button>
+                )}
+                {company.status === 'BLOCKED' && (
+                  <button 
+                    onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
+                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
+                    title="Desbloquear Empresa"
+                  >
+                    <Unlock size={18} className="sm:w-5 sm:h-5" />
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowDetailsModal(company)}
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
+                  title="Ver Detalhes"
+                >
+                  <Eye size={18} className="sm:w-5 sm:h-5" />
+                </button>
                 <button 
                   onClick={() => setShowUserModal(company.id)}
                   className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
@@ -4242,6 +5034,23 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
                   title="Adicionar Unidade"
                 >
                   <Plus size={18} className="sm:w-5 sm:h-5" />
+                </button>
+                <button 
+                  onClick={() => {
+                    setFormData({
+                      name: company.name,
+                      responsibleName: company.responsibleName,
+                      cnpj: company.cnpj,
+                      phone: company.phone,
+                      email: company.email,
+                      address: company.address || ''
+                    });
+                    setShowEditCompanyModal(company);
+                  }}
+                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
+                  title="Editar Empresa"
+                >
+                  <Edit2 size={18} className="sm:w-5 sm:h-5" />
                 </button>
                 <button 
                   onClick={() => setShowDeleteCompanyConfirm(company.id)}
@@ -4325,6 +5134,244 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
       </div>
 
       {/* Modals */}
+      {showEditCompanyModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden"
+          >
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                <Edit2 className="text-blue-600" size={24} />
+                Editar Empresa
+              </h3>
+              <button onClick={() => setShowEditCompanyModal(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-xl">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleEditCompany} className="p-6 sm:p-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nome da Empresa</label>
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ex: StaffLink Ltda" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">CNPJ</label>
+                  <input type="text" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="00.000.000/0000-00" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Responsável</label>
+                  <input type="text" required value={formData.responsibleName} onChange={e => setFormData({...formData, responsibleName: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ex: João Silva" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Telefone / WhatsApp</label>
+                  <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                  <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="contato@empresa.com" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Endereço (Opcional)</label>
+                  <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Rua, Número, Bairro, Cidade - Estado" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <button type="button" onClick={() => setShowEditCompanyModal(null)} className="px-6 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Cancelar</button>
+                <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">Salvar Alterações</button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
+              <h3 className="text-2xl font-black text-slate-900">Detalhes da Empresa</h3>
+              <button 
+                onClick={() => setShowDetailsModal(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-8">
+              <div>
+                <h4 className="text-lg font-bold text-slate-800 mb-4">Informações Gerais</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Nome</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.name}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">CNPJ</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.cnpj || 'Não informado'}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Responsável</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.responsibleName}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Contato</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.phone}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Email</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.email}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Endereço</p>
+                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-bold text-slate-800 mb-4">Documentos</h4>
+                {showDetailsModal.documents && showDetailsModal.documents.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {showDetailsModal.documents.map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <FileText size={20} className="text-blue-500" />
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">{doc.name}</p>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              doc.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+                              doc.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {doc.status === 'APPROVED' ? 'APROVADO' : doc.status === 'REJECTED' ? 'REPROVADO' : 'PENDENTE'}
+                            </span>
+                          </div>
+                        </div>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <Eye size={16} />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">Nenhum documento enviado.</p>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-lg font-bold text-slate-800 mb-4">Usuários Cadastrados</h4>
+                <div className="space-y-3">
+                  {companyUsers.filter(u => u.companyId === showDetailsModal.id).map(user => (
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">{user.fullName}</p>
+                        <p className="text-xs text-slate-500">{user.email}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        user.status === 'BLOCKED' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {user.status === 'BLOCKED' ? 'BLOQUEADO' : 'ATIVO'}
+                      </span>
+                    </div>
+                  ))}
+                  {companyUsers.filter(u => u.companyId === showDetailsModal.id).length === 0 && (
+                    <p className="text-sm text-slate-500 italic">Nenhum usuário cadastrado.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-bold text-slate-800 mb-4">Funcionários que já atuaram</h4>
+                <div className="space-y-3">
+                  {(() => {
+                    const companyUnitClientIds = units.filter(u => u.companyId === showDetailsModal.id).map(u => u.clientId).filter(Boolean);
+                    const companyAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId));
+                    const uniqueEmployeeIds = Array.from(new Set(companyAssignments.map(a => a.employeeId)));
+                    const companyEmployees = employees.filter(e => uniqueEmployeeIds.includes(e.id));
+                    
+                    return companyEmployees.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {companyEmployees.map(emp => (
+                          <div key={emp.id} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            {emp.photoUrl ? (
+                              <img src={emp.photoUrl} alt={emp.firstName} className="w-10 h-10 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-100">
+                                <UserIcon size={18} />
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-bold text-slate-700">{emp.firstName} {emp.lastName}</p>
+                              <div className="flex items-center gap-1">
+                                <Star size={10} className="text-amber-400 fill-amber-400" />
+                                <span className="text-[10px] font-bold text-slate-500">{emp.rating.toFixed(1)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500 italic">Nenhum funcionário atuou nesta empresa ainda.</p>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-bold text-slate-800 mb-4">Serviços Realizados</h4>
+                <div className="space-y-3">
+                  {(() => {
+                    const companyUnitClientIds = units.filter(u => u.companyId === showDetailsModal.id).map(u => u.clientId).filter(Boolean);
+                    const companyAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId));
+                    
+                    return companyAssignments.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3">
+                        {companyAssignments.slice(0, 10).map(as => {
+                          const emp = employees.find(e => e.id === as.employeeId);
+                          const client = clients.find(c => c.id === as.clientId);
+                          return (
+                            <div key={as.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-blue-600 border border-slate-100">
+                                  <Briefcase size={18} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-700">{emp ? `${emp.firstName} ${emp.lastName}` : 'Diarista'}</p>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{client?.name} • {formatDateBR(as.date)}</p>
+                                </div>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                as.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                as.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {as.status}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {companyAssignments.length > 10 && (
+                          <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-2">
+                            Exibindo os últimos 10 de {companyAssignments.length} serviços
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500 italic">Nenhum serviço realizado ainda.</p>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <ConfirmationModal 
         isOpen={!!showDeleteCompanyConfirm}
         onClose={() => setShowDeleteCompanyConfirm(null)}
@@ -4656,6 +5703,7 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
     setIsSubmitting(true);
     try {
       const newRequest: Omit<CompanyRequest, 'id'> = {
+        agencyId: units.find(u => u.id === selectedUnitId)?.agencyId || '',
         companyId: units.find(u => u.id === selectedUnitId)?.companyId || '',
         clientId: clientId,
         employeeIds: selectedEmployeeIds,
@@ -4924,6 +5972,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
     try {
       const assignment = assignments.find(a => a.clientId === clientId && a.employeeId === evaluatingEmployee.id && a.date === selectedDate);
       const newFeedback: Omit<Feedback, 'id'> = {
+        agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
         managerId: clientId,
         assignmentId: assignment?.id || 'manual',
@@ -5211,7 +6260,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
   );
 }
 
-function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns, employees }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[], checkIns: CheckIn[], employees: Employee[] }) {
+function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns, employees, agencyId, selectedAgencyId }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[], checkIns: CheckIn[], employees: Employee[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState('');
@@ -5224,7 +6273,14 @@ function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns
     const company = companies.find(c => c.id === unit?.companyId);
     if (!unit || !company) return;
 
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (!targetAgencyId) {
+      alert('Agência não identificada.');
+      return;
+    }
+
     const newAP: Omit<AccessPoint, 'id'> = {
+      agencyId: targetAgencyId,
       managerName: unit.managerName,
       location: unit.location,
       qrCodeValue: `unit-${unit.id}-${Date.now()}`,
@@ -6141,6 +7197,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         const type = todayCheckIns.length % 2 === 0 ? 'IN' : 'OUT';
 
         const newCheckIn: Omit<CheckIn, 'id'> = {
+          agencyId: employee.agencyId,
           employeeId: employeeId,
           accessPointId: scannedPoint!.id,
           location: scannedPoint!.location,
@@ -6392,6 +7449,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees, feedbacks
     try {
       const assignment = myAssignments.find(a => a.employeeId === evaluatingEmployee.id && a.status === 'COMPLETED');
       const newFeedback: Omit<Feedback, 'id'> = {
+        agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
         managerId: clientId,
         assignmentId: assignment?.id || 'manual',
@@ -6695,6 +7753,7 @@ function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { cl
     if (!assignment) return;
 
     const newFeedback: Omit<Feedback, 'id'> = {
+      agencyId: assignment.agencyId,
       employeeId: assignment.employeeId,
       managerId: clientId,
       assignmentId: selectedAssignmentId,
@@ -6935,6 +7994,402 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
               <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">
                 Ao enviar, você concorda com nossos termos de uso e LGPD.
               </p>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    // Step 1: Dados da Empresa
+    name: '',
+    tradeName: '',
+    cnpj: '',
+    stateRegistration: '',
+    openingDate: '',
+    segment: [] as string[],
+    
+    // Step 2: Endereço
+    zipCode: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+
+    // Step 3: Responsável Legal
+    responsibleName: '',
+    responsibleCpf: '',
+    responsibleRole: '',
+    phone: '',
+    email: '',
+
+    // Step 4: Acesso
+    loginEmail: '',
+    password: '',
+    confirmPassword: '',
+
+    // Step 5: Documentação (URLs)
+    cnpjCard: '',
+    socialContract: '',
+    responsibleDoc: '',
+    addressProof: '',
+
+    // Step 6: Tipo de Serviço
+    services: [] as string[]
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const segments = ['Logística', 'Construção', 'Limpeza', 'Portaria', 'Industrial', 'Outros'];
+  const serviceTypes = ['Logística', 'Construção', 'Limpeza', 'Portaria', 'Industrial', 'Outros'];
+
+  const handleNext = () => setStep(s => s + 1);
+  const handlePrev = () => setStep(s => s - 1);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert('As senhas não coincidem!');
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.loginEmail, formData.password);
+      const newUid = userCredential.user.uid;
+
+      const agencyId = Math.random().toString(36).substr(2, 9);
+      
+      const agencyData: Omit<Agency, 'id'> = {
+        name: formData.name,
+        tradeName: formData.tradeName,
+        cnpj: formData.cnpj,
+        stateRegistration: formData.stateRegistration,
+        openingDate: formData.openingDate,
+        segment: [...new Set([...formData.segment, ...formData.services])],
+        address: {
+          zipCode: formData.zipCode,
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state
+        },
+        responsibleName: formData.responsibleName,
+        responsibleCpf: formData.responsibleCpf,
+        responsibleRole: formData.responsibleRole,
+        phone: formData.phone,
+        email: formData.email,
+        documents: {
+          cnpjCard: formData.cnpjCard,
+          socialContract: formData.socialContract,
+          responsibleDoc: formData.responsibleDoc,
+          addressProof: formData.addressProof
+        },
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+
+      await setDocument('agencies', agencyId, { ...agencyData, id: agencyId });
+      
+      // Update user role to AGENCY and link to agencyId
+      await setDocument('users', newUid, { 
+        role: 'AGENCY', 
+        agencyId, 
+        email: formData.loginEmail,
+        fullName: formData.responsibleName,
+        createdAt: new Date().toISOString()
+      });
+      
+      alert('Cadastro enviado com sucesso! Aguarde a aprovação do administrador.');
+      onComplete();
+    } catch (error) {
+      console.error('Error registering agency:', error);
+      alert('Erro ao realizar cadastro. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch(step) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Razão Social</label>
+                <input required type="text" className="input-field" placeholder="Razão Social da Empresa" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nome Fantasia</label>
+                <input required type="text" className="input-field" placeholder="Nome Fantasia" value={formData.tradeName} onChange={e => setFormData({...formData, tradeName: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">CNPJ</label>
+                <input required type="text" className="input-field" placeholder="00.000.000/0000-00" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Inscrição Estadual</label>
+                <input type="text" className="input-field" placeholder="Opcional" value={formData.stateRegistration} onChange={e => setFormData({...formData, stateRegistration: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Data de Abertura</label>
+                <input required type="date" className="input-field" value={formData.openingDate} onChange={e => setFormData({...formData, openingDate: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Segmento</label>
+                <div className="flex flex-wrap gap-2">
+                  {segments.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        const newSegment = formData.segment.includes(s) 
+                          ? formData.segment.filter(item => item !== s)
+                          : [...formData.segment, s];
+                        setFormData({...formData, segment: newSegment});
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${formData.segment.includes(s) ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">CEP</label>
+                <input required type="text" className="input-field" placeholder="00000-000" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Rua</label>
+                <input required type="text" className="input-field" placeholder="Nome da rua" value={formData.street} onChange={e => setFormData({...formData, street: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Número</label>
+                <input required type="text" className="input-field" placeholder="123" value={formData.number} onChange={e => setFormData({...formData, number: e.target.value})} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Complemento</label>
+                <input type="text" className="input-field" placeholder="Sala, Bloco, etc." value={formData.complement} onChange={e => setFormData({...formData, complement: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Bairro</label>
+                <input required type="text" className="input-field" placeholder="Bairro" value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cidade</label>
+                <input required type="text" className="input-field" placeholder="Cidade" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Estado</label>
+                <input required type="text" className="input-field" placeholder="UF" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} />
+              </div>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo do Responsável</label>
+              <input required type="text" className="input-field" placeholder="Nome completo" value={formData.responsibleName} onChange={e => setFormData({...formData, responsibleName: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">CPF</label>
+                <input required type="text" className="input-field" placeholder="000.000.000-00" value={formData.responsibleCpf} onChange={e => setFormData({...formData, responsibleCpf: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cargo</label>
+                <input required type="text" className="input-field" placeholder="Ex: Dono, Gerente" value={formData.responsibleRole} onChange={e => setFormData({...formData, responsibleRole: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Telefone</label>
+                <input required type="tel" className="input-field" placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Contato</label>
+                <input required type="email" className="input-field" placeholder="contato@empresa.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              </div>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Login</label>
+              <input required type="email" className="input-field" placeholder="login@empresa.com" value={formData.loginEmail} onChange={e => setFormData({...formData, loginEmail: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+                <input required type="password" className="input-field" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
+                <input required type="password" className="input-field" placeholder="••••••••" value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} />
+              </div>
+            </div>
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-6">
+            <p className="text-sm text-slate-500 font-medium mb-4 italic">Faça o upload dos documentos ou insira os links (PDF/Imagem).</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cartão CNPJ</label>
+                <input type="text" className="input-field" placeholder="Link do documento" value={formData.cnpjCard} onChange={e => setFormData({...formData, cnpjCard: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Contrato Social</label>
+                <input type="text" className="input-field" placeholder="Link do documento" value={formData.socialContract} onChange={e => setFormData({...formData, socialContract: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Documento do Responsável (RG/CNH)</label>
+                <input type="text" className="input-field" placeholder="Link do documento" value={formData.responsibleDoc} onChange={e => setFormData({...formData, responsibleDoc: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Comprovante de Endereço</label>
+                <input type="text" className="input-field" placeholder="Link do documento" value={formData.addressProof} onChange={e => setFormData({...formData, addressProof: e.target.value})} />
+              </div>
+            </div>
+          </div>
+        );
+      case 6:
+        return (
+          <div className="space-y-6">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Tipos de Serviço Prestado</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {serviceTypes.map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    const newServices = formData.services.includes(s) 
+                      ? formData.services.filter(item => item !== s)
+                      : [...formData.services, s];
+                    setFormData({...formData, services: newServices});
+                  }}
+                  className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 ${
+                    formData.services.includes(s) 
+                    ? 'bg-slate-950 border-slate-950 text-white shadow-xl shadow-slate-200 scale-105' 
+                    : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.services.includes(s) ? 'bg-white/10' : 'bg-slate-50'}`}>
+                    <Briefcase size={24} />
+                  </div>
+                  <span className="text-xs font-black uppercase tracking-widest">{s}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const stepTitles = [
+    "Dados da Empresa",
+    "Endereço",
+    "Responsável Legal",
+    "Acesso",
+    "Documentação",
+    "Serviços"
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-3xl w-full"
+      >
+        <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-slate-950" />
+          
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Etapa {step} de 6</p>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">{stepTitles[step-1]}</h2>
+            </div>
+            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-950">
+              <ShieldCheck size={32} />
+            </div>
+          </div>
+
+          <div className="flex gap-2 mb-12">
+            {[1, 2, 3, 4, 5, 6].map(s => (
+              <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-slate-950' : 'bg-slate-100'}`} />
+            ))}
+          </div>
+
+          <form onSubmit={e => e.preventDefault()} className="space-y-10">
+            {renderStep()}
+
+            <div className="flex items-center justify-between pt-8 border-t border-slate-100">
+              {step > 1 ? (
+                <button 
+                  type="button" 
+                  onClick={handlePrev}
+                  className="flex items-center gap-2 px-8 py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-950 transition-all"
+                >
+                  <ChevronLeft size={18} />
+                  Voltar
+                </button>
+              ) : <div />}
+
+              {step < 6 ? (
+                <button 
+                  type="button" 
+                  onClick={handleNext}
+                  className="flex items-center gap-3 px-10 py-5 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                >
+                  Próximo Passo
+                  <ChevronRight size={18} />
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-3 px-10 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Enviando...' : 'Finalizar Cadastro'}
+                  <Send size={18} />
+                </button>
+              )}
             </div>
           </form>
         </div>
@@ -7324,6 +8779,21 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
     }
   };
 
+  const handleToggleUserStatus = async (id: string, type: 'EMPLOYEE' | 'COMPANY', currentStatus: string) => {
+    try {
+      if (type === 'EMPLOYEE') {
+        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        await updateDocument('employees', id, { status: newStatus });
+      } else {
+        const newStatus = currentStatus === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+        await updateDocument('companyUsers', id, { status: newStatus });
+      }
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      alert('Erro ao alterar status do usuário.');
+    }
+  };
+
   const filteredEmployees = employees.filter(emp => 
     `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.loginEmail?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -7404,24 +8874,33 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
                     <span className="text-sm font-medium text-slate-500">{emp.loginEmail || 'Não definido'}</span>
                   </td>
                   <td className="px-4 py-4 sm:px-8 sm:py-6">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${emp.loginEmail ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {emp.loginEmail ? 'Ativo' : 'Pendente'}
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${emp.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : emp.status === 'INACTIVE' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {emp.status === 'ACTIVE' ? 'Ativo' : emp.status === 'INACTIVE' ? 'Inativo' : 'Pendente'}
                     </span>
                   </td>
                   <td className="px-8 py-6 text-right flex items-center justify-end gap-2">
+                    <button 
+                      onClick={() => handleToggleUserStatus(emp.id, 'EMPLOYEE', emp.status)}
+                      className={`p-2 transition-colors ${emp.status === 'ACTIVE' ? 'text-slate-400 hover:text-rose-600' : 'text-slate-400 hover:text-emerald-600'}`}
+                      title={emp.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear'}
+                    >
+                      {emp.status === 'ACTIVE' ? <Lock size={18} /> : <Unlock size={18} />}
+                    </button>
                     <button 
                       onClick={() => {
                         setShowEditModal(emp.id);
                         setEditData({ email: emp.loginEmail || '', password: emp.password || '' });
                       }}
                       className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                      title="Resetar Senha"
                     >
-                      <Lock size={18} />
+                      <Key size={18} />
                     </button>
-                    {role === 'AGENCY' && (
+                    {(role === 'AGENCY' || role === 'ADMIN') && (
                       <button 
                         onClick={() => handleDeleteUser(emp.id, 'EMPLOYEE')}
                         className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                        title="Remover Acesso"
                       >
                         <X size={18} />
                       </button>
@@ -7448,24 +8927,33 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
                     <span className="text-sm font-medium text-slate-500">{cu.email}</span>
                   </td>
                   <td className="px-8 py-6">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">
-                      Ativo
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cu.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                      {cu.status === 'ACTIVE' ? 'Ativo' : 'Bloqueado'}
                     </span>
                   </td>
                   <td className="px-8 py-6 text-right flex items-center justify-end gap-2">
+                    <button 
+                      onClick={() => handleToggleUserStatus(cu.id, 'COMPANY', cu.status || 'ACTIVE')}
+                      className={`p-2 transition-colors ${cu.status === 'ACTIVE' ? 'text-slate-400 hover:text-rose-600' : 'text-slate-400 hover:text-emerald-600'}`}
+                      title={cu.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear'}
+                    >
+                      {cu.status === 'ACTIVE' ? <Lock size={18} /> : <Unlock size={18} />}
+                    </button>
                     <button 
                       onClick={() => {
                         setShowEditModal(cu.id);
                         setEditData({ email: cu.email, password: cu.password || '' });
                       }}
                       className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                      title="Resetar Senha"
                     >
-                      <Lock size={18} />
+                      <Key size={18} />
                     </button>
-                    {role === 'AGENCY' && (
+                    {(role === 'AGENCY' || role === 'ADMIN') && (
                       <button 
                         onClick={() => handleDeleteUser(cu.id, 'COMPANY')}
                         className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                        title="Remover Acesso"
                       >
                         <X size={18} />
                       </button>
@@ -7667,3 +9155,295 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
     </motion.div>
   );
 };
+
+function DocumentControl({ companies }: { companies: Company[] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+
+  const handleUpdateDocumentStatus = async (companyId: string, docIndex: number, newStatus: 'APPROVED' | 'REJECTED') => {
+    const company = companies.find(c => c.id === companyId);
+    if (!company || !company.documents) return;
+
+    const updatedDocuments = [...company.documents];
+    updatedDocuments[docIndex] = { ...updatedDocuments[docIndex], status: newStatus };
+
+    await updateDocument('companies', companyId, { documents: updatedDocuments });
+  };
+
+  const allDocuments = companies.flatMap(company => 
+    (company.documents || []).map((doc, index) => ({
+      ...doc,
+      companyId: company.id,
+      companyName: company.name,
+      companyCnpj: company.cnpj,
+      originalIndex: index
+    }))
+  );
+
+  const filteredDocuments = allDocuments.filter(doc => {
+    const matchesSearch = doc.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (doc.companyCnpj && doc.companyCnpj.includes(searchTerm));
+    const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Controle de Documentos</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Validação e aprovação de documentos de empresas parceiras.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input 
+            type="text"
+            placeholder="Buscar por nome da empresa ou CNPJ..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all"
+          />
+        </div>
+        <div className="flex w-full md:w-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
+          {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(status => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === status ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {status === 'ALL' ? 'Todos' : status === 'APPROVED' ? 'Aprovados' : status === 'REJECTED' ? 'Reprovados' : 'Pendentes'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresa</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data de Envio</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filteredDocuments.map((doc, idx) => (
+                <tr key={`${doc.companyId}-${idx}`} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-bold text-slate-700">{doc.companyName}</p>
+                      <p className="text-xs text-slate-500">CNPJ: {doc.companyCnpj || 'N/A'}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <FileText size={20} />
+                      </div>
+                      <span className="font-medium text-slate-700">{doc.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-500">{formatDateBR(doc.uploadedAt)}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      doc.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                      doc.status === 'REJECTED' ? 'bg-rose-50 text-rose-600' :
+                      'bg-amber-50 text-amber-600'
+                    }`}>
+                      {doc.status === 'APPROVED' ? 'Aprovado' : doc.status === 'REJECTED' ? 'Reprovado' : 'Pendente'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <a 
+                        href={doc.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Visualizar Documento"
+                      >
+                        <Eye size={18} />
+                      </a>
+                      {doc.status === 'PENDING' && (
+                        <>
+                          <button 
+                            onClick={() => handleUpdateDocumentStatus(doc.companyId, doc.originalIndex, 'APPROVED')}
+                            className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                            title="Aprovar"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateDocumentStatus(doc.companyId, doc.originalIndex, 'REJECTED')}
+                            className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Reprovar"
+                          >
+                            <XCircle size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredDocuments.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
+                    Nenhum documento encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ServiceMonitoring({ assignments, companies, units, employees }: { assignments: Assignment[], companies: Company[], units: Unit[], employees: Employee[] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'>('ALL');
+
+  const enrichedAssignments = assignments.map(assignment => {
+    const employee = employees.find(e => e.id === assignment.employeeId);
+    let companyName = 'N/A';
+    let unitName = 'N/A';
+
+    // Try to find if it's a unit
+    const unit = units.find(u => u.clientId === assignment.clientId);
+    if (unit) {
+      unitName = unit.name;
+      const company = companies.find(c => c.id === unit.companyId);
+      if (company) companyName = company.name;
+    } else {
+      // It might be a direct company client
+      const company = companies.find(c => c.id === assignment.clientId);
+      if (company) companyName = company.name;
+    }
+
+    return {
+      ...assignment,
+      employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Desconhecido',
+      companyName,
+      unitName
+    };
+  });
+
+  const filteredAssignments = enrichedAssignments.filter(assignment => {
+    const matchesSearch = assignment.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          assignment.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'ALL' || assignment.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Monitoramento de Serviços</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe todos os serviços realizados pelas empresas parceiras.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input 
+            type="text"
+            placeholder="Buscar por empresa ou diarista..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all"
+          />
+        </div>
+        <div className="flex w-full md:w-auto bg-slate-50 p-1 rounded-xl border border-slate-100 overflow-x-auto scrollbar-hide">
+          {(['ALL', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const).map(status => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === status ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {status === 'ALL' ? 'Todos' : 
+               status === 'SCHEDULED' ? 'Agendados' : 
+               status === 'IN_PROGRESS' ? 'Em Andamento' : 
+               status === 'COMPLETED' ? 'Concluídos' : 'Cancelados'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[1000px]">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresa / Unidade</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Diarista</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filteredAssignments.map(assignment => (
+                <tr key={assignment.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-slate-700">{formatDateBR(assignment.date)}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-bold text-slate-700">{assignment.companyName}</p>
+                      <p className="text-xs text-slate-500">{assignment.unitName !== 'N/A' ? assignment.unitName : 'Matriz'}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-medium text-slate-700">{assignment.employeeName}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-slate-700">R$ {assignment.value.toFixed(2)}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      assignment.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
+                      assignment.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' :
+                      assignment.status === 'CANCELLED' ? 'bg-rose-50 text-rose-600' :
+                      'bg-amber-50 text-amber-600'
+                    }`}>
+                      {assignment.status === 'COMPLETED' ? 'Concluído' : 
+                       assignment.status === 'IN_PROGRESS' ? 'Em Andamento' : 
+                       assignment.status === 'CANCELLED' ? 'Cancelado' : 'Agendado'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {filteredAssignments.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
+                    Nenhum serviço encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

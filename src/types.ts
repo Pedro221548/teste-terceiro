@@ -1,7 +1,49 @@
-export type UserRole = 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION' | 'COMPANY_REGISTRATION';
+export type UserRole = 'ADMIN' | 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION' | 'COMPANY_REGISTRATION' | 'AGENCY_REGISTRATION';
+
+export interface Agency {
+  id: string;
+  name: string; // Razão Social
+  tradeName: string; // Nome Fantasia
+  cnpj: string;
+  stateRegistration?: string; // Inscrição Estadual
+  openingDate: string;
+  segment: string[]; // Segmento (ex: logística, construção, limpeza)
+  
+  // Endereço
+  address: {
+    zipCode: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  };
+
+  // Responsável Legal
+  responsibleName: string;
+  responsibleCpf: string;
+  responsibleRole: string; // Cargo
+  phone: string;
+  email: string;
+
+  // Documentação
+  documents?: {
+    cnpjCard?: string;
+    socialContract?: string;
+    responsibleDoc?: string;
+    addressProof?: string;
+  };
+
+  status: 'PENDING' | 'ACTIVE' | 'BLOCKED';
+  createdAt: string;
+  pricing?: PricingConfig;
+  ratingLabel?: string;
+}
 
 export interface Employee {
   id: string;
+  agencyId: string;
   firstName: string;
   lastName: string;
   cpf: string;
@@ -24,6 +66,7 @@ export interface Employee {
 
 export interface Client {
   id: string;
+  agencyId: string;
   name: string;
   managerName: string;
   location?: string;
@@ -32,6 +75,7 @@ export interface Client {
 
 export interface Company {
   id: string;
+  agencyId: string;
   name: string;
   responsibleName: string;
   cnpj?: string;
@@ -39,10 +83,19 @@ export interface Company {
   email: string;
   address?: string;
   createdAt: string;
+  status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
+  documents?: {
+    id: string;
+    name: string;
+    url: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    uploadedAt: string;
+  }[];
 }
 
 export interface Unit {
   id: string;
+  agencyId: string;
   companyId: string;
   clientId?: string; // Link to the Client document for staffing
   name: string;
@@ -55,6 +108,7 @@ export interface Unit {
 
 export interface CompanyUser {
   id: string;
+  agencyId: string;
   companyId: string;
   unitId?: string;
   fullName: string;
@@ -63,20 +117,23 @@ export interface CompanyUser {
   photoUrl?: string;
   role: 'COMPANY';
   createdAt: string;
+  status?: 'ACTIVE' | 'BLOCKED';
 }
 
 export interface Assignment {
   id: string;
+  agencyId: string;
   employeeId: string;
   clientId: string;
   date: string;
   value: number;
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   confirmed?: boolean;
 }
 
 export interface Feedback {
   id: string;
+  agencyId: string;
   assignmentId: string;
   employeeId: string;
   managerId: string;
@@ -87,6 +144,7 @@ export interface Feedback {
 
 export interface ContactRequest {
   id: string;
+  agencyId: string;
   name: string;
   phone: string;
   status: 'PENDING' | 'CONTACTED';
@@ -95,6 +153,7 @@ export interface ContactRequest {
 
 export interface AccessPoint {
   id: string;
+  agencyId: string;
   managerName: string;
   location: string;
   qrCodeValue: string;
@@ -103,6 +162,7 @@ export interface AccessPoint {
 
 export interface CheckIn {
   id: string;
+  agencyId: string;
   employeeId: string;
   accessPointId: string;
   location: string; // Denormalized for easier filtering
@@ -112,6 +172,7 @@ export interface CheckIn {
 }
 
 export interface PricingConfig {
+  agencyId?: string;
   type: 'STARS' | 'DAILY';
   stars: Record<string, { employee: number, company: number }>;
   weekly: Record<string, { employee: number, company: number }>;
@@ -119,6 +180,7 @@ export interface PricingConfig {
 
 export interface CompanyRequest {
   id: string;
+  agencyId: string;
   companyId: string;
   clientId: string;
   employeeIds: string[];
@@ -130,6 +192,7 @@ export interface CompanyRequest {
 
 export interface EmployeeRegistration {
   id: string;
+  agencyId: string;
   firstName: string;
   lastName: string;
   cpf: string;
@@ -145,6 +208,7 @@ export interface EmployeeRegistration {
 
 export interface Notification {
   id: string;
+  agencyId: string;
   userId: string;
   title: string;
   message: string;

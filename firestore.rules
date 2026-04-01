@@ -104,11 +104,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isSuperAdmin() {
       return isAuthenticated() &&
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'AGENCY') ||
-         (request.auth.token.email == "pedroass.11577@gmail.com"));
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN') ||
+         (request.auth.token.email == "pedroass.11577@gmail.com" || request.auth.token.email == "pedroassfenandes.25@gmail.com"));
+    }
+
+    function isAgency() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'AGENCY';
+    }
+
+    function getAgencyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
+    }
+
+    function isAgencyOwner(data) {
+      return isAgency() && data.agencyId == getAgencyId();
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || isAgency();
     }
 
     function isOwner(userId) {
@@ -144,7 +162,7 @@ service cloud.firestore {
     // ===============================================================
     function isValidUser(data) {
       return hasRequiredFields(['role', 'email', 'createdAt']) &&
-             data.role in ['AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION'] &&
+             data.role in ['ADMIN', 'AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION', 'AGENCY_REGISTRATION'] &&
              data.email is string &&
              data.createdAt is string &&
              (!('forcePasswordChange' in data) || data.forcePasswordChange is bool);
@@ -175,78 +193,85 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidUser(request.resource.data);
-      allow update: if (isAdmin() || isOwner(userId)) && isValidUser(request.resource.data);
-      allow delete: if isAdmin();
+      allow update: if (isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId)) && isValidUser(request.resource.data);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /agencies/{agencyId} {
+      allow read: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow create: if isSuperAdmin() || isAuthenticated();
+      allow update: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow delete: if isSuperAdmin();
     }
 
     match /employees/{employeeId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || isOwner(employeeId) || isCompany();
-      allow delete: if isAdmin() || isOwner(employeeId);
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(employeeId) || isCompany();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(employeeId);
     }
 
     match /employeeRegistrations/{registrationId} {
       allow read: if isAuthenticated();
       allow create: if true;
       allow update: if isAuthenticated();
-      allow delete: if isAdmin();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /clients/{clientId} {
       allow read: if true;
-      allow create: if isAdmin() || isCompany();
-      allow update: if isAdmin() || isCompany();
-      allow delete: if isAdmin() || isCompany();
+      allow create: if isSuperAdmin() || isAgency() || isCompany();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
     }
 
     match /assignments/{assignmentId} {
       allow read: if true;
-      allow create: if isAdmin() || isCompany();
-      allow update: if isAdmin() || isCompany() || isEmployee();
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() || isAgency() || isCompany();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany() || isEmployee();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /feedbacks/{feedbackId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /contacts/{contactId} {
       allow read: if isAuthenticated();
       allow create: if true;
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /accessPoints/{accessPointId} {
       allow read: if true;
-      allow create: if isAdmin() || isCompany();
-      allow update: if isAdmin() || isCompany();
-      allow delete: if isAdmin() || isCompany();
+      allow create: if isSuperAdmin() || isAgency() || isCompany();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
     }
 
     match /companies/{companyId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() || isAgency();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /units/{unitId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() || isAgency();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /companyUsers/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update: if isAdmin() || isOwner(userId);
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() || isAgency();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     function isValidCheckIn(data) {
@@ -262,15 +287,15 @@ service cloud.firestore {
     match /checkIns/{checkInId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidCheckIn(request.resource.data);
-      allow update: if (isAdmin() || isCompany()) && isValidCheckIn(request.resource.data);
-      allow delete: if isAdmin();
+      allow update: if (isSuperAdmin() || isAgencyOwner(resource.data) || isCompany()) && isValidCheckIn(request.resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /companyRequests/{requestId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || isCompany();
-      allow delete: if isAdmin();
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     function canReadNotification(notificationUserId) {
@@ -287,13 +312,13 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && canReadNotification(resource.data.userId);
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow delete: if isAdmin();
+      allow update: if isAuthenticated() && (isSuperAdmin() || isAgencyOwner(resource.data) || resource.data.userId == request.auth.uid);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /settings/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
   }
 }
