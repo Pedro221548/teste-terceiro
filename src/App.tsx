@@ -53,7 +53,8 @@ import {
   Unlock,
   Key,
   XCircle,
-  Edit2
+  Edit2,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -633,6 +634,10 @@ export default function App() {
 
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
+    } else if (role === 'AGENCY' && currentAgencyId) {
+      unsubs.push(subscribeToCollection<Agency>('agencies', (data) => {
+        setAgencies(data);
+      }, [where('id', '==', currentAgencyId)]));
     }
 
     const filterByAgency = (data: any[]) => {
@@ -1179,6 +1184,52 @@ export default function App() {
 
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
               <AnimatePresence mode="wait">
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'PENDING' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6"
+                  >
+                    <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-500">
+                      <Clock size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black text-slate-950 tracking-tighter">Cadastro em Análise</h2>
+                      <p className="text-slate-500 font-medium max-w-md mx-auto">
+                        Sua agência foi cadastrada com sucesso! Nossa equipe está revisando seus dados e documentos. Você receberá um e-mail assim que sua conta for ativada.
+                      </p>
+                    </div>
+                    <button 
+                      onClick={handleLogout}
+                      className="px-8 py-3 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
+                    >
+                      Sair da Conta
+                    </button>
+                  </motion.div>
+                )}
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'BLOCKED' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6"
+                  >
+                    <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500">
+                      <AlertTriangle size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black text-slate-950 tracking-tighter">Conta Bloqueada</h2>
+                      <p className="text-slate-500 font-medium max-w-md mx-auto">
+                        Sua conta de agência está temporariamente bloqueada. Entre em contato com o suporte para mais informações.
+                      </p>
+                    </div>
+                    <button 
+                      onClick={handleLogout}
+                      className="px-8 py-3 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
+                    >
+                      Sair da Conta
+                    </button>
+                  </motion.div>
+                )}
                 {role === 'ADMIN' && activeTab === 'admin_dashboard' && (
                   <div key="admin-dashboard">
                     <AgencyDashboard 
@@ -1214,7 +1265,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'user_management' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'user_management' && (
                   <div key="agency-user-management">
                     <UserManagement 
                       employees={employees}
@@ -1233,7 +1284,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'dashboard' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'dashboard' && (
                   <div key="agency-dashboard">
                     <AgencyDashboard 
                       assignments={assignments}
@@ -1255,7 +1306,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'feedbacks' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'feedbacks' && (
                   <div key="agency-feedbacks">
                     <EmployeeFeedbackView 
                       feedbacks={feedbacks}
@@ -1264,7 +1315,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'registrations' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'registrations' && (
                   <div key="agency-registrations">
                     <AgencyRegistrations 
                       employees={employees}
@@ -1275,7 +1326,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'staffing' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'staffing' && (
                   <div key="agency-staffing">
                     <AgencyStaffing 
                       employees={employees}
@@ -1290,7 +1341,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'access_control' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'access_control' && (
                   <div key="agency-access-control">
                     <AgencyAccessControl 
                       accessPoints={accessPoints}
@@ -1304,7 +1355,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'companies' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'companies' && (
                   <div key="agency-companies">
                     <AgencyCompanies 
                       companies={companies}
@@ -1318,7 +1369,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'pricing' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'pricing' && (
                   <div key="agency-pricing">
                     <AgencyPricing 
                       pricing={pricing}
@@ -1457,6 +1508,8 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
 function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: { agencies: Agency[], companies: Company[], employees: Employee[], onManageAgency: (id: string) => void }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [invitePhone, setInvitePhone] = useState('');
   const [newAgency, setNewAgency] = useState({ name: '', responsibleName: '', email: '', phone: '' });
 
@@ -1513,6 +1566,143 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
 
   return (
     <div className="space-y-8">
+      {showDetailsModal && selectedAgency && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+          >
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Detalhes da Agência</h2>
+                <p className="text-slate-500 text-sm font-medium">{selectedAgency.name}</p>
+              </div>
+              <button onClick={() => setShowDetailsModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar">
+              {/* Dados da Empresa */}
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Building2 size={14} className="text-blue-500" />
+                  Dados da Empresa
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Razão Social</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.name}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome Fantasia</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.tradeName || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CNPJ</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.cnpj || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Segmento</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedAgency.segment?.map((s, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-md text-[9px] font-black uppercase tracking-tighter">{s}</span>
+                      )) || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Endereço */}
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin size={14} className="text-emerald-500" />
+                  Endereço
+                </h3>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-950">
+                    {selectedAgency.address?.street}, {selectedAgency.address?.number}
+                    {selectedAgency.address?.complement && ` - ${selectedAgency.address.complement}`}
+                  </p>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {selectedAgency.address?.neighborhood} - {selectedAgency.address?.city}/{selectedAgency.address?.state}
+                  </p>
+                  <p className="text-xs text-slate-400 font-medium mt-1">CEP: {selectedAgency.address?.zipCode}</p>
+                </div>
+              </section>
+
+              {/* Responsável */}
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <UserIcon size={14} className="text-purple-500" />
+                  Responsável Legal
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.responsibleName}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CPF</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.responsibleCpf || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cargo</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.responsibleRole || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contato</p>
+                    <p className="text-sm font-bold text-slate-950">{selectedAgency.phone}</p>
+                    <p className="text-xs text-slate-500 font-medium">{selectedAgency.email}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Documentação */}
+              {selectedAgency.documents && (
+                <section className="space-y-4">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <FileText size={14} className="text-orange-500" />
+                    Documentação
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(selectedAgency.documents).map(([key, value]) => (
+                      value && (
+                        <a 
+                          key={key}
+                          href={value}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100 transition-all group"
+                        >
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600">
+                            {key === 'cnpjCard' ? 'Cartão CNPJ' : 
+                             key === 'socialContract' ? 'Contrato Social' :
+                             key === 'responsibleDoc' ? 'Doc. Responsável' :
+                             key === 'addressProof' ? 'Comprovante Endereço' : key}
+                          </span>
+                          <ExternalLink size={14} className="text-slate-400 group-hover:text-blue-500" />
+                        </a>
+                      )
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            <div className="p-8 border-t border-slate-50 shrink-0">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+              >
+                Fechar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {showInviteModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <motion.div
@@ -1657,6 +1847,16 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
               </div>
 
               <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    setSelectedAgency(agency);
+                    setShowDetailsModal(true);
+                  }}
+                  className="p-3 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
+                  title="Ver Detalhes"
+                >
+                  <Eye size={18} />
+                </button>
                 <button 
                   onClick={() => onManageAgency(agency.id)}
                   className="flex-1 py-3 bg-slate-950 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
@@ -8111,9 +8311,28 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       
       alert('Cadastro enviado com sucesso! Aguarde a aprovação do administrador.');
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering agency:', error);
-      alert('Erro ao realizar cadastro. Tente novamente.');
+      let errorMessage = 'Erro ao realizar cadastro. Tente novamente.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este e-mail já está em uso.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'E-mail inválido.';
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error) {
+            errorMessage = `Erro de Permissão: ${parsedError.error}\nCaminho: ${parsedError.path}`;
+          }
+        } catch (e) {
+          errorMessage = `Erro: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
