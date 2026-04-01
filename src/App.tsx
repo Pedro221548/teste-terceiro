@@ -269,17 +269,6 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
         </div>
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => setAudioEnabled(!audioEnabled)}
-            className={`p-2.5 rounded-xl transition-all flex items-center gap-2 border ${audioEnabled ? 'bg-blue-50 text-blue-600 border-blue-100 shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-100'}`}
-            title={audioEnabled ? "Sons de notificação ativados" : "Sons de notificação desativados (clique para ativar)"}
-          >
-            {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            <span className="hidden md:block text-[10px] font-black uppercase tracking-widest">
-              {audioEnabled ? 'Sons On' : 'Sons Off'}
-            </span>
-          </button>
-
           <div className="text-right hidden sm:block">
             <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
               {user.displayName || 'Usuário'}
@@ -1422,7 +1411,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {pricing.type === 'STARS' ? (
               Object.entries(pricing.stars || {}).map(([stars, p]) => (
-                <div key={stars} className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
+                <div key={stars} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
                   <div className="flex gap-1.5 relative z-10">
                     {[...Array(5)].map((_, i) => (
