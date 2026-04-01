@@ -555,7 +555,7 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const unsubEmployees = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Employee>('employees', setEmployees) : () => {};
+    const unsubEmployees = role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE' ? subscribeToCollection<Employee>('employees', setEmployees) : () => {};
     const unsubClients = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Client>('clients', setClients) : () => {};
     
     // Role-based assignments subscription
