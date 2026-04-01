@@ -932,11 +932,11 @@ export default function App() {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-[#FBFBFA]">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-white to-slate-50">
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-full max-w-md space-y-10"
+            className="w-full max-w-md space-y-10 bg-white p-8 sm:p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100"
           >
             <div className="lg:hidden flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white">
@@ -1059,34 +1059,21 @@ export default function App() {
                     <ChevronRight size={20} />
                   </button>
                 </form>
-
-                <div className="relative py-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-[#FBFBFA] px-4 text-slate-400 font-bold tracking-widest">Ou continue com</span>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleLogin}
-                  className="btn-modern-secondary w-full h-14 flex items-center justify-center gap-3"
-                >
-                  <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-                  Google Workspace
-                </button>
               </>
             )}
 
-            <div className="pt-8 text-center">
-              <p className="text-sm text-slate-500 font-medium">
-                Ainda não é parceiro? <br />
-                <a href="?role=COMPANY_REGISTRATION" className="text-slate-950 font-black hover:underline decoration-2 underline-offset-4">Cadastre sua empresa</a> ou <a href="?role=REGISTRATION" className="text-slate-950 font-black hover:underline decoration-2 underline-offset-4">seja um diarista</a>.
-              </p>
-            </div>
           </motion.div>
         </div>
+        
+        {/* WhatsApp Button */}
+        <a 
+          href="https://wa.me/5511999999999?text=Olá,%20quero%20conhecer%20a%20plataforma"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white px-5 py-3 rounded-full font-bold text-sm shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+        >
+          💬 Fale conosco
+        </a>
       </div>
     );
   }
