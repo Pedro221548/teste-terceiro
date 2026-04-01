@@ -52,7 +52,7 @@ import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
 import { DEFAULT_PRICING } from './constants';
-import { auth, googleProvider } from './firebase';
+import { auth, googleProvider, sendPasswordResetEmail } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { 
   subscribeToCollection, 
@@ -462,28 +462,12 @@ export default function App() {
     setResetStatus('LOADING');
     setResetErrorMessage('');
     try {
-      const response = await fetch('/api/send-reset-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail }),
-      });
-      
-      const contentType = response.headers.get('content-type');
-      let data;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error(`Server error (${response.status}): ${text.slice(0, 100)}...`);
-      }
-
-      if (!response.ok) throw new Error(data.message || data.error || 'Falha ao enviar e-mail');
+      await sendPasswordResetEmail(auth, resetEmail);
       setResetStatus('SUCCESS');
     } catch (err: any) {
       console.error(err);
       setResetStatus('ERROR');
-      setResetErrorMessage(err.message);
+      setResetErrorMessage(err.message || 'Falha ao enviar e-mail');
     }
   };
 
@@ -7483,28 +7467,12 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
     setResetStatus('LOADING');
     setResetErrorMessage('');
     try {
-      const response = await fetch('/api/send-reset-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      
-      const contentType = response.headers.get('content-type');
-      let data;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error(`Erro do servidor (${response.status})`);
-      }
-
-      if (!response.ok) throw new Error(data.message || data.error || 'Falha ao enviar e-mail');
+      await sendPasswordResetEmail(auth, email);
       setResetStatus('SUCCESS');
     } catch (err: any) {
       console.error(err);
       setResetStatus('ERROR');
-      setResetErrorMessage(err.message);
+      setResetErrorMessage(err.message || 'Falha ao enviar e-mail');
     }
   };
 
