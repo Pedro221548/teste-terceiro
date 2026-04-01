@@ -135,16 +135,18 @@
     },
     "CheckIn": {
       "title": "CheckIn",
-      "description": "A record of an employee clocking in at an access point.",
+      "description": "A record of an employee clocking in or out at an access point.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "employeeId": { "type": "string" },
         "accessPointId": { "type": "string" },
+        "location": { "type": "string" },
         "timestamp": { "type": "string" },
-        "photoUrl": { "type": "string" }
+        "photoUrl": { "type": "string" },
+        "type": { "type": "string", "enum": ["IN", "OUT"] }
       },
-      "required": ["employeeId", "accessPointId", "timestamp", "photoUrl"]
+      "required": ["employeeId", "accessPointId", "location", "timestamp", "photoUrl", "type"]
     },
     "Setting": {
       "title": "Setting",
@@ -171,6 +173,19 @@
         "createdAt": { "type": "string" }
       },
       "required": ["companyId", "clientId", "employeeIds", "quantity", "date", "status", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user profile with role and security flags.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"] },
+        "forcePasswordChange": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role", "createdAt"]
     },
     "Notification": {
       "title": "Notification",
@@ -203,6 +218,7 @@
     "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." },
     "/settings": { "schema": "Setting", "description": "Collection of global settings." },
     "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." },
-    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." }
+    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
+    "/users": { "schema": "User", "description": "Collection of user profiles." }
   }
 }

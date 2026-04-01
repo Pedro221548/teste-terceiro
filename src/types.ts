@@ -105,8 +105,10 @@ export interface CheckIn {
   id: string;
   employeeId: string;
   accessPointId: string;
+  location: string; // Denormalized for easier filtering
   timestamp: string;
   photoUrl: string;
+  type: 'IN' | 'OUT';
 }
 
 export interface PricingConfig {

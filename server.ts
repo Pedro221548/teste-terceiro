@@ -3,6 +3,10 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import admin from "firebase-admin";
 
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY || "re_9fVoDHoY_GAMoYUYWxzEC8NEBdcePtgNt");
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -10,11 +14,19 @@ async function startServer() {
   // Initialize Firebase Admin SDK inside startServer
   try {
     if (admin.apps.length === 0) {
+      const fs = await import("fs");
+      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+      
+      console.log("Initializing Firebase Admin with project ID:", config.projectId);
+      
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
-        projectId: "gen-lang-client-0020131327",
+        projectId: config.projectId,
       });
-      console.log("Firebase Admin initialized successfully");
+      // Explicitly set the project ID in the environment to help the SDK
+      process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
+      
+      console.log("Firebase Admin initialized successfully.");
     }
   } catch (error) {
     console.error("Error initializing Firebase Admin:", error);
@@ -23,7 +35,7 @@ async function startServer() {
   app.use(express.json());
 
   app.use((req, res, next) => {
-    console.log("Request received:", req.method, req.url);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
   });
 
@@ -32,6 +44,70 @@ async function startServer() {
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", env: process.env.NODE_ENV });
+  });
+
+  app.post(["/api/send-reset-email", "/api/send-reset-email/"], async (req, res) => {
+    console.log("Processing password reset for:", req.body.email);
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    try {
+      // Generate Firebase password reset link
+      let resetLink;
+      try {
+        resetLink = await admin.auth().generatePasswordResetLink(email);
+        console.log("Generated reset link for:", email);
+      } catch (authError: any) {
+        console.error("Auth error generating link:", authError.code, authError.message);
+        if (authError.code === 'auth/internal-error' && authError.message.includes('identitytoolkit.googleapis.com')) {
+          return res.status(400).json({ 
+            error: "API_DISABLED",
+            message: "A API Identity Toolkit está desativada. Por favor, ative-a no Console do Google Cloud: https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview?project=17060358666" 
+          });
+        }
+        return res.status(400).json({ error: "AUTH_ERROR", message: authError.message || "Erro ao gerar link de redefinição" });
+      }
+      
+      // Send email via Resend
+      console.log("Sending email via Resend to:", email);
+      const { data, error } = await resend.emails.send({
+        from: "StaffLink <onboarding@resend.dev>",
+        to: [email],
+        subject: "Redefinição de Senha - StaffLink",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #1e293b; text-align: center;">Redefinição de Senha</h2>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+              Olá, recebemos uma solicitação para redefinir a senha da sua conta no StaffLink.
+            </p>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6; text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                Redefinir Senha
+              </a>
+            </p>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+              Se você não solicitou a redefinição de senha, pode ignorar este e-mail com segurança.
+            </p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+              StaffLink Platform - Gestão de Diaristas
+            </p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error("Error sending email via Resend:", error);
+        return res.status(400).json({ error: "EMAIL_ERROR", message: "Falha ao enviar e-mail via Resend. Verifique a chave da API." });
+      }
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Error generating reset link or sending email:", error);
+      res.status(400).json({ error: "SERVER_ERROR", message: error.message || "Failed to send reset email" });
+    }
   });
 
   app.post("/api/create-user", async (req, res) => {
@@ -116,6 +192,12 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  // Global error handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("Global error handler caught:", err);
+    res.status(500).json({ error: err.message || "Internal Server Error" });
   });
 }
 

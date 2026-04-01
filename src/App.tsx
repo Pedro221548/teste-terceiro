@@ -44,6 +44,8 @@ import {
   ArrowUpRight,
   ArrowRight,
   TrendingUp as TrendingUpIcon,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -51,7 +53,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -220,11 +222,13 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   );
 }
 
-function Header({ activeTab, setIsMobileMenuOpen, user, role }: { 
+function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setAudioEnabled }: { 
   activeTab: string, 
   setIsMobileMenuOpen: (open: boolean) => void,
   user: any,
-  role: string
+  role: string,
+  audioEnabled: boolean,
+  setAudioEnabled: (enabled: boolean) => void
 }) {
   const getTitle = () => {
     switch (activeTab) {
@@ -265,6 +269,17 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role }: {
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            className={`p-2.5 rounded-xl transition-all flex items-center gap-2 border ${audioEnabled ? 'bg-blue-50 text-blue-600 border-blue-100 shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-100'}`}
+            title={audioEnabled ? "Sons de notificação ativados" : "Sons de notificação desativados (clique para ativar)"}
+          >
+            {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <span className="hidden md:block text-[10px] font-black uppercase tracking-widest">
+              {audioEnabled ? 'Sons On' : 'Sons Off'}
+            </span>
+          </button>
+
           <div className="text-right hidden sm:block">
             <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
               {user.displayName || 'Usuário'}
@@ -280,9 +295,122 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role }: {
   );
 }
 
+function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, onComplete: () => void, handleLogout: () => void }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // 1. Update password in Firebase Auth
+      await updatePassword(user, newPassword);
+
+      // 2. Update forcePasswordChange flag in Firestore
+      await updateDocument('users', user.uid, { forcePasswordChange: false });
+
+      onComplete();
+    } catch (err: any) {
+      console.error('Error updating password:', err);
+      if (err.code === 'auth/requires-recent-login') {
+        setError('Por segurança, você precisa fazer login novamente para trocar a senha.');
+        setTimeout(handleLogout, 3000);
+      } else {
+        setError('Erro ao atualizar senha: ' + err.message);
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+      >
+        <div className="p-8 border-b border-slate-100 bg-slate-50/50">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-100">
+            <Lock className="text-white" size={32} />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Trocar Senha</h3>
+          <p className="text-xs text-slate-400 font-medium mt-2">Este é seu primeiro acesso. Por segurança, você deve definir uma nova senha.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3">
+              <AlertCircle className="text-red-500 shrink-0" size={20} />
+              <p className="text-xs text-red-600 font-bold">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nova Senha</label>
+              <input 
+                required
+                type="password" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Nova Senha</label>
+              <input 
+                required
+                type="password" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Repita a nova senha"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button 
+              type="submit" 
+              disabled={isUpdating}
+              className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+            >
+              {isUpdating ? 'Atualizando...' : 'Salvar Nova Senha'}
+            </button>
+            <button 
+              type="button"
+              onClick={handleLogout}
+              className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+            >
+              Sair e trocar depois
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -302,7 +430,62 @@ export default function App() {
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      setAudioEnabled(true);
+      // Remove listeners after first interaction
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
+
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
+
+  const [resetErrorMessage, setResetErrorMessage] = useState('');
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatus('LOADING');
+    setResetErrorMessage('');
+    try {
+      const response = await fetch('/api/send-reset-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(`Server error (${response.status}): ${text.slice(0, 100)}...`);
+      }
+
+      if (!response.ok) throw new Error(data.message || data.error || 'Falha ao enviar e-mail');
+      setResetStatus('SUCCESS');
+    } catch (err: any) {
+      console.error(err);
+      setResetStatus('ERROR');
+      setResetErrorMessage(err.message);
+    }
+  };
 
   const getScaleValue = (rating: number) => {
     if (pricing.type === 'STARS') {
@@ -334,6 +517,20 @@ export default function App() {
     return () => unsubPricing();
   }, [isAuthReady, user]);
 
+  const playNotificationSound = () => {
+    if (!audioEnabled) {
+      console.warn('Audio not enabled yet. User must interact with the page first.');
+      return;
+    }
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(e => {
+      if (e.name === 'NotAllowedError') {
+        setAudioEnabled(false);
+      }
+      console.error('Error playing sound:', e);
+    });
+  };
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -353,9 +550,12 @@ export default function App() {
         const urlRole = urlParams.get('role') as UserRole;
 
         // Fetch or create user profile
-        const userDoc = await getDocument<{ role: UserRole }>('users', firebaseUser.uid);
+        const userDoc = await getDocument<{ role: UserRole, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
         if (userDoc) {
           setRole(userDoc.role);
+          if (userDoc.forcePasswordChange) {
+            setNeedsPasswordChange(true);
+          }
         } else {
           // Default role based on email or URL param
           let defaultRole: UserRole = firebaseUser.email === 'pedroass.11577@gmail.com' ? 'AGENCY' : 'EMPLOYEE';
@@ -388,24 +588,62 @@ export default function App() {
     // Role-based assignments subscription
     const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : 
                                  role === 'COMPANY' ? [where('clientId', '==', (user as any).clientId || user.uid)] : [];
-    const unsubAssignments = subscribeToCollection<Assignment>('assignments', setAssignments, assignmentConstraints);
+    const unsubAssignments = subscribeToCollection<Assignment>('assignments', (docs) => {
+      if (role === 'AGENCY') {
+        setAssignments(prev => {
+          const changed = docs.some(d => {
+            const p = prev.find(old => old.id === d.id);
+            return p && p.status === 'SCHEDULED' && (d.status === 'COMPLETED' || d.status === 'CANCELLED');
+          });
+          if (changed) playNotificationSound();
+          return docs;
+        });
+      } else {
+        setAssignments(docs);
+      }
+    }, assignmentConstraints);
     
     const unsubFeedbacks = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Feedback>('feedbacks', setFeedbacks) : () => {};
     
     // Only agency sees contacts
     const unsubContacts = role === 'AGENCY' ? subscribeToCollection<ContactRequest>('contacts', setContacts) : () => {};
-    const unsubEmployeeRegistrations = role === 'AGENCY' ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', setEmployeeRegistrations) : () => {};
+    const unsubEmployeeRegistrations = role === 'AGENCY' ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', (docs) => {
+      setEmployeeRegistrations(prev => {
+        const newRegs = docs.filter(d => d.status === 'PENDING');
+        if (newRegs.length > prev.filter(d => d.status === 'PENDING').length) playNotificationSound();
+        return docs;
+      });
+    }) : () => {};
     
     const unsubAccessPoints = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<AccessPoint>('accessPoints', setAccessPoints) : () => {};
     
     // Role-based check-ins subscription
     const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
-    const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', setCheckIns, checkInConstraints);
+    const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', (docs) => {
+      if (role === 'AGENCY') {
+        setCheckIns(prev => {
+          if (docs.length > prev.length) playNotificationSound();
+          return docs;
+        });
+      } else {
+        setCheckIns(docs);
+      }
+    }, checkInConstraints);
 
     const unsubCompanies = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
     const unsubUnits = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
     const unsubCompanyUsers = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
-    const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', setCompanyRequests) : () => {};
+    const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', (docs) => {
+      if (role === 'AGENCY') {
+        setCompanyRequests(prev => {
+          const newRequests = docs.filter(d => d.status === 'PENDING');
+          if (newRequests.length > prev.filter(d => d.status === 'PENDING').length) playNotificationSound();
+          return docs;
+        });
+      } else {
+        setCompanyRequests(docs);
+      }
+    }) : () => {};
     const unsubNotifications = subscribeToCollection<Notification>('notifications', setNotifications, [where('userId', '==', user.uid)]);
 
     return () => {
@@ -631,70 +869,134 @@ export default function App() {
               <p className="text-slate-500 font-medium">Acesse sua conta para gerenciar suas diarias.</p>
             </div>
 
-            <form onSubmit={handleEmailLogin} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="email" 
-                    placeholder="exemplo@stafflink.com"
-                    className="input-modern pl-12"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    required
-                  />
+            {isForgotPassword ? (
+              <form onSubmit={handleResetPassword} className="space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-black text-slate-900 font-display">Esqueceu a senha?</h3>
+                  <p className="text-slate-500 font-medium text-sm">Insira seu e-mail para receber um link de redefinição.</p>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="password" 
-                    placeholder="••••••••"
-                    className="input-modern pl-12"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    required
-                  />
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Cadastro</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                      type="email" 
+                      placeholder="seu-email@exemplo.com"
+                      className="input-modern pl-12"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {loginError && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium"
+                {resetStatus === 'SUCCESS' && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 text-sm font-medium">
+                    E-mail enviado com sucesso! Verifique sua caixa de entrada.
+                  </div>
+                )}
+
+                {resetStatus === 'ERROR' && (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
+                    {resetErrorMessage || 'Erro ao enviar e-mail. Verifique se o endereço está correto.'}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <button 
+                    type="submit" 
+                    disabled={resetStatus === 'LOADING'}
+                    className="btn-modern-primary w-full h-14 text-lg disabled:opacity-50"
+                  >
+                    {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link de Redefinição'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setIsForgotPassword(false)}
+                    className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+                  >
+                    Voltar para o Login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <form onSubmit={handleEmailLogin} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="email" 
+                        placeholder="exemplo@stafflink.com"
+                        className="input-modern pl-12"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between ml-1">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                      <button 
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"
+                      >
+                        Esqueceu a senha?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="password" 
+                        placeholder="••••••••"
+                        className="input-modern pl-12"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {loginError && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium"
+                    >
+                      <AlertCircle size={18} />
+                      {loginError}
+                    </motion.div>
+                  )}
+
+                  <button type="submit" className="btn-modern-primary w-full h-14 text-lg">
+                    Entrar na Plataforma
+                    <ChevronRight size={20} />
+                  </button>
+                </form>
+
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-[#FBFBFA] px-4 text-slate-400 font-bold tracking-widest">Ou continue com</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleLogin}
+                  className="btn-modern-secondary w-full h-14 flex items-center justify-center gap-3"
                 >
-                  <AlertCircle size={18} />
-                  {loginError}
-                </motion.div>
-              )}
-
-              <button type="submit" className="btn-modern-primary w-full h-14 text-lg">
-                Entrar na Plataforma
-                <ChevronRight size={20} />
-              </button>
-            </form>
-
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#FBFBFA] px-4 text-slate-400 font-bold tracking-widest">Ou continue com</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleLogin}
-              className="btn-modern-secondary w-full h-14 flex items-center justify-center gap-3"
-            >
-              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-              Google Workspace
-            </button>
+                  <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+                  Google Workspace
+                </button>
+              </>
+            )}
 
             <div className="pt-8 text-center">
               <p className="text-sm text-slate-500 font-medium">
@@ -732,6 +1034,18 @@ export default function App() {
     );
   }
 
+  if (needsPasswordChange && user) {
+    return (
+      <ErrorBoundary>
+        <ChangePasswordScreen 
+          user={user} 
+          onComplete={() => setNeedsPasswordChange(false)} 
+          handleLogout={handleLogout}
+        />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
@@ -753,6 +1067,8 @@ export default function App() {
             setIsMobileMenuOpen={setIsMobileMenuOpen} 
             user={user}
             role={role}
+            audioEnabled={audioEnabled}
+            setAudioEnabled={setAudioEnabled}
           />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
@@ -831,6 +1147,8 @@ export default function App() {
                       clients={clients}
                       units={units}
                       companies={companies}
+                      checkIns={checkIns}
+                      employees={employees}
                     />
                   </div>
                 )}
@@ -1644,7 +1962,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 w-full lg:w-auto relative z-10">
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto relative z-10">
                   <button 
                     onClick={async () => {
                       if (notification.assignmentId) {
@@ -1652,13 +1970,24 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                       }
                       await updateDocument('notifications', notification.id, { read: true });
                     }}
-                    className="flex-1 lg:flex-none px-12 py-6 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-2xl active:scale-95"
+                    className="w-full sm:w-auto px-8 py-6 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-2xl active:scale-95"
                   >
-                    Confirmar Agora
+                    Confirmar
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      if (notification.assignmentId) {
+                        await updateDocument('assignments', notification.assignmentId, { status: 'CANCELLED' });
+                      }
+                      await updateDocument('notifications', notification.id, { read: true });
+                    }}
+                    className="w-full sm:w-auto px-8 py-6 bg-rose-500/10 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-2xl active:scale-95"
+                  >
+                    Recusar
                   </button>
                   <button 
                     onClick={() => updateDocument('notifications', notification.id, { read: true })}
-                    className="p-6 text-slate-500 hover:text-white hover:bg-white/10 rounded-2xl transition-all"
+                    className="p-6 text-slate-500 hover:text-white hover:bg-white/10 rounded-2xl transition-all hidden lg:block"
                   >
                     <X size={28} />
                   </button>
@@ -1905,7 +2234,12 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
       await deleteDocument('employees', oldId);
 
       // 3. Set user role
-      await setDocument('users', newUid, { role: 'EMPLOYEE', email: employee.personalEmail });
+      await setDocument('users', newUid, { 
+        role: 'EMPLOYEE', 
+        email: employee.personalEmail,
+        forcePasswordChange: true,
+        createdAt: new Date().toISOString()
+      });
 
       alert(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
       onComplete(username);
@@ -2035,7 +2369,12 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
       });
 
       // 3. Set user role
-      await setDocument('users', newUid, { role: 'EMPLOYEE', email: registration.personalEmail });
+      await setDocument('users', newUid, { 
+        role: 'EMPLOYEE', 
+        email: registration.personalEmail,
+        forcePasswordChange: true,
+        createdAt: new Date().toISOString()
+      });
 
       // 4. Mark registration as processed
       await updateDocument('employeeRegistrations', registration.id, { status: 'PROCESSED' });
@@ -2939,7 +3278,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const confirmedAssignments = assignments.filter(a => a.date === selectedDate && a.confirmed);
+  const confirmedAssignments = assignments.filter(a => a.confirmed).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Grouping logic for AgencyStaffing
   const groupedConfirmedByCompany = confirmedAssignments.reduce((acc, as) => {
@@ -3274,15 +3613,9 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
               <p className="text-slate-400 text-xs sm:text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <input 
-                type="date" 
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full sm:w-auto p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 text-sm outline-none focus:border-blue-600"
-              />
               <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100 w-fit">
                 <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                  {assignments.filter(a => a.confirmed && a.date === selectedDate).length} Confirmados
+                  {assignments.filter(a => a.confirmed).length} Confirmados Total
                 </span>
               </div>
             </div>
@@ -4804,7 +5137,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
   );
 }
 
-function AgencyAccessControl({ accessPoints, clients, units, companies }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[] }) {
+function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns, employees }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[], checkIns: CheckIn[], employees: Employee[] }) {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState('');
@@ -4900,6 +5233,19 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
       document.body.removeChild(downloadLink);
     }
   };
+
+  // Group check-ins by company
+  const checkInsByCompany = companies
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(company => {
+      const companyUnits = units.filter(u => u.companyId === company.id);
+      const companyCheckIns = checkIns.filter(ci => companyUnits.some(u => u.location === ci.location));
+      return {
+        company,
+        checkIns: companyCheckIns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      };
+    })
+    .filter(item => item.checkIns.length > 0);
 
   return (
     <motion.div 
@@ -5045,6 +5391,70 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Clock-in Monitoring section */}
+      <div className="space-y-10 mt-20">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Monitoramento de Pontos</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe os pontos batidos por empresa em tempo real.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-12">
+          {checkInsByCompany.map(({ company, checkIns: companyCheckIns }) => (
+            <div key={company.id} className="bg-white rounded-[2rem] p-8 sm:p-12 shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                  <Building2 size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{company.name}</h3>
+              </div>
+
+              <div className="overflow-x-auto -mx-8 sm:-mx-12">
+                <table className="w-full border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Funcionário</th>
+                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidade</th>
+                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Data/Hora</th>
+                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {companyCheckIns.map(ci => {
+                      const employee = employees.find(e => e.id === ci.employeeId);
+                      return (
+                        <tr key={ci.id} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-8 sm:px-12 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-sm">
+                                {employee?.firstName?.[0]}{employee?.lastName?.[0]}
+                              </div>
+                              <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                                {employee ? `${employee.firstName} ${employee.lastName}` : 'Desconhecido'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-8 sm:px-12 py-6 text-slate-500 font-medium">{ci.location}</td>
+                          <td className="px-8 sm:px-12 py-6 text-slate-500 font-medium">
+                            {new Date(ci.timestamp).toLocaleString('pt-BR')}
+                          </td>
+                          <td className="px-8 sm:px-12 py-6">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                            }`}>
+                              {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </motion.div>
   );
@@ -5620,23 +6030,28 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         await new Promise(resolve => setTimeout(resolve, 2000)); // Simula tempo de processamento
 
         // Save Check-in
+        const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const todayCheckIns = checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(today));
+        const type = todayCheckIns.length % 2 === 0 ? 'IN' : 'OUT';
+
         const newCheckIn: Omit<CheckIn, 'id'> = {
           employeeId: employeeId,
           accessPointId: scannedPoint!.id,
+          location: scannedPoint!.location,
           timestamp: new Date().toISOString(),
           photoUrl: photo,
+          type: type
         };
         await createDocument('checkIns', newCheckIn);
 
         // Update Assignment status
-        const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const assignment = assignments.find(a => 
           a.employeeId === employeeId && 
-          a.clientId === scannedPoint!.clientId && 
+          (a.clientId === scannedPoint!.clientId || a.clientId === scannedPoint!.id) && 
           a.date === today &&
           a.status === 'SCHEDULED'
         );
-        if (assignment) {
+        if (assignment && type === 'IN') {
           await updateDocument('assignments', assignment.id, { status: 'COMPLETED' });
         }
 
@@ -7055,18 +7470,42 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
 };
 
 const UserProfile = ({ user, role, employee, companyUser }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser }) => {
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [resetErrorMessage, setResetErrorMessage] = useState('');
 
-  const handleResetPassword = () => {
-    if (newPassword !== confirmPassword) {
-      alert("As senhas não coincidem!");
+  const handleSendResetEmail = async () => {
+    const email = employee?.personalEmail || companyUser?.email || user?.email;
+    if (!email) {
+      alert("E-mail não encontrado!");
       return;
     }
-    alert(`Senha redefinida com sucesso! Um link de confirmação foi enviado para ${resetEmail || employee?.personalEmail || companyUser?.email || user?.email}`);
-    setIsResetting(false);
+
+    setResetStatus('LOADING');
+    setResetErrorMessage('');
+    try {
+      const response = await fetch('/api/send-reset-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(`Erro do servidor (${response.status})`);
+      }
+
+      if (!response.ok) throw new Error(data.message || data.error || 'Falha ao enviar e-mail');
+      setResetStatus('SUCCESS');
+    } catch (err: any) {
+      console.error(err);
+      setResetStatus('ERROR');
+      setResetErrorMessage(err.message);
+    }
   };
 
   const displayName = employee ? `${employee.firstName} ${employee.lastName}` : companyUser?.fullName || user?.displayName || 'Usuário';
@@ -7091,10 +7530,31 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
         </div>
         
         <div className="pt-12 sm:pt-16 p-6 sm:p-12 space-y-6 sm:space-y-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
-            <p className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
+              <p className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
+            </div>
+            <button 
+              onClick={handleSendResetEmail}
+              disabled={resetStatus === 'LOADING'}
+              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all disabled:opacity-50"
+            >
+              {resetStatus === 'LOADING' ? 'Enviando...' : 'Redefinir Senha'}
+            </button>
           </div>
+
+          {resetStatus === 'SUCCESS' && (
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-medium">
+              E-mail de redefinição enviado com sucesso para {employee?.personalEmail || companyUser?.email || user?.email}!
+            </div>
+          )}
+
+          {resetStatus === 'ERROR' && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-medium">
+              {resetErrorMessage || 'Erro ao enviar e-mail de redefinição. Tente novamente mais tarde.'}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-2">
@@ -7109,72 +7569,6 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
                   {personalEmail}
                 </div>
-              </div>
-            )}
-          </div>
-
-          <div className="pt-6 sm:pt-8 border-t border-slate-100">
-            {!isResetting ? (
-              <button 
-                onClick={() => {
-                  setIsResetting(true);
-                  setResetEmail(personalEmail || loginEmail || '');
-                }}
-                className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"
-              >
-                <Lock size={18} />
-                Redefinir Minha Senha
-              </button>
-            ) : (
-              <div className="space-y-6 bg-slate-50 p-6 sm:p-8 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">Alterar Senha</h4>
-                  <button onClick={() => setIsResetting(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
-                    <X size={20} />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar E-mail para Link</label>
-                    <input 
-                      type="email" 
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
-                      placeholder="seu@email.com"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nova Senha</label>
-                      <input 
-                        type="password" 
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Confirmar Senha</label>
-                      <input 
-                        type="password" 
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-700 text-sm"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleResetPassword}
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
-                >
-                  Confirmar Nova Senha
-                </button>
               </div>
             )}
           </div>

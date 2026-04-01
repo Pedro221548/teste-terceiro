@@ -62,8 +62,10 @@ service cloud.firestore {
     // Fields:
     //   - employeeId: string (required)
     //   - accessPointId: string (required)
+    //   - location: string (required)
     //   - timestamp: string (required)
     //   - photoUrl: string (required)
+    //   - type: string (required, enum: ["IN", "OUT"])
     //
     // Collection: companyRequests
     // Fields:
@@ -85,6 +87,13 @@ service cloud.firestore {
     //   - createdAt: string (required)
     //   - link: string
     //   - assignmentId: string
+    //
+    // Collection: users
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, enum: ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"])
+    //   - forcePasswordChange: bool
+    //   - createdAt: string (required)
     //
     // ===============================================================
 
@@ -134,8 +143,11 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      return hasRequiredFields(['role']) &&
-             data.role in ['AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION'];
+      return hasRequiredFields(['role', 'email', 'createdAt']) &&
+             data.role in ['AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION'] &&
+             data.email is string &&
+             data.createdAt is string &&
+             (!('forcePasswordChange' in data) || data.forcePasswordChange is bool);
     }
 
     function isValidCompanyRequest(data) {
@@ -162,8 +174,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() || isOwner(userId);
+      allow create: if isAuthenticated() && isValidUser(request.resource.data);
+      allow update: if (isAdmin() || isOwner(userId)) && isValidUser(request.resource.data);
       allow delete: if isAdmin();
     }
 
@@ -237,10 +249,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function isValidCheckIn(data) {
+      return hasRequiredFields(['employeeId', 'accessPointId', 'location', 'timestamp', 'photoUrl', 'type']) &&
+             data.employeeId is string &&
+             data.accessPointId is string &&
+             data.location is string &&
+             data.timestamp is string &&
+             data.photoUrl is string &&
+             data.type in ["IN", "OUT"];
+    }
+
     match /checkIns/{checkInId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() || isCompany();
+      allow create: if isAuthenticated() && isValidCheckIn(request.resource.data);
+      allow update: if (isAdmin() || isCompany()) && isValidCheckIn(request.resource.data);
       allow delete: if isAdmin();
     }
 
