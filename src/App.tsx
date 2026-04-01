@@ -49,7 +49,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
-import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
+import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -303,8 +303,6 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
-  const [impersonatedClientId, setImpersonatedClientId] = useState<string | null>(null);
-  const [impersonatedEmployeeId, setImpersonatedEmployeeId] = useState<string | null>(null);
 
   const getScaleValue = (rating: number) => {
     if (pricing.type === 'STARS') {
@@ -335,76 +333,6 @@ export default function App() {
     });
     return () => unsubPricing();
   }, [isAuthReady, user]);
-
-  const seedData = async () => {
-    try {
-      // 1. Create a fictitious company
-      const companyId = await createDocument('companies', {
-        name: "Restaurante Sabor Real",
-        responsibleName: "Maria Oliveira",
-        cnpj: "12.345.678/0001-90",
-        phone: "(11) 3333-4444",
-        email: "contato@saborreal.com.br",
-        address: "Rua das Flores, 123 - São Paulo, SP",
-        createdAt: new Date().toISOString()
-      });
-
-      if (companyId) {
-        // 2. Create a unit for this company
-        const unitId = await createDocument('units', {
-          companyId,
-          name: "Unidade Centro",
-          managerName: "Carlos Santos",
-          location: "Centro, São Paulo",
-          createdAt: new Date().toISOString()
-        });
-
-        if (unitId) {
-          // 3. Create an access point for this unit
-          await createDocument('accessPoints', {
-            managerName: "Carlos Santos",
-            location: "Unidade Centro - Restaurante Sabor Real",
-            qrCodeValue: `UNIT_${unitId}`,
-            createdAt: new Date().toISOString()
-          });
-
-          // 4. Create a Client entry for the staffing system
-          const clientId = await createDocument('clients', {
-            name: "Restaurante Sabor Real - Unidade Centro",
-            managerName: "Carlos Santos",
-            location: "Centro, São Paulo",
-            activeScales: 0
-          });
-          if (clientId) {
-            setImpersonatedClientId(clientId);
-            await updateDocument('units', unitId, { clientId });
-          }
-        }
-      }
-
-      // 5. Create a fictitious employee
-      const employeeId = await createDocument('employees', {
-        firstName: "João",
-        lastName: "Silva",
-        cpf: "123.456.789-00",
-        birthDate: "1990-05-15",
-        phone: "(11) 98765-4321",
-        rating: 5,
-        status: "ACTIVE",
-        complaints: 0,
-        photoUrl: "https://picsum.photos/seed/joao/200",
-        lastAssignmentDate: "",
-        unavailableDates: []
-      });
-
-      if (employeeId) setImpersonatedEmployeeId(employeeId);
-
-      alert("Dados fictícios cadastrados com sucesso!");
-    } catch (error) {
-      console.error("Erro ao cadastrar dados fictícios:", error);
-      alert("Erro ao cadastrar dados fictícios. Verifique o console.");
-    }
-  };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -458,8 +386,8 @@ export default function App() {
     const unsubClients = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Client>('clients', setClients) : () => {};
     
     // Role-based assignments subscription
-    const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', impersonatedEmployeeId || user.uid)] : 
-                                 role === 'COMPANY' ? [where('clientId', '==', impersonatedClientId || user.uid)] : [];
+    const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : 
+                                 role === 'COMPANY' ? [where('clientId', '==', (user as any).clientId || user.uid)] : [];
     const unsubAssignments = subscribeToCollection<Assignment>('assignments', setAssignments, assignmentConstraints);
     
     const unsubFeedbacks = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Feedback>('feedbacks', setFeedbacks) : () => {};
@@ -471,7 +399,7 @@ export default function App() {
     const unsubAccessPoints = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<AccessPoint>('accessPoints', setAccessPoints) : () => {};
     
     // Role-based check-ins subscription
-    const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', impersonatedEmployeeId || user.uid)] : [];
+    const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
     const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', setCheckIns, checkInConstraints);
 
     const unsubCompanies = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Company>('companies', setCompanies) : () => {};
@@ -518,10 +446,10 @@ export default function App() {
         uid: cUser.id,
         email: cUser.email,
         displayName: cUser.fullName,
-        isCustom: true
+        isCustom: true,
+        clientId: cUser.unitId ? units.find(u => u.id === cUser.unitId)?.clientId : null
       });
       setRole('COMPANY');
-      if (cUser.unitId) setImpersonatedClientId(units.find(u => u.id === cUser.unitId)?.clientId || null);
       return;
     }
 
@@ -535,18 +463,6 @@ export default function App() {
         isCustom: true
       });
       setRole('EMPLOYEE');
-      return;
-    }
-
-    // 3. Check for default Agency (Demo)
-    if (emailInput === 'admin@stafflink.com' && passwordInput === 'admin123') {
-      setUser({
-        uid: 'agency-admin',
-        email: 'admin@stafflink.com',
-        displayName: 'Administrador StaffLink',
-        isCustom: true
-      });
-      setRole('AGENCY');
       return;
     }
 
@@ -603,94 +519,6 @@ export default function App() {
       setActiveTab(tabParam);
     }
   }, []);
-
-  // Role Switcher for Demo
-  const RoleSwitcher = () => {
-    const impersonatedClient = clients.find(c => c.id === impersonatedClientId);
-    const impersonatedEmployee = employees.find(e => e.id === impersonatedEmployeeId);
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-      <div className="fixed bottom-24 right-4 flex flex-col items-end gap-2 z-50 lg:bottom-4">
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white p-4 rounded-xl shadow-2xl border border-slate-200 flex flex-col gap-4 mb-2 min-w-[240px]"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Simulador de Perfis</h4>
-                <button onClick={() => setIsOpen(false)} className="text-slate-300 hover:text-slate-600 transition-colors">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <button 
-                  onClick={() => { setRole('AGENCY'); setActiveTab('dashboard'); setIsOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'AGENCY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${role === 'AGENCY' ? 'bg-white' : 'bg-blue-500'}`} />
-                  Agência
-                </button>
-                <button 
-                  onClick={() => { setRole('COMPANY'); setActiveTab('manager_dashboard'); setIsOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'COMPANY' ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${role === 'COMPANY' ? 'bg-white' : 'bg-green-500'}`} />
-                  Empresa
-                </button>
-                <button 
-                  onClick={() => { setRole('EMPLOYEE'); setActiveTab('employee_schedule'); setIsOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'EMPLOYEE' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${role === 'EMPLOYEE' ? 'bg-white' : 'bg-purple-500'}`} />
-                  Funcionário
-                </button>
-                <button 
-                  onClick={() => { setRole('REGISTRATION'); setActiveTab('registration_form'); setIsOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${role === 'REGISTRATION' ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${role === 'REGISTRATION' ? 'bg-white' : 'bg-orange-500'}`} />
-                  Registro
-                </button>
-              </div>
-
-              {(impersonatedClientId || impersonatedEmployeeId) && (
-                <div className="pt-4 border-t border-slate-100 space-y-2">
-                  {impersonatedClientId && (
-                    <div className="flex items-center justify-between bg-emerald-50 px-3 py-2 rounded-lg">
-                      <p className="text-[9px] font-black text-emerald-600 uppercase truncate max-w-[150px]">{impersonatedClient?.name}</p>
-                      <button onClick={() => setImpersonatedClientId(null)} className="text-emerald-400 hover:text-emerald-600">
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {impersonatedEmployeeId && (
-                    <div className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded-lg">
-                      <p className="text-[9px] font-black text-purple-600 uppercase truncate max-w-[150px]">{impersonatedEmployee?.firstName}</p>
-                      <button onClick={() => setImpersonatedEmployeeId(null)} className="text-purple-400 hover:text-purple-600">
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-14 h-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-4 border-white"
-        >
-          <Settings size={24} className={isOpen ? 'rotate-90 transition-transform' : 'transition-transform'} />
-        </button>
-      </div>
-    );
-  };
 
   if (!isAuthReady) {
     return (
@@ -884,7 +712,6 @@ export default function App() {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
-          <RoleSwitcher />
           <RegistrationForm 
             onComplete={() => setRole('EMPLOYEE')} 
           />
@@ -897,7 +724,6 @@ export default function App() {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
-          <RoleSwitcher />
           <CompanyRegistrationForm 
             onComplete={() => setRole('COMPANY')} 
           />
@@ -909,7 +735,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
-        <RoleSwitcher />
         <Sidebar 
           role={role} 
           activeTab={activeTab} 
@@ -931,90 +756,6 @@ export default function App() {
           />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
-              {role === 'EMPLOYEE' && (
-                <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-200">
-                      <UserIcon size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-purple-900 uppercase tracking-tight">Modo de Teste: Selecionar Perfil</h3>
-                      <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Escolha um funcionário cadastrado para simular o portal.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <select 
-                      value={impersonatedEmployeeId || ''} 
-                      onChange={(e) => {
-                        const val = e.target.value || null;
-                        setImpersonatedEmployeeId(val);
-                        if (val) {
-                          const emp = employees.find(e => e.id === val);
-                          if (emp) alert(`Simulando como: ${emp.firstName}`);
-                        }
-                      }}
-                      className="flex-1 sm:w-64 px-4 py-3 bg-white border-2 border-purple-100 rounded-xl text-xs font-bold text-slate-700 focus:border-purple-400 outline-none transition-all shadow-sm"
-                    >
-                      <option value="">Meu Perfil (Padrão)</option>
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.status})</option>
-                      ))}
-                    </select>
-                    {impersonatedEmployeeId && (
-                      <button 
-                        onClick={() => setImpersonatedEmployeeId(null)}
-                        className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                        title="Limpar Seleção"
-                      >
-                        <X size={20} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {role === 'COMPANY' && (
-                <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
-                      <Building2 size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-tight">Modo de Teste: Selecionar Empresa</h3>
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Escolha uma empresa cadastrada para simular o portal.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <select 
-                      value={impersonatedClientId || ''} 
-                      onChange={(e) => {
-                        const val = e.target.value || null;
-                        setImpersonatedClientId(val);
-                        if (val) {
-                          const client = clients.find(c => c.id === val);
-                          if (client) alert(`Simulando como: ${client.name}`);
-                        }
-                      }}
-                      className="flex-1 sm:w-64 px-4 py-3 bg-white border-2 border-emerald-100 rounded-xl text-xs font-bold text-slate-700 focus:border-emerald-400 outline-none transition-all shadow-sm"
-                    >
-                      <option value="">Minha Empresa (Padrão)</option>
-                      {clients.map(client => (
-                        <option key={client.id} value={client.id}>{client.name} ({client.city})</option>
-                      ))}
-                    </select>
-                    {impersonatedClientId && (
-                      <button 
-                        onClick={() => setImpersonatedClientId(null)}
-                        className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                        title="Limpar Seleção"
-                      >
-                        <X size={20} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
               <AnimatePresence mode="wait">
                 {role === 'AGENCY' && activeTab === 'user_management' && (
                   <div key="agency-user-management">
@@ -1030,8 +771,8 @@ export default function App() {
                     <UserProfile 
                       user={user}
                       role={role}
-                      employee={role === 'EMPLOYEE' ? (impersonatedEmployeeId ? employees.find(e => e.id === impersonatedEmployeeId) : employees.find(e => e.loginEmail === user?.email)) : undefined}
-                      companyUser={role === 'COMPANY' ? (impersonatedClientId ? companyUsers.find(cu => cu.companyId === impersonatedClientId) : companyUsers.find(cu => cu.email === user?.email)) : undefined}
+                      employee={role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email) : undefined}
+                      companyUser={role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email) : undefined}
                     />
                   </div>
                 )}
@@ -1044,7 +785,6 @@ export default function App() {
                       employeeRegistrations={employeeRegistrations}
                       pricing={pricing}
                       ratingLabel={ratingLabel}
-                      onSeedData={seedData}
                       setActiveTab={setActiveTab}
                       clients={clients}
                       feedbacks={feedbacks}
@@ -1068,8 +808,6 @@ export default function App() {
                       employees={employees}
                       clients={clients}
                       ratingLabel={ratingLabel}
-                      onImpersonate={setImpersonatedEmployeeId}
-                      impersonatedId={impersonatedEmployeeId}
                     />
                   </div>
                 )}
@@ -1103,8 +841,6 @@ export default function App() {
                       units={units}
                       companyUsers={companyUsers}
                       clients={clients}
-                      onImpersonate={setImpersonatedClientId}
-                      impersonatedId={impersonatedClientId}
                     />
                   </div>
                 )}
@@ -1122,7 +858,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
                   <div key="company-dashboard">
                     <CompanyDashboard 
-                      clientId={impersonatedClientId || user.uid} 
+                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1133,7 +869,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'manager_feedback' && (
                   <div key="company-feedback">
                     <CompanyFeedbackForm 
-                      clientId={impersonatedClientId || user.uid}
+                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1143,7 +879,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'company_diaristas' && (
                   <div key="company-diaristas">
                     <CompanyDiaristas 
-                      clientId={impersonatedClientId || user.uid}
+                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       employees={employees}
                       assignments={assignments}
@@ -1155,7 +891,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'evaluate_team' && (
                   <div key="company-evaluate">
                     <CompanyEvaluateTeam 
-                      clientId={impersonatedClientId || user.uid}
+                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1175,7 +911,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_schedule' && (
                   <div key="employee-schedule">
                     <EmployeeSchedule 
-                      employeeId={impersonatedEmployeeId || user.uid} 
+                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''} 
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
@@ -1186,7 +922,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_profile' && (
                   <div key="employee-profile">
                     <EmployeeProfile 
-                      employeeId={impersonatedEmployeeId || user.uid}
+                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''}
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
@@ -1196,7 +932,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
                   <div key="employee-ponto">
                     <EmployeePonto 
-                      employeeId={impersonatedEmployeeId || user.uid}
+                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''}
                       employees={employees}
                       accessPoints={accessPoints}
                       checkIns={checkIns}
@@ -1240,7 +976,7 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData, setActiveTab, clients, feedbacks, companies, units }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[] }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -1324,13 +1060,6 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
           <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho da sua agência hoje.</p>
         </div>
-        <button 
-          onClick={onSeedData}
-          className="px-6 py-3 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 hover:shadow-blue-500/20 active:scale-95 flex items-center gap-2"
-        >
-          <Database size={14} />
-          Cadastrar Dados de Teste
-        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2347,7 +2076,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
   );
 }
 
-function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, impersonatedId }: { employees: Employee[], clients: Client[], ratingLabel: string, onImpersonate: (id: string | null) => void, impersonatedId: string | null }) {
+function AgencyRegistrations({ employees, clients, ratingLabel }: { employees: Employee[], clients: Client[], ratingLabel: string }) {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -2928,15 +2657,6 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                         </button>
                       )}
                       <button 
-                        onClick={() => {
-                          onImpersonate(emp.id);
-                        }}
-                        className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all ${impersonatedId === emp.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
-                        title="Visualizar como este Funcionário"
-                      >
-                        <Scan className="w-3.5 h-3.5 sm:w-[18px] sm:h-[18px]" />
-                      </button>
-                      <button 
                         onClick={() => handleEdit(emp)}
                         className="p-1.5 sm:p-2.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all"
                         title="Editar Cadastro"
@@ -3020,13 +2740,6 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                   </button>
                 )}
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <button 
-                    onClick={() => onImpersonate(emp.id)}
-                    className={`flex-1 p-2.5 rounded-xl border transition-all flex items-center justify-center gap-2 ${impersonatedId === emp.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-400 border-slate-200'}`}
-                  >
-                    <Scan size={16} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Visualizar</span>
-                  </button>
                   <button 
                     onClick={() => handleEdit(emp)}
                     className="flex-1 p-2.5 bg-white text-slate-400 border border-slate-200 rounded-xl flex items-center justify-center gap-2"
@@ -3915,7 +3628,7 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel }: { p
   );
 }
 
-function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonate, impersonatedId }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[], onImpersonate: (id: string | null) => void, impersonatedId: string | null }) {
+function AgencyCompanies({ companies, units, companyUsers, clients }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[] }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUnitModal, setShowUnitModal] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState<string | null>(null);
@@ -4165,18 +3878,6 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
                         <p className="text-[10px] sm:text-xs font-bold text-slate-600">{unit.managerName}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {unit.clientId && (
-                          <button 
-                            onClick={() => {
-                              onImpersonate(unit.clientId!);
-                              alert(`Agora visualizando como ${unit.name}`);
-                            }}
-                            className={`p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all ${impersonatedId === unit.clientId ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
-                            title="Visualizar como esta Unidade"
-                          >
-                            <Scan size={14} className="sm:w-4 sm:h-4" />
-                          </button>
-                        )}
                         <button 
                           onClick={() => setShowDeleteUnitConfirm(unit.id)}
                           className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
