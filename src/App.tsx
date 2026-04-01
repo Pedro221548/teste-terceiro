@@ -1871,20 +1871,50 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
     e.preventDefault();
     setIsSending(true);
     
-    // Simulate email sending
-    console.log(`Enviando e-mail para ${employee.personalEmail || 'N/A'}...`);
-    console.log(`Credenciais: Usuário: ${username}, Senha: ${password}`);
-    
-    await updateDocument('employees', employee.id, { 
-      username, 
-      status: 'ACTIVE' 
-    });
+    try {
+      const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
+      
+      // 1. Create Firebase Auth user via Admin API
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: emailForAuth, 
+          password, 
+          displayName: `${employee.firstName} ${employee.lastName}` 
+        })
+      });
 
-    // In a real app, you'd call a backend service here to send the actual email
-    // and create the auth user.
-    
-    alert(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
-    onComplete(username);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const { uid: newUid } = await response.json();
+
+      // 2. Update employee record with the new UID (moving from old ID to new UID)
+      const { id: oldId, ...employeeData } = employee;
+      const updatedEmployeeData = { 
+        ...employeeData,
+        username, 
+        loginEmail: emailForAuth,
+        status: 'ACTIVE' 
+      };
+      
+      await setDocument('employees', newUid, updatedEmployeeData);
+      await deleteDocument('employees', oldId);
+
+      // 3. Set user role
+      await setDocument('users', newUid, { role: 'EMPLOYEE', email: employee.personalEmail });
+
+      alert(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
+      onComplete(username);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      alert('Erro ao criar usuário: ' + error.message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -1963,11 +1993,26 @@ function ProcessRegistrationModal({ registration, onClose, onComplete }: { regis
     setIsSending(true);
     
     try {
-      // 1. Create Firebase Auth user
+      // 1. Create Firebase Auth user via Admin API to avoid automatic sign-in
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
       console.log("DEBUG: Creating user with:", emailForAuth, password);
-      const userCredential = await createUserWithEmailAndPassword(auth, emailForAuth, password);
-      const newUid = userCredential.user.uid;
+      
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: emailForAuth, 
+          password, 
+          displayName: `${registration.firstName} ${registration.lastName}` 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const { uid: newUid } = await response.json();
 
       // 2. Create employee record
       await setDocument('employees', newUid, {
