@@ -1281,6 +1281,7 @@ export default function App() {
                       role={role}
                       employee={role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email) : undefined}
                       companyUser={role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email) : undefined}
+                      agency={role === 'AGENCY' ? agencies.find(a => a.email === user?.email) : undefined}
                     />
                   </div>
                 )}
@@ -1511,16 +1512,19 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [invitePhone, setInvitePhone] = useState('');
+  const [inviteRole, setInviteRole] = useState<'AGENCY_REGISTRATION' | 'COMPANY_REGISTRATION'>('AGENCY_REGISTRATION');
   const [newAgency, setNewAgency] = useState({ name: '', responsibleName: '', email: '', phone: '' });
 
   const handleSendInvite = () => {
     if (!invitePhone) return;
     const cleanPhone = invitePhone.replace(/\D/g, '');
-    const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
-    const message = encodeURIComponent(`Olá! Você foi convidado para registrar sua agência em nossa plataforma. Acesse o link para completar seu cadastro: ${link}`);
+    const link = `${window.location.origin}?role=${inviteRole}`;
+    const roleName = inviteRole === 'AGENCY_REGISTRATION' ? 'agência' : 'empresa';
+    const message = encodeURIComponent(`Olá! Você foi convidado para registrar sua ${roleName} em nossa plataforma. Acesse o link para completar seu cadastro: ${link}`);
     window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
     setShowInviteModal(false);
     setInvitePhone('');
+    setInviteRole('AGENCY_REGISTRATION');
   };
 
   const handleAddAgency = async (e: React.FormEvent) => {
@@ -1712,7 +1716,7 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
           >
             <div className="p-8 border-b border-slate-50 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Convidar Agência</h2>
+                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Convidar Usuário</h2>
                 <p className="text-slate-500 text-sm font-medium">Envie o link de cadastro via WhatsApp</p>
               </div>
               <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
@@ -1721,6 +1725,17 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
             </div>
 
             <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Convite</label>
+                <select
+                  value={inviteRole}
+                  onChange={e => setInviteRole(e.target.value as 'AGENCY_REGISTRATION' | 'COMPANY_REGISTRATION')}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                >
+                  <option value="AGENCY_REGISTRATION">Agência</option>
+                  <option value="COMPANY_REGISTRATION">Empresa</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp do Responsável</label>
                 <input
@@ -1731,7 +1746,7 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
                   className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                   placeholder="(00) 00000-0000"
                 />
-                <p className="text-[10px] text-slate-400 font-medium ml-1 italic text-wrap">O link enviado será: {window.location.origin}?role=AGENCY_REGISTRATION</p>
+                <p className="text-[10px] text-slate-400 font-medium ml-1 italic text-wrap">O link enviado será: {window.location.origin}?role={inviteRole}</p>
               </div>
 
               <button
@@ -9282,7 +9297,7 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
   );
 };
 
-const UserProfile = ({ user, role, employee, companyUser }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser }) => {
+const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser, agency?: Agency }) => {
   const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [resetErrorMessage, setResetErrorMessage] = useState('');
 
@@ -9305,8 +9320,8 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
     }
   };
 
-  const displayName = employee ? `${employee.firstName} ${employee.lastName}` : companyUser?.fullName || user?.displayName || 'Usuário';
-  const loginEmail = employee?.loginEmail || companyUser?.email || user?.email;
+  const displayName = employee ? `${employee.firstName} ${employee.lastName}` : companyUser?.fullName || agency?.name || user?.displayName || 'Usuário';
+  const loginEmail = employee?.loginEmail || companyUser?.email || agency?.email || user?.email;
   const personalEmail = employee?.personalEmail || '';
 
   return (
@@ -9360,14 +9375,29 @@ const UserProfile = ({ user, role, employee, companyUser }: { user: User | null,
                 {loginEmail}
               </div>
             </div>
-            {personalEmail && (
-              <div className="space-y-2">
-                <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
-                  {personalEmail}
+            {agency && (
+            <div className="space-y-6 pt-6 border-t border-slate-100">
+              <h3 className="text-lg font-black text-slate-900">Informações da Agência</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Razão Social</p>
+                  <p className="text-sm font-bold text-slate-900">{agency.name}</p>
+                </div>
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nome Fantasia</p>
+                  <p className="text-sm font-bold text-slate-900">{agency.tradeName}</p>
+                </div>
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">CNPJ</p>
+                  <p className="text-sm font-bold text-slate-900">{agency.cnpj}</p>
+                </div>
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Responsável</p>
+                  <p className="text-sm font-bold text-slate-900">{agency.responsibleName}</p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
       </div>

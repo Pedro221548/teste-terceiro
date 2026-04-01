@@ -192,7 +192,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data);
+      allow create: if isAuthenticated();
       allow update: if (isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId)) && isValidUser(request.resource.data);
       allow delete: if isSuperAdmin();
     }
