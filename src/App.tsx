@@ -5951,12 +5951,15 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
   const handleScan = (text: string) => {
     if (text) {
+      console.log("QR Code lido:", text);
+      console.log("Access Points disponíveis:", accessPoints.map(ap => ap.qrCodeValue));
       const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
         setStep('PHOTO');
         startCamera();
       } else {
+        console.warn("QR Code não encontrado na lista de AccessPoints.");
         alert('QR Code inválido para esta unidade.');
       }
     }
