@@ -5997,6 +5997,22 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
         setStep('VERIFYING');
 
+        // Geolocation verification
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+          });
+          const { latitude, longitude } = position.coords;
+          console.log(`Localização atual: ${latitude}, ${longitude}`);
+          // In a real app, compare with scannedPoint.location
+          // For now, just log it
+        } catch (err) {
+          console.error("Erro ao obter localização:", err);
+          alert("Não foi possível obter sua localização. Por favor, permita o acesso.");
+          setStep('PHOTO');
+          return;
+        }
+
         // Simulação de chamada para API de Reconhecimento Facial usando a chave fornecida
         console.log(`Iniciando reconhecimento facial com a chave: ${API_KEY}`);
         
