@@ -50,6 +50,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail } from './firebase';
@@ -529,6 +531,10 @@ export default function App() {
           if (userDoc.forcePasswordChange) {
             setNeedsPasswordChange(true);
           }
+          let defaultTab = 'dashboard';
+          if ((userDoc.role as string) === 'COMPANY') defaultTab = 'manager_dashboard';
+          if ((userDoc.role as string) === 'EMPLOYEE') defaultTab = 'employee_schedule';
+          setActiveTab(defaultTab);
         } else {
           // Default role based on email or URL param
           let defaultRole: UserRole = firebaseUser.email === 'pedroass.11577@gmail.com' ? 'AGENCY' : 'EMPLOYEE';
@@ -541,6 +547,10 @@ export default function App() {
             createdAt: new Date().toISOString()
           });
           setRole(defaultRole);
+          let defaultTab = 'dashboard';
+          if ((defaultRole as any) === 'COMPANY') defaultTab = 'manager_dashboard';
+          if ((defaultRole as any) === 'EMPLOYEE') defaultTab = 'employee_schedule';
+          setActiveTab(defaultTab);
         }
         setUser(firebaseUser);
       } else {
@@ -617,7 +627,12 @@ export default function App() {
         setCompanyRequests(docs);
       }
     }) : () => {};
-    const unsubNotifications = subscribeToCollection<Notification>('notifications', setNotifications, [where('userId', '==', user.uid)]);
+    const notificationConstraints = [where('userId', 'in', [
+      user.uid, 
+      'AGENCY', 
+      ...(role === 'COMPANY' ? ['COMPANY_' + (user as any).companyId] : [])
+    ])];
+    const unsubNotifications = subscribeToCollection<Notification>('notifications', setNotifications, notificationConstraints);
 
     return () => {
       unsubEmployees();
@@ -1217,6 +1232,8 @@ export default function App() {
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
+                      checkIns={checkIns}
+                      pricing={pricing}
                     />
                   </div>
                 )}
@@ -1866,6 +1883,33 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     const exists = current.includes(date);
     const newDates = exists ? current.filter(d => d !== date) : [...current, date];
     await updateDocument('employees', employee.id, { unavailableDates: newDates });
+    
+    if (!exists) {
+      // Notify Agency
+      await createDocument('notifications', {
+        userId: 'AGENCY',
+        title: 'Funcionário indisponível',
+        message: `O funcionário ${employee.firstName} ${employee.lastName} marcou o dia ${date} como indisponível.`,
+        type: 'INFO',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+
+      // Notify Company
+      const relevantAssignments = assignments.filter(a => a.employeeId === employee.id && a.date === date);
+      const companyIds = [...new Set(relevantAssignments.map(a => a.clientId))];
+      
+      for (const companyId of companyIds) {
+        await createDocument('notifications', {
+          userId: 'COMPANY_' + companyId,
+          title: 'Funcionário indisponível',
+          message: `O funcionário ${employee.firstName} ${employee.lastName} marcou o dia ${date} como indisponível.`,
+          type: 'INFO',
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
   };
 
   const currentMonth = viewDate.getMonth();
@@ -5620,10 +5664,31 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   );
 }
 
-function EmployeeProfile({ employeeId, employees, assignments, notifications }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[] }) {
+function EmployeeProfile({ employeeId, employees, assignments, notifications, checkIns, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], checkIns: CheckIn[], pricing: PricingConfig }) {
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Comprovante de Acessos - ${employee?.firstName} ${employee?.lastName}`, 10, 10);
+    
+    const employeeCheckIns = checkIns.filter(c => c.employeeId === employeeId);
+    
+    const tableData = employeeCheckIns.map(c => [
+      new Date(c.timestamp).toLocaleDateString('pt-BR'),
+      c.type,
+      c.location,
+      'R$ 100,00' // Placeholder for daily rate
+    ]);
+
+    autoTable(doc, {
+      head: [['Data', 'Tipo', 'Local', 'Valor']],
+      body: tableData,
+    });
+    
+    doc.save(`comprovante_${employee?.firstName}_${employee?.lastName}.pdf`);
+  };
 
   if (!employee) {
     return (
@@ -5746,17 +5811,13 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications }: 
         </div>
 
         <div className="relative z-10 hidden lg:block">
-          {employee.docUrl && (
-            <a 
-              href={employee.docUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-            >
-              <Eye size={18} />
-              Ver Comprovante
-            </a>
-          )}
+          <button 
+            onClick={generatePDF}
+            className="flex items-center gap-3 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+          >
+            <Eye size={18} />
+            Ver Comprovante
+          </button>
         </div>
       </div>
 
@@ -5867,17 +5928,13 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications }: 
 
       {/* Mobile Doc Link */}
       <div className="lg:hidden">
-        {employee.docUrl && (
-          <a 
-            href={employee.docUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 px-6 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-          >
-            <Eye size={18} />
-            Ver Comprovante
-          </a>
-        )}
+        <button 
+          onClick={generatePDF}
+          className="flex items-center justify-center gap-3 px-6 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+        >
+          <Eye size={18} />
+          Ver Comprovante
+        </button>
       </div>
 
       {/* Unavailable Dates Card */}

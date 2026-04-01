@@ -12,11 +12,12 @@ import {
   where, 
   orderBy, 
   getDocFromServer,
-  FirestoreError
+  FirestoreError,
+  or
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
-export { where };
+export { where, or };
 
 export enum OperationType {
   CREATE = 'create',
