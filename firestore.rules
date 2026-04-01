@@ -108,7 +108,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN') ||
-         (request.auth.token.email == "pedroass.11577@gmail.com" || request.auth.token.email == "pedroassfenandes.25@gmail.com"));
+         (request.auth.token.email == "pedroass.11577@gmail.com" || request.auth.token.email == "pedroassfenandes.25@gmail.com" || request.auth.token.email == "pedroass.11577@b11.com"));
     }
 
     function isAgency() {
@@ -198,7 +198,8 @@ service cloud.firestore {
     }
 
     match /agencies/{agencyId} {
-      allow read: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow get: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow list: if isSuperAdmin() || isAgency();
       allow create: if isSuperAdmin() || isAuthenticated();
       allow update: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
       allow delete: if isSuperAdmin();

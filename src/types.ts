@@ -39,6 +39,17 @@ export interface Agency {
   createdAt: string;
   pricing?: PricingConfig;
   ratingLabel?: string;
+  
+  // Operational Capacity
+  employeeCount?: number;
+  regime?: 'CLT' | 'TEMPORARY' | 'BOTH';
+  regions?: string[];
+  shifts?: ('DIURNO' | 'NOTURNO' | '24H')[];
+  
+  // Commercial Information
+  billingMethod?: 'HOURLY' | 'DAILY' | 'CONTRACT';
+  averageValue?: number;
+  acceptsUrgency?: boolean;
 }
 
 export interface Employee {

@@ -1281,7 +1281,7 @@ export default function App() {
                       role={role}
                       employee={role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email) : undefined}
                       companyUser={role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email) : undefined}
-                      agency={role === 'AGENCY' ? agencies.find(a => a.email === user?.email) : undefined}
+                      agency={role === 'AGENCY' ? agencies.find(a => a.email === user?.email || a.responsibleName === user?.displayName) : undefined}
                     />
                   </div>
                 )}
@@ -9298,6 +9298,7 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
 };
 
 const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser, agency?: Agency }) => {
+  console.log('UserProfile - role:', role, 'agency:', agency);
   const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [resetErrorMessage, setResetErrorMessage] = useState('');
 
@@ -9375,30 +9376,167 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                 {loginEmail}
               </div>
             </div>
-            {agency && (
-            <div className="space-y-6 pt-6 border-t border-slate-100">
-              <h3 className="text-lg font-black text-slate-900">Informações da Agência</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Razão Social</p>
-                  <p className="text-sm font-bold text-slate-900">{agency.name}</p>
+            {personalEmail && (
+              <div className="space-y-2">
+                <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
+                  {personalEmail}
                 </div>
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nome Fantasia</p>
-                  <p className="text-sm font-bold text-slate-900">{agency.tradeName}</p>
+              </div>
+            )}
+          </div>
+
+          {agency && (
+            <div className="space-y-8 pt-6 border-t border-slate-100">
+              <h3 className="text-xl font-black text-slate-900">Detalhes da Agência</h3>
+
+              {/* 1. Dados da Empresa */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">🏢 1. Dados da Empresa</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Razão Social</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.name || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome Fantasia</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.tradeName || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CNPJ</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.cnpj || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Inscrição Estadual</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.stateRegistration || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Data de Abertura</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.openingDate || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Segmento</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.segment?.join(', ') || 'N/A'}</p>
+                  </div>
                 </div>
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">CNPJ</p>
-                  <p className="text-sm font-bold text-slate-900">{agency.cnpj}</p>
+              </div>
+
+              {/* 2. Endereço da Empresa */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">📍 2. Endereço da Empresa</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-900">
+                    {agency.address?.street}, {agency.address?.number} {agency.address?.complement ? `- ${agency.address.complement}` : ''}
+                  </p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {agency.address?.neighborhood} - {agency.address?.city}/{agency.address?.state} | CEP: {agency.address?.zipCode || 'N/A'}
+                  </p>
                 </div>
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Responsável</p>
-                  <p className="text-sm font-bold text-slate-900">{agency.responsibleName}</p>
+              </div>
+
+              {/* 3. Responsável Legal */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">👤 3. Responsável Legal</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome Completo</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.responsibleName || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CPF</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.responsibleCpf || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cargo</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.responsibleRole || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Telefone</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.phone || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">E-mail</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.email || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Acesso à Plataforma */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">🔐 4. Acesso à Plataforma</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">E-mail (login)</p>
+                  <p className="text-sm font-bold text-slate-900">{agency.email || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* 5. Documentação */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">📄 5. Documentação</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-900">Documentos anexados: {agency.documents ? Object.keys(agency.documents).length : 0}</p>
+                </div>
+              </div>
+
+              {/* 6. Tipo de Serviço Prestado */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">👷 6. Tipo de Serviço Prestado</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-900">{agency.segment?.join(', ') || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* 7. Capacidade Operacional */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">👥 7. Capacidade Operacional</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Qtd. Funcionários</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.employeeCount || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Regime</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.regime || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Regiões</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.regions?.join(', ') || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Turnos</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.shifts?.join(', ') || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 8. Informações comerciais */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">💰 8. Informações comerciais</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Forma de Cobrança</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.billingMethod || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Médio</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.averageValue ? `R$ ${agency.averageValue.toFixed(2)}` : 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aceita Urgência?</p>
+                    <p className="text-sm font-bold text-slate-900">{agency.acceptsUrgency ? 'Sim' : 'Não'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 9. Termos e validação */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-slate-700">✅ 9. Termos e validação</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-900">Termos aceitos e conta validada.</p>
                 </div>
               </div>
             </div>
           )}
-          </div>
         </div>
       </div>
     </motion.div>
