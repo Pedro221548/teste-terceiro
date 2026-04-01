@@ -139,8 +139,8 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'company_diaristas', label: 'Diaristas', icon: Users },
     { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon },
   ] : [
-    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar },
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon },
+    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar },
     { id: 'employee_ponto', label: 'PONTO', icon: Scan },
   ];
 
@@ -193,20 +193,20 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
 
           <div className="p-4 border-t border-slate-50 bg-slate-50/50">
             <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <div className="relative">
                   {userPhoto ? (
-                    <img src={userPhoto} alt={userName || ''} className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                    <img src={userPhoto} alt={userName || ''} className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                      <UserIcon size={20} />
+                    <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-slate-500">
+                      <UserIcon size={24} />
                     </div>
                   )}
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
-                  <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tight">{role}</p>
+                  <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-tight">{role}</p>
                 </div>
               </div>
               <button 
@@ -224,13 +224,15 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   );
 }
 
-function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setAudioEnabled }: { 
+function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setAudioEnabled, userName, userPhoto }: { 
   activeTab: string, 
   setIsMobileMenuOpen: (open: boolean) => void,
   user: any,
   role: string,
   audioEnabled: boolean,
-  setAudioEnabled: (enabled: boolean) => void
+  setAudioEnabled: (enabled: boolean) => void,
+  userName?: string | null,
+  userPhoto?: string | null
 }) {
   const getTitle = () => {
     switch (activeTab) {
@@ -273,12 +275,12 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
-              {user.displayName || 'Usuário'}
+              {userName || user.displayName || 'Usuário'}
             </p>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{role}</p>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
-            <img src={user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={userPhoto || user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
         </div>
       </div>
@@ -668,10 +670,12 @@ export default function App() {
     // 1. Check in companyUsers
     const cUser = companyUsers.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
     if (cUser) {
+      await signOut(auth);
       setUser({
         uid: cUser.id,
         email: cUser.email,
         displayName: cUser.fullName,
+        photoURL: cUser.photoUrl,
         isCustom: true,
         clientId: cUser.unitId ? units.find(u => u.id === cUser.unitId)?.clientId : null
       });
@@ -682,10 +686,12 @@ export default function App() {
     // 2. Check in employees
     const eUser = employees.find(e => e.loginEmail?.toLowerCase() === emailInput.toLowerCase() && e.password === passwordInput);
     if (eUser) {
+      await signOut(auth);
       setUser({
         uid: eUser.id,
         email: eUser.loginEmail,
         displayName: `${eUser.firstName} ${eUser.lastName}`,
+        photoURL: eUser.photoUrl,
         isCustom: true
       });
       setRole('EMPLOYEE');
@@ -1044,8 +1050,16 @@ export default function App() {
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
           userEmail={user.email}
-          userName={user.displayName}
-          userPhoto={user.photoURL}
+          userName={
+            role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+            user.displayName
+          }
+          userPhoto={
+            role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+            user.photoURL
+          }
           handleLogout={handleLogout}
         />
 
@@ -1057,6 +1071,16 @@ export default function App() {
             role={role}
             audioEnabled={audioEnabled}
             setAudioEnabled={setAudioEnabled}
+            userName={
+              role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
+              role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+              user.displayName
+            }
+            userPhoto={
+              role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
+              role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+              user.photoURL
+            }
           />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
@@ -3556,24 +3580,26 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             </h3>
             <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100 w-fit">
               <span className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                {sortedEmployees.filter(e => !assignments.some(a => a.employeeId === e.id && a.date === selectedDate)).length} Disponíveis
+                {sortedEmployees.filter(e => !assignments.some(a => a.employeeId === e.id && a.date === selectedDate) && !e.unavailableDates?.includes(selectedDate)).length} Disponíveis
               </span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {sortedEmployees.map(emp => {
               const isAssigned = assignments.some(a => a.employeeId === emp.id && a.date === selectedDate);
+              const isUnavailable = emp.unavailableDates?.includes(selectedDate);
+              const isNotAvailable = isAssigned || isUnavailable;
               const isRequested = activeRequest?.employeeIds.includes(emp.id);
               
               return (
                 <div key={emp.id} className={`p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 transition-all relative group ${
-                  isAssigned 
+                  isNotAvailable 
                     ? 'bg-slate-50 border-slate-100 opacity-60 grayscale' 
                     : isRequested
                     ? 'bg-blue-50 border-blue-200 shadow-xl shadow-blue-500/5'
                     : 'bg-white border-slate-50 hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1'
                 }`}>
-                  {isRequested && !isAssigned && (
+                  {isRequested && !isNotAvailable && (
                     <div className="absolute -top-2 -right-2 bg-blue-600 text-white px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg z-20 animate-bounce">
                       Solicitado
                     </div>
@@ -3603,11 +3629,11 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                   <div className="flex items-center justify-between mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50">
                     <div className="flex flex-col">
                       <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
-                      <span className={`text-[11px] sm:text-xs font-bold ${isAssigned ? 'text-rose-500' : 'text-emerald-500'}`}>
-                        {isAssigned ? 'Já agendado' : 'Disponível'}
+                      <span className={`text-[11px] sm:text-xs font-bold ${isNotAvailable ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {isUnavailable ? 'Indisponível' : isAssigned ? 'Já agendado' : 'Disponível'}
                       </span>
                     </div>
-                    {!isAssigned && (
+                    {!isNotAvailable && (
                       <button 
                         onClick={() => handleStaff(emp.id)}
                         className="px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
@@ -4046,6 +4072,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
   });
   const [userData, setUserData] = useState({
     fullName: '',
+    unitId: '',
     password: '',
     confirmPassword: ''
   });
@@ -4136,8 +4163,10 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
 
     const newUser: Omit<CompanyUser, 'id'> = {
       companyId: showUserModal,
+      unitId: userData.unitId!,
       fullName: userData.fullName,
       email: login,
+      password: userData.password,
       role: 'COMPANY',
       createdAt: new Date().toISOString()
     };
@@ -4151,7 +4180,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
     window.open(whatsappUrl, '_blank');
 
     setShowUserModal(null);
-    setUserData({ fullName: '', password: '', confirmPassword: '' });
+    setUserData({ fullName: '', unitId: '', password: '', confirmPassword: '' });
     alert(`Usuário criado com sucesso!\nLogin: ${login}`);
   };
 
@@ -4521,15 +4550,41 @@ function AgencyCompanies({ companies, units, companyUsers, clients }: { companie
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha de Acesso</label>
-                    <input 
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Unidade</label>
+                    <select
                       required
-                      type="password" 
                       className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                      placeholder="••••••••"
-                      value={userData.password}
-                      onChange={e => setUserData({...userData, password: e.target.value})}
-                    />
+                      value={userData.unitId || ''}
+                      onChange={e => setUserData({...userData, unitId: e.target.value})}
+                    >
+                      <option value="">Selecione uma unidade</option>
+                      {units.filter(u => u.companyId === showUserModal).map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha de Acesso</label>
+                    <div className="flex gap-2">
+                      <input 
+                        required
+                        type="text" 
+                        className="flex-1 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                        placeholder="••••••••"
+                        value={userData.password}
+                        onChange={e => setUserData({...userData, password: e.target.value})}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const randomPassword = Math.random().toString(36).slice(-8);
+                          setUserData({...userData, password: randomPassword, confirmPassword: randomPassword});
+                        }}
+                        className="px-4 bg-slate-100 rounded-2xl text-slate-600 font-bold text-xs hover:bg-slate-200"
+                      >
+                        Gerar
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Senha</label>
@@ -4580,6 +4635,8 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
   });
 
   const isEmployeeAvailable = (empId: string, date: string) => {
+    const employee = employees.find(e => e.id === empId);
+    if (employee?.unavailableDates?.includes(date)) return false;
     return !assignments.some(a => a.employeeId === empId && a.date === date && a.status !== 'CANCELLED');
   };
 

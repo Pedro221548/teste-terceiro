@@ -274,12 +274,14 @@ service cloud.firestore {
     }
 
     function canReadNotification(notificationUserId) {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let isUserAdmin = isAdmin();
+      let userExists = exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      let userDoc = userExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : null;
       
-      return isAdmin() || 
+      return isUserAdmin || 
              notificationUserId == request.auth.uid || 
              notificationUserId == 'AGENCY' || 
-             (userDoc.role == 'COMPANY' && notificationUserId == 'COMPANY_' + userDoc.companyId);
+             (userExists && userDoc.role == 'COMPANY' && notificationUserId == 'COMPANY_' + userDoc.companyId);
     }
 
     match /notifications/{notificationId} {
