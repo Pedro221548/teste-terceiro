@@ -259,7 +259,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role }: {
             <Menu size={20} />
           </button>
           <div className="hidden sm:block">
-            <h2 className="text-2xl font-black text-slate-950 tracking-tight font-display">{getTitle()}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display truncate max-w-[180px] sm:max-w-none">{getTitle()}</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">StaffLink Platform</p>
           </div>
         </div>
@@ -1047,6 +1047,9 @@ export default function App() {
                       onSeedData={seedData}
                       setActiveTab={setActiveTab}
                       clients={clients}
+                      feedbacks={feedbacks}
+                      companies={companies}
+                      units={units}
                     />
                   </div>
                 )}
@@ -1078,6 +1081,8 @@ export default function App() {
                       clients={clients}
                       getScaleValue={getScaleValue}
                       companyRequests={companyRequests}
+                      companies={companies}
+                      units={units}
                     />
                   </div>
                 )}
@@ -1121,6 +1126,7 @@ export default function App() {
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
+                      feedbacks={feedbacks}
                     />
                   </div>
                 )}
@@ -1234,9 +1240,50 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData, setActiveTab, clients }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void, setActiveTab: (tab: string) => void, clients: Client[] }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, onSeedData, setActiveTab, clients, feedbacks, companies, units }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, onSeedData: () => void, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
+  const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
+  const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
+  const [evalRating, setEvalRating] = useState(5);
+  const [evalComment, setEvalComment] = useState('');
+  const [isSubmittingEval, setIsSubmittingEval] = useState(false);
+  
+  const toggleCompany = (id: string) => {
+    setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleEvaluate = async () => {
+    if (!evaluatingEmployee) return;
+    setIsSubmittingEval(true);
+    try {
+      const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      const assignment = assignments.find(a => a.employeeId === evaluatingEmployee.id && a.date === today);
+      
+      const newFeedback: Omit<Feedback, 'id'> = {
+        employeeId: evaluatingEmployee.id,
+        managerId: assignment?.clientId || 'agency',
+        assignmentId: assignment?.id || 'manual',
+        rating: evalRating,
+        comment: evalComment,
+        date: new Date().toISOString()
+      };
+      await createDocument('feedbacks', newFeedback);
+      
+      const newRating = Math.round((evaluatingEmployee.rating + evalRating) / 2);
+      await updateDocument('employees', evaluatingEmployee.id, { rating: newRating });
+      
+      setEvaluatingEmployee(null);
+      setEvalComment('');
+      setEvalRating(5);
+      alert('Avaliação enviada com sucesso!');
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+    } finally {
+      setIsSubmittingEval(false);
+    }
+  };
+
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayAssignments = assignments.filter(a => a.date === today);
   const totalValue = todayAssignments.reduce((acc, curr) => acc + curr.value, 0);
@@ -1245,6 +1292,25 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
 
   const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const todayName = daysOfWeek[new Date().getDay()];
+
+  // Grouping logic for AgencyDashboard
+  const groupedByCompany = todayAssignments.reduce((acc, as) => {
+    const unit = units.find(u => u.clientId === as.clientId);
+    const companyId = unit?.companyId || as.clientId; // Fallback to clientId if no unit found
+    if (!acc[companyId]) acc[companyId] = { assignments: [], units: {} };
+    
+    acc[companyId].assignments.push(as);
+    
+    if (unit) {
+      if (!acc[companyId].units[unit.id]) acc[companyId].units[unit.id] = [];
+      acc[companyId].units[unit.id].push(as);
+    } else {
+      if (!acc[companyId].units['default']) acc[companyId].units['default'] = [];
+      acc[companyId].units['default'].push(as);
+    }
+    
+    return acc;
+  }, {} as Record<string, { assignments: Assignment[], units: Record<string, Assignment[]> }>);
 
   return (
     <motion.div 
@@ -1386,7 +1452,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
               Ver Agenda
             </button>
           </div>
-          <div className="space-y-4 relative z-10">
+          <div className="space-y-8 relative z-10">
             {todayAssignments.length === 0 ? (
               <div className="py-16 text-center space-y-4">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
@@ -1395,39 +1461,94 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 <p className="text-slate-400 font-bold text-sm tracking-tight italic">Nenhuma diaria programada para hoje.</p>
               </div>
             ) : (
-              todayAssignments.map(as => {
-                const emp = employees.find(e => e.id === as.employeeId);
-                const cli = clients.find(c => c.id === as.clientId);
+              Object.entries(groupedByCompany).map(([companyId, data]) => {
+                const company = companies.find(c => c.id === companyId);
+                const client = clients.find(c => c.id === companyId);
+                const companyName = company?.name || client?.name || 'Empresa não encontrada';
+                const isExpanded = expandedCompanies[companyId] === true;
+                
                 return (
-                  <div key={as.id} className="flex items-center justify-between p-6 rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden">
-                    <div className="flex items-center gap-6 relative z-10">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-4 border-white shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500">
-                        <img 
-                          src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
-                          alt="" 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
+                  <div key={companyId} className="space-y-4">
+                    <button 
+                      onClick={() => toggleCompany(companyId)}
+                      className="w-full flex items-center gap-3 px-2 group/header"
+                    >
+                      <div className={`w-8 h-8 rounded-lg ${isExpanded ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'} flex items-center justify-center border border-blue-100 transition-all`}>
+                        <Building2 size={16} />
                       </div>
-                      <div>
-                        <p className="font-black text-slate-950 text-lg tracking-tight group-hover/item:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{cli?.name}</p>
-                          <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                          <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">08:00 - 17:00</p>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{companyName}</h4>
+                      <div className="flex-1 h-px bg-slate-100"></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{data.assignments.length} Diárias</span>
+                        <div className={`p-1.5 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
+                          <ChevronDown size={14} />
                         </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 relative z-10">
-                      <p className="text-2xl font-black text-slate-950 tracking-tight">R$ {as.value.toFixed(2)}</p>
-                      <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                        as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                        as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        'bg-slate-50 text-slate-400 border-slate-200'
-                      }`}>
-                        {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
-                      </span>
-                    </div>
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="space-y-6 pl-4 border-l-2 border-slate-50 ml-4">
+                        {Object.entries(data.units).map(([unitId, unitAssignments]) => {
+                          const unit = units.find(u => u.id === unitId);
+                          const unitName = unit?.name || 'Geral';
+                          
+                          return (
+                            <div key={unitId} className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <MapPin size={12} className="text-slate-400" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{unitName}</span>
+                              </div>
+                              <div className="grid grid-cols-1 gap-4">
+                                {unitAssignments.map(as => {
+                                  const emp = employees.find(e => e.id === as.employeeId);
+                                  return (
+                                    <div key={as.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden gap-4 sm:gap-6">
+                                      <div className="flex items-center gap-4 sm:gap-6 relative z-10">
+                                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden border-2 sm:border-4 border-white shadow-lg sm:shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500 shrink-0">
+                                          <img 
+                                            src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
+                                            alt="" 
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                          />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="font-black text-slate-950 text-sm sm:text-lg tracking-tight group-hover/item:text-blue-600 transition-colors truncate">{emp?.firstName} {emp?.lastName}</p>
+                                          <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 mt-0.5 sm:mt-1">
+                                            <p className="text-[8px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest">08:00 - 17:00</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 relative z-10 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                          {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                                            <button 
+                                              onClick={() => setEvaluatingEmployee(emp || null)}
+                                              className="p-2 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                              title="Avaliar Profissional"
+                                            >
+                                              <Star size={14} />
+                                            </button>
+                                          )}
+                                          <p className="text-lg sm:text-2xl font-black text-slate-950 tracking-tight">R$ {as.value.toFixed(2)}</p>
+                                        </div>
+                                        <span className={`px-2 sm:px-3 py-1 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-widest border ${
+                                          as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                                          as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                          'bg-slate-50 text-slate-400 border-slate-200'
+                                        }`}>
+                                          {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -1518,6 +1639,74 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           />
         )}
       </div>
+
+      <AnimatePresence>
+        {evaluatingEmployee && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[2rem] sm:rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Avaliar Profissional</h3>
+                  <button onClick={() => setEvaluatingEmployee(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
+                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>
+                    <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Profissional</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Sua Nota</label>
+                  <div className="flex items-center justify-center gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setEvalRating(star)}
+                        className="transition-transform active:scale-90"
+                      >
+                        <Star
+                          size={32}
+                          className={star <= evalRating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Comentário (Opcional)</label>
+                  <textarea
+                    value={evalComment}
+                    onChange={(e) => setEvalComment(e.target.value)}
+                    placeholder="Como foi o desempenho do profissional?"
+                    className="w-full p-6 bg-slate-50 rounded-[2rem] border border-slate-100 outline-none focus:border-blue-500 transition-colors min-h-[120px] text-slate-700 font-medium"
+                  />
+                </div>
+
+                <button
+                  onClick={handleEvaluate}
+                  disabled={isSubmittingEval}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10 disabled:opacity-50"
+                >
+                  {isSubmittingEval ? 'Enviando...' : 'Confirmar Avaliação'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -1626,6 +1815,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: 
 function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED');
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
@@ -1658,7 +1848,6 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     await updateDocument('employees', employee.id, { unavailableDates: newDates });
   };
 
-  const [viewDate, setViewDate] = useState(new Date());
   const currentMonth = viewDate.getMonth();
   const currentYear = viewDate.getFullYear();
 
@@ -1693,9 +1882,9 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
-        <p className="text-slate-500 font-medium text-sm sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
+      <div className="flex flex-col gap-2 px-4 sm:px-0">
+        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
+        <p className="text-slate-500 font-medium text-xs sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
 
       {/* Notifications Section */}
@@ -1751,55 +1940,61 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
       )}
 
-      <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50">
+      <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`flex-1 sm:flex-none px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Minhas Diarias
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`flex-1 sm:flex-none px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Indisponibilidade
         </button>
       </div>
 
       {activeTab === 'SCHEDULE' ? (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-6 px-4 sm:px-0">
           {myAssignments.length === 0 ? (
-            <div className="bg-white p-16 sm:p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
-              <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
-                <Calendar size={48} />
+            <div className="bg-white p-12 sm:p-24 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                <Calendar size={40} className="sm:hidden" />
+                <Calendar size={48} className="hidden sm:block" />
               </div>
-              <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Você não tem diarias agendadas no momento.</p>
+              <p className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em]">Você não tem diarias agendadas no momento.</p>
             </div>
           ) : (
             myAssignments.map(as => {
               const cli = clients.find(c => c.id === as.clientId);
+              const locationDisplay = cli?.location?.startsWith('http') ? 'Ver no Mapa' : (cli?.location || 'Unidade Central');
               return (
-                <div key={as.id} className="bg-white p-8 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                <div key={as.id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
-                  <div className="flex items-center gap-8 relative z-10">
-                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner">
-                      <Building2 size={36} />
+                  <div className="flex items-center gap-4 sm:gap-8 relative z-10">
+                    <div className="w-14 h-14 sm:w-20 sm:h-20 bg-slate-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner shrink-0">
+                      <Building2 size={24} className="sm:hidden" />
+                      <Building2 size={36} className="hidden sm:block" />
                     </div>
-                    <div>
-                      <h4 className="font-black text-slate-950 text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors">{cli?.name}</h4>
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[10px] font-black text-slate-400 mt-3 uppercase tracking-widest">
-                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={14} className="text-blue-600" /> {formatDateBR(as.date)}</span>
-                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={14} className="text-blue-600" /> 08:00 - 17:00</span>
-                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><MapPin size={14} className="text-blue-600" /> {cli?.location || 'Unidade Central'}</span>
+                    <div className="min-w-0">
+                      <h4 className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name}</h4>
+                      <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 text-[9px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
+                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={12} className="text-blue-600" /> {formatDateBR(as.date)}</span>
+                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={12} className="text-blue-600" /> 08:00 - 17:00</span>
+                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm max-w-[120px] sm:max-w-none">
+                          <MapPin size={12} className="text-blue-600" /> 
+                          <span className="truncate">{locationDisplay}</span>
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-4 pt-8 sm:pt-0 border-t sm:border-t-0 border-slate-50 relative z-10">
-                    <div className="text-right">
-                      <p className="text-3xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Valor Líquido</p>
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-4 pt-6 sm:pt-0 border-t sm:border-t-0 border-slate-50 relative z-10">
+                    <div className="text-left sm:text-right">
+                      <p className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">Valor Líquido</p>
                     </div>
-                    <span className="text-[10px] px-6 py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
+                    <span className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
                   </div>
                 </div>
               );
@@ -1889,45 +2084,45 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 sm:space-y-8"
     >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Feedback dos Clientes</h2>
-        <p className="text-slate-500 font-medium text-sm sm:text-base">Avaliações enviadas pelos gerentes das unidades.</p>
+      <div className="flex flex-col gap-1 px-4 sm:px-0">
+        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Feedback dos Clientes</h2>
+        <p className="text-slate-500 font-medium text-xs sm:text-base">Avaliações enviadas pelos gerentes das unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 px-4 sm:px-0">
         {feedbacks.map(f => {
           const emp = employees.find(e => e.id === f.employeeId);
           return (
-            <div key={f.id} className="bg-white p-10 sm:p-12 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-10 sm:gap-16 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+            <div key={f.id} className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-6 sm:gap-16 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
               <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full -mr-20 -mt-20 transition-transform group-hover:scale-150 duration-1000"></div>
               
-              <div className="flex flex-col items-center sm:items-start gap-6 sm:min-w-[240px] relative z-10">
-                <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 overflow-hidden border-4 border-white shadow-2xl group-hover:scale-105 group-hover:-rotate-3 transition-all duration-500">
+              <div className="flex flex-col items-center sm:items-start gap-4 sm:gap-6 sm:min-w-[240px] relative z-10">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[2.5rem] bg-slate-50 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 group-hover:-rotate-3 transition-all duration-500">
                   <img src={`https://picsum.photos/seed/${emp?.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
-                <div className="text-center sm:text-left space-y-2">
-                  <p className="font-black text-slate-950 text-xl tracking-tight uppercase">{emp?.firstName} {emp?.lastName}</p>
-                  <div className="flex justify-center sm:justify-start gap-1.5">
+                <div className="text-center sm:text-left space-y-1 sm:space-y-2">
+                  <p className="font-black text-slate-950 text-lg sm:text-xl tracking-tight uppercase">{emp?.firstName} {emp?.lastName}</p>
+                  <div className="flex justify-center sm:justify-start gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={18} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-100'} />
+                      <Star key={i} size={16} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-100'} />
                     ))}
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-2">Avaliado por Gerente</p>
+                  <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest pt-1 sm:pt-2">Avaliado por Gerente</p>
                 </div>
               </div>
               
               <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-16 flex flex-col justify-center relative z-10">
                 <div className="relative">
-                  <span className="absolute -top-10 -left-6 text-8xl text-slate-100 font-serif pointer-events-none select-none">“</span>
-                  <p className="text-slate-700 font-medium italic text-lg sm:text-2xl leading-relaxed relative z-10">
+                  <span className="absolute -top-6 -left-4 sm:-top-10 sm:-left-6 text-6xl sm:text-8xl text-slate-100 font-serif pointer-events-none select-none">“</span>
+                  <p className="text-slate-700 font-medium italic text-base sm:text-2xl leading-relaxed relative z-10">
                     {f.comment}
                   </p>
-                  <span className="absolute -bottom-16 -right-6 text-8xl text-slate-100 font-serif pointer-events-none select-none rotate-180">“</span>
+                  <span className="absolute -bottom-10 -right-4 sm:-bottom-16 sm:-right-6 text-6xl sm:text-8xl text-slate-100 font-serif pointer-events-none select-none rotate-180">“</span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-x-8 gap-y-4 mt-10 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <span className="flex items-center gap-2.5 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Calendar size={14} className="text-blue-600" /> {formatDateBR(f.date)}</span>
-                  <span className="flex items-center gap-2.5 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Building2 size={14} className="text-blue-600" /> {clients.find(c => c.id === f.managerId)?.name || 'Unidade Parceira'}</span>
+                <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-8 gap-y-3 mt-8 sm:mt-10 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Calendar size={12} className="text-blue-600" /> {formatDateBR(f.date)}</span>
+                  <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Building2 size={12} className="text-blue-600" /> {clients.find(c => c.id === f.managerId)?.name || 'Unidade Parceira'}</span>
                 </div>
               </div>
             </div>
@@ -2973,13 +3168,39 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[] }) {
+function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[] }) {
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
+
+  const toggleCompany = (id: string) => {
+    setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const confirmedAssignments = assignments.filter(a => a.date === selectedDate && a.confirmed);
+
+  // Grouping logic for AgencyStaffing
+  const groupedConfirmedByCompany = confirmedAssignments.reduce((acc, as) => {
+    const unit = units.find(u => u.clientId === as.clientId);
+    const companyId = unit?.companyId || as.clientId;
+    if (!acc[companyId]) acc[companyId] = { assignments: [], units: {} };
+    
+    acc[companyId].assignments.push(as);
+    
+    if (unit) {
+      if (!acc[companyId].units[unit.id]) acc[companyId].units[unit.id] = [];
+      acc[companyId].units[unit.id].push(as);
+    } else {
+      if (!acc[companyId].units['default']) acc[companyId].units['default'] = [];
+      acc[companyId].units['default'].push(as);
+    }
+    
+    return acc;
+  }, {} as Record<string, { assignments: Assignment[], units: Record<string, Assignment[]> }>);
 
   const sortedEmployees = [...employees]
     .filter(e => (e.firstName + ' ' + e.lastName).toLowerCase().includes(searchTerm.toLowerCase()))
@@ -3309,7 +3530,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             </div>
           </div>
 
-          {assignments.filter(a => a.confirmed && a.date === selectedDate).length === 0 ? (
+          {confirmedAssignments.length === 0 ? (
             <div className="py-20 text-center space-y-4">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
                 <CheckCircle size={40} />
@@ -3317,29 +3538,86 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
               <p className="text-slate-400 font-medium">Nenhuma confirmação para esta data ainda.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {assignments.filter(a => a.confirmed && a.date === selectedDate).map(as => {
-                const emp = employees.find(e => e.id === as.employeeId);
-                const client = clients.find(c => c.id === as.clientId);
-                if (!emp || !client) return null;
+            <div className="space-y-10">
+              {Object.entries(groupedConfirmedByCompany).map(([companyId, companyData]) => {
+                const company = companies.find(c => c.id === companyId);
+                const client = clients.find(c => c.id === companyId);
+                const companyName = company?.name || client?.name || 'Empresa não identificada';
+                const isExpanded = expandedCompanies[companyId] === true;
+
                 return (
-                  <div key={as.id} className="p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm">
-                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div key={companyId} className="space-y-6">
+                    <button 
+                      onClick={() => toggleCompany(companyId)}
+                      className="w-full flex items-center gap-4 px-2 group/header"
+                    >
+                      <div className={`w-10 h-10 rounded-xl ${isExpanded ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center border border-emerald-100 transition-all`}>
+                        <Building2 size={20} />
                       </div>
-                      <div>
-                        <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">{client.name}</p>
+                      <div className="text-left">
+                        <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase">{companyName}</h4>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{companyData.assignments.length} Profissionais Confirmados</p>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
-                      <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
-                        <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                        <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">Confirmado</span>
+                      <div className="flex-1 h-px bg-slate-100"></div>
+                      <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
+                        <ChevronDown size={16} />
                       </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">{formatDateBR(as.date)}</span>
-                    </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden space-y-8 pl-4 border-l-2 border-slate-100 ml-6"
+                        >
+                          {Object.entries(companyData.units).map(([unitId, unitAssignments]) => {
+                            const unit = units.find(u => u.id === unitId);
+                            const unitName = unit?.name || (unitId === 'default' ? 'Unidade Principal' : 'Unidade não identificada');
+
+                            return (
+                              <div key={unitId} className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                  <h5 className="text-sm font-black text-slate-900 uppercase tracking-widest">{unitName}</h5>
+                                  <span className="text-[10px] font-bold text-slate-400">({unitAssignments.length})</span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                  {unitAssignments.map(as => {
+                                    const emp = employees.find(e => e.id === as.employeeId);
+                                    if (!emp) return null;
+                                    return (
+                                      <div key={as.id} className="p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4 hover:border-emerald-200 hover:bg-white transition-all group">
+                                        <div className="flex items-center gap-3 sm:gap-4">
+                                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
+                                            <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                          </div>
+                                          <div>
+                                            <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
+                                            <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">Confirmado para {formatDateBR(as.date)}</p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
+                                          <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
+                                            <CheckCircle size={14} className="sm:w-4 sm:h-4" />
+                                            <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">Presença Confirmada</span>
+                                          </div>
+                                          <div className="flex items-center gap-1 text-slate-400">
+                                            <Clock size={10} />
+                                            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">08:00 - 17:00</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
@@ -5625,28 +5903,29 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-xl mx-auto space-y-10"
+      className="max-w-xl mx-auto space-y-6 sm:space-y-10 px-4 sm:px-0"
     >
-      <div className="text-center space-y-3">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
-        <p className="text-slate-500 font-medium">Registre sua entrada ou saída na unidade com segurança.</p>
+      <div className="text-center space-y-2 sm:space-y-3">
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Registre sua entrada ou saída na unidade com segurança.</p>
       </div>
 
-      <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
         
         {step === 'INITIAL' && (
-          <div className="flex flex-col items-center space-y-8">
-            <div className="w-32 h-32 bg-blue-50 rounded-[2.5rem] flex items-center justify-center text-blue-600 shadow-inner">
-              <Scan size={64} />
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-blue-50 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-blue-600 shadow-inner">
+              <Scan size={48} className="sm:hidden" />
+              <Scan size={64} className="hidden sm:block" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Pronto para começar?</h3>
-              <p className="text-sm text-slate-500 font-medium">Escaneie o QR Code fixado na parede da unidade.</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Pronto para começar?</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Escaneie o QR Code fixado na parede da unidade.</p>
             </div>
             <button 
               onClick={() => setStep('SCANNING')}
-              className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
+              className="w-full py-4 sm:py-5 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
             >
               Escanear QR Code
             </button>
@@ -5654,8 +5933,8 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         )}
 
         {step === 'SCANNING' && (
-          <div className="space-y-8">
-            <div className="relative aspect-square rounded-[2rem] overflow-hidden border-4 border-blue-600 shadow-2xl">
+          <div className="space-y-6 sm:space-y-8">
+            <div className="relative aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden border-4 border-blue-600 shadow-2xl">
               <Scanner
                 onScan={(result) => {
                   if (result && result.length > 0) {
@@ -5670,13 +5949,13 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                 allowMultiple={false}
                 scanDelay={300}
               />
-              <div className="absolute inset-0 border-[60px] border-black/40 pointer-events-none">
+              <div className="absolute inset-0 border-[30px] sm:border-[60px] border-black/40 pointer-events-none">
                 <div className="w-full h-full border-2 border-white/50 border-dashed rounded-xl" />
               </div>
             </div>
             <button 
               onClick={() => setStep('INITIAL')}
-              className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-colors"
+              className="w-full py-3 sm:py-4 text-slate-400 font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:text-slate-600 transition-colors"
             >
               Cancelar Operação
             </button>
@@ -5684,12 +5963,12 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         )}
 
         {step === 'PHOTO' && (
-          <div className="flex flex-col items-center space-y-8">
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <div className="text-center space-y-1">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
-              <p className="text-sm text-blue-600 font-bold uppercase tracking-widest">{scannedPoint?.location}</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
+              <p className="text-[10px] sm:text-sm text-blue-600 font-bold uppercase tracking-widest">{scannedPoint?.location}</p>
             </div>
-            <div className="relative aspect-square w-full rounded-[2rem] overflow-hidden bg-black border-4 border-blue-600 shadow-2xl">
+            <div className="relative aspect-square w-full rounded-2xl sm:rounded-[2rem] overflow-hidden bg-black border-4 border-blue-600 shadow-2xl">
               <video 
                 ref={videoRef} 
                 autoPlay 
@@ -5698,78 +5977,81 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                 style={{ transform: 'scaleX(-1)' }}
               />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-64 h-80 border-2 border-white/50 rounded-[100px] border-dashed" />
+                <div className="w-48 h-64 sm:w-64 sm:h-80 border-2 border-white/50 rounded-[80px] sm:rounded-[100px] border-dashed" />
               </div>
             </div>
             <button 
               onClick={takePhoto}
-              className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
+              className="w-full py-4 sm:py-5 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
             >
-              <Camera size={24} />
+              <Camera size={20} className="sm:hidden" />
+              <Camera size={24} className="hidden sm:block" />
               Tirar Foto e Bater Ponto
             </button>
           </div>
         )}
 
         {step === 'VERIFYING' && (
-          <div className="flex flex-col items-center space-y-8 py-12">
-            <div className="w-32 h-32 relative">
-              <div className="absolute inset-0 border-8 border-slate-100 rounded-full" />
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
+              <div className="absolute inset-0 border-4 sm:border-8 border-slate-100 rounded-full" />
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-8 border-blue-600 rounded-full border-t-transparent"
+                className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
               />
               <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                <Camera size={40} />
+                <Camera size={32} className="sm:hidden" />
+                <Camera size={40} className="hidden sm:block" />
               </div>
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Validando Identidade</h3>
-              <p className="text-sm text-slate-500 font-medium">Processando reconhecimento facial via IA...</p>
-              <div className="mt-6 px-4 py-2 bg-slate-50 rounded-xl inline-block border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Protocolo: {API_KEY.substring(0, 8)}</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Validando Identidade</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Processando reconhecimento facial via IA...</p>
+              <div className="mt-4 sm:mt-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 rounded-xl inline-block border border-slate-100">
+                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">Protocolo: {API_KEY.substring(0, 8)}</p>
               </div>
             </div>
           </div>
         )}
 
         {step === 'SUCCESS' && (
-          <div className="flex flex-col items-center space-y-8">
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <motion.div 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="w-32 h-32 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center text-emerald-600 shadow-inner"
+              className="w-24 h-24 sm:w-32 sm:h-32 bg-emerald-50 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-emerald-600 shadow-inner"
             >
-              <CheckCircle size={64} />
+              <CheckCircle size={48} className="sm:hidden" />
+              <CheckCircle size={64} className="hidden sm:block" />
             </motion.div>
             <div className="text-center space-y-4">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">Ponto Registrado!</h3>
-              <p className="text-sm text-slate-500 font-medium">Seu registro foi processado e enviado com sucesso.</p>
-              <div className="p-6 bg-slate-50 rounded-[2rem] text-left space-y-4 border border-slate-100">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Ponto Registrado!</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Seu registro foi processado e enviado com sucesso.</p>
+              <div className="p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-[2rem] text-left space-y-3 sm:space-y-4 border border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                    <MapPin size={18} />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
+                    <MapPin size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Localização</p>
-                    <p className="text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
+                    <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Localização</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                    <Clock size={18} />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
+                    <Clock size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
-                    <p className="text-sm font-bold text-slate-700">{new Date().toLocaleString('pt-BR')}</p>
+                    <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-700">{new Date().toLocaleString('pt-BR')}</p>
                   </div>
                 </div>
               </div>
             </div>
             <button 
               onClick={() => setStep('INITIAL')}
-              className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-black transition-all shadow-xl active:scale-95"
+              className="w-full py-4 sm:py-5 bg-slate-900 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-black transition-all shadow-xl active:scale-95"
             >
               Concluir
             </button>
@@ -5777,27 +6059,28 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         )}
       </div>
 
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase tracking-widest text-xs">Últimos Registros</h3>
-          <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest">Hoje</span>
+      <div className="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase tracking-widest text-xs">Últimos Registros</h3>
+          <span className="text-[9px] sm:text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest">Hoje</span>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {checkIns.slice().reverse().map(ci => {
             const ap = accessPoints.find(p => p.id === ci.accessPointId);
             return (
-              <div key={ci.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform">
+              <div key={ci.id} className="flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 transition-all group">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform">
                     <img src={ci.photoUrl} alt="Selfie" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-700">{ap?.location}</p>
-                    <p className="text-[10px] text-slate-400 font-medium">{new Date(ci.timestamp).toLocaleString('pt-BR')}</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-700">{ap?.location}</p>
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{new Date(ci.timestamp).toLocaleString('pt-BR')}</p>
                   </div>
                 </div>
-                <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
-                  <CheckCircle size={16} />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                  <CheckCircle size={14} className="sm:hidden" />
+                  <CheckCircle size={16} className="hidden sm:block" />
                 </div>
               </div>
             );
@@ -5813,8 +6096,12 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
   );
 }
 
-function CompanyDashboard({ clientId, clients, assignments, employees }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[] }) {
+function CompanyDashboard({ clientId, clients, assignments, employees, feedbacks }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
   const client = clients.find(c => c.id === clientId);
+  const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
+  const [evalRating, setEvalRating] = useState(5);
+  const [evalComment, setEvalComment] = useState('');
+  const [isSubmittingEval, setIsSubmittingEval] = useState(false);
 
   if (!client) {
     return (
@@ -5832,121 +6119,283 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
+  const handleEvaluate = async () => {
+    if (!evaluatingEmployee) return;
+    setIsSubmittingEval(true);
+    try {
+      const assignment = myAssignments.find(a => a.employeeId === evaluatingEmployee.id && a.status === 'COMPLETED');
+      const newFeedback: Omit<Feedback, 'id'> = {
+        employeeId: evaluatingEmployee.id,
+        managerId: clientId,
+        assignmentId: assignment?.id || 'manual',
+        rating: evalRating,
+        comment: evalComment,
+        date: new Date().toISOString()
+      };
+      await createDocument('feedbacks', newFeedback);
+      
+      const newRating = Math.round((evaluatingEmployee.rating + evalRating) / 2);
+      await updateDocument('employees', evaluatingEmployee.id, { rating: newRating });
+      
+      setEvaluatingEmployee(null);
+      setEvalComment('');
+      setEvalRating(5);
+      alert('Avaliação enviada com sucesso!');
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+    } finally {
+      setIsSubmittingEval(false);
+    }
+  };
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-10"
-    >
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
-        <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
-      </div>
+    <>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-10"
+      >
+        <div className="flex flex-col gap-2 px-4 sm:px-0">
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
+          <p className="text-slate-500 font-medium text-xs sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-        <StatCard 
-          icon={<Users size={24} className="text-blue-600" />} 
-          label="Equipe Hoje" 
-          value={todayStaff.length.toString()} 
-          color="blue"
-        />
-        <StatCard 
-          icon={<Calendar size={24} className="text-indigo-600" />} 
-          label="Total de Diarias" 
-          value={myAssignments.length.toString()} 
-          color="indigo"
-        />
-        <StatCard 
-          icon={<Clock size={24} className="text-emerald-600" />} 
-          label="Próxima Diaria" 
-          value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
-          color="emerald"
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          <StatCard 
+            icon={<Users size={24} className="text-blue-600" />} 
+            label="Equipe Hoje" 
+            value={todayStaff.length.toString()} 
+            color="blue"
+          />
+          <StatCard 
+            icon={<Calendar size={24} className="text-indigo-600" />} 
+            label="Total de Diarias" 
+            value={myAssignments.length.toString()} 
+            color="indigo"
+          />
+          <StatCard 
+            icon={<Clock size={24} className="text-emerald-600" />} 
+            label="Próxima Diaria" 
+            value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
+            color="emerald"
+          />
+        </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
-        <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
-          <h3 className="text-[10px] font-black text-slate-950 tracking-[0.2em] uppercase">Histórico de Diarias</h3>
-          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 self-start sm:self-auto shadow-sm">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-            <span>Atualizado em tempo real</span>
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
+          <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
+            <h3 className="text-[10px] font-black text-slate-950 tracking-[0.2em] uppercase">Histórico de Diarias</h3>
+            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 self-start sm:self-auto shadow-sm">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+              <span>Atualizado em tempo real</span>
+            </div>
           </div>
-        </div>
-        
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-white">
-                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
-                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
-                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
-                const emp = employees.find(e => e.id === as.employeeId);
-                const isToday = as.date === today;
-                return (
-                  <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
-                    <td className="p-8">
-                      <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
-                          <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
-                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-8">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
-                          <Calendar size={14} className="text-blue-600" />
-                          {formatDateBR(as.date)}
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
-                          <Clock size={12} className="text-slate-300" />
-                          08:00 - 17:00
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-8">
-                      <div className="flex items-center gap-4">
-                        <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
-                          as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
-                          as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
-                          'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
-                        }`}>
-                          {as.status === 'COMPLETED' ? 'Concluído' : 
-                           as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
-                        </span>
-                        {isToday && (
-                          <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
-                            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-                            Hoje
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {myAssignments.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="p-24 text-center">
-                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100 mb-6">
-                      <Calendar size={40} />
-                    </div>
-                    <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
-                  </td>
+          
+          <div className="overflow-x-auto custom-scrollbar hidden md:block">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-white">
+                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
+                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
+                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
+                  const emp = employees.find(e => e.id === as.employeeId);
+                  const isToday = as.date === today;
+                  return (
+                    <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
+                      <td className="p-8">
+                        <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
+                            <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                          <div>
+                            <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-8">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
+                            <Calendar size={14} className="text-blue-600" />
+                            {formatDateBR(as.date)}
+                          </div>
+                          <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
+                            <Clock size={12} className="text-slate-300" />
+                            08:00 - 17:00
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-8 text-right">
+                        <div className="flex items-center justify-end gap-4">
+                          <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
+                            as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
+                            as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
+                            'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
+                          }`}>
+                            {as.status === 'COMPLETED' ? 'Concluído' : 
+                             as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
+                          </span>
+                          {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                            <button 
+                              onClick={() => setEvaluatingEmployee(emp || null)}
+                              className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                              title="Avaliar Profissional"
+                            >
+                              <Star size={18} />
+                            </button>
+                          )}
+                          {isToday && (
+                            <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
+                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                              Hoje
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
+              const emp = employees.find(e => e.id === as.employeeId);
+              const isToday = as.date === today;
+              return (
+                <div key={as.id} className={`p-5 sm:p-6 space-y-4 sm:space-y-5 transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm border border-slate-100 shadow-sm overflow-hidden shrink-0">
+                        <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-slate-950 text-xs sm:text-sm tracking-tight truncate">{emp?.firstName} {emp?.lastName}</p>
+                        <p className="text-[8px] sm:text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Profissional Parceiro</p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[9px] border ${
+                      as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                      as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                      'bg-slate-50 text-slate-400 border-slate-200'
+                    }`}>
+                      {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-slate-950 font-black text-[9px] sm:text-[10px] uppercase tracking-widest bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
+                      <Calendar size={10} className="text-blue-600" />
+                      {formatDateBR(as.date)}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                        <button 
+                          onClick={() => setEvaluatingEmployee(emp || null)}
+                          className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-lg border border-amber-100 text-[8px] font-black uppercase tracking-widest"
+                        >
+                          <Star size={10} />
+                          Avaliar
+                        </button>
+                      )}
+                      {isToday && (
+                        <span className="flex items-center gap-1.5 text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                          Hoje
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {myAssignments.length === 0 && (
+            <div className="p-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100">
+                  <Calendar size={40} />
+                </div>
+                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+
+      <AnimatePresence>
+        {evaluatingEmployee && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[2rem] sm:rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Avaliar Profissional</h3>
+                  <button onClick={() => setEvaluatingEmployee(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
+                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>
+                    <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Profissional</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Sua Nota</label>
+                  <div className="flex items-center justify-center gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setEvalRating(star)}
+                        className="transition-transform active:scale-90"
+                      >
+                        <Star
+                          size={32}
+                          className={star <= evalRating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Comentário (Opcional)</label>
+                  <textarea
+                    value={evalComment}
+                    onChange={(e) => setEvalComment(e.target.value)}
+                    placeholder="Como foi o desempenho do profissional?"
+                    className="w-full p-6 bg-slate-50 rounded-[2rem] border border-slate-100 outline-none focus:border-blue-500 transition-colors min-h-[120px] text-slate-700 font-medium"
+                  />
+                </div>
+
+                <button
+                  onClick={handleEvaluate}
+                  disabled={isSubmittingEval}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10 disabled:opacity-50"
+                >
+                  {isSubmittingEval ? 'Enviando...' : 'Confirmar Avaliação'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
