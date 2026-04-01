@@ -140,11 +140,11 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   ] : role === 'AGENCY' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'staffing', label: 'Diaristas', icon: Users },
-    { id: 'companies', label: 'Empresas', icon: Building2 },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus },
+    { id: 'companies', label: 'Empresas', icon: Building2 },
     { id: 'access_control', label: 'Controle de Acesso', icon: QrCode },
     { id: 'pricing', label: 'Precificação', icon: CreditCard },
-    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
   ] : role === 'COMPANY' ? [
