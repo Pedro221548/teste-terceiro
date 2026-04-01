@@ -171,6 +171,23 @@
         "createdAt": { "type": "string" }
       },
       "required": ["companyId", "clientId", "employeeIds", "quantity", "date", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["ASSIGNMENT", "INFO"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "link": { "type": "string" },
+        "assignmentId": { "type": "string" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -185,6 +202,7 @@
     "/accessPoints": { "schema": "AccessPoint", "description": "Collection of QR code access points." },
     "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." },
     "/settings": { "schema": "Setting", "description": "Collection of global settings." },
-    "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." }
+    "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." },
+    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." }
   }
 }

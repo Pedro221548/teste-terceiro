@@ -575,7 +575,7 @@ export default function App() {
                 transition={{ delay: 0.1 }}
                 className="text-xl text-slate-400 font-medium leading-relaxed"
               >
-                O StaffLink é o ecossistema completo para agências que buscam excelência operacional, automação de escalas e controle total em tempo real.
+                O StaffLink é o ecossistema completo para agências que buscam excelência operacional, automação de diarias e controle total em tempo real.
               </motion.p>
               
               <motion.div
@@ -603,7 +603,7 @@ export default function App() {
                   <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                     <Calendar size={24} />
                   </div>
-                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Escalas Inteligentes</h4>
+                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Diarias Inteligentes</h4>
                   <p className="text-slate-500 text-sm font-medium">Distribua sua equipe com precisão cirúrgica.</p>
                 </div>
                 <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all group">
@@ -812,7 +812,7 @@ export default function App() {
                     />
                     <SidebarItem 
                       icon={<Calendar size={18} />} 
-                      label="Escala" 
+                      label="Diaria" 
                       active={activeTab === 'staffing'} 
                       onClick={() => { setActiveTab('staffing'); setIsMobileMenuOpen(false); }} 
                     />
@@ -865,7 +865,7 @@ export default function App() {
                   <>
                     <SidebarItem 
                       icon={<LayoutDashboard size={20} />} 
-                      label="Minhas Escalas" 
+                      label="Minhas Diarias" 
                       active={activeTab === 'manager_dashboard'} 
                       onClick={() => { setActiveTab('manager_dashboard'); setIsMobileMenuOpen(false); }} 
                     />
@@ -1200,6 +1200,8 @@ export default function App() {
                       employeeId={impersonatedEmployeeId || user.uid} 
                       employees={employees}
                       assignments={assignments}
+                      notifications={notifications}
+                      clients={clients}
                     />
                   </div>
                 )}
@@ -1343,7 +1345,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
         <StatCard 
           icon={<Users size={24} />} 
-          label="Funcionários Escalados" 
+          label="Funcionários Agendados" 
           value={todayAssignments.length.toString()} 
           trend="+12% vs ontem"
           color="blue"
@@ -1437,7 +1439,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
                 <Calendar size={20} />
               </div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Escalas do Dia</h3>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Diarias do Dia</h3>
             </div>
             <button 
               onClick={() => setActiveTab('agency_staffing')}
@@ -1452,7 +1454,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
                   <Calendar size={32} />
                 </div>
-                <p className="text-slate-400 font-medium text-sm italic">Nenhuma escala para hoje.</p>
+                <p className="text-slate-400 font-medium text-sm italic">Nenhuma diaria para hoje.</p>
               </div>
             ) : (
               todayAssignments.map(as => {
@@ -1686,9 +1688,16 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: 
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: string, employees: Employee[], assignments: Assignment[] }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
   const employee = employees.find(e => e.id === employeeId);
+  const myAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED');
+  const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
+
+  const handleConfirm = async (assignmentId: string) => {
+    await updateDocument('assignments', assignmentId, { confirmed: true });
+    alert('Diaria confirmada com sucesso!');
+  };
   
   if (!employee) {
     return (
@@ -1702,8 +1711,6 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
     );
   }
 
-  const myAssignments = assignments.filter(a => a.employeeId === employeeId);
-
   const toggleUnavailability = async (date: string) => {
     if (!employee) return;
     const current = employee.unavailableDates || [];
@@ -1716,15 +1723,64 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Agenda do Funcionário</h2>
-        <p className="text-slate-500 font-medium text-sm sm:text-base">Gerencie suas escalas e informe sua disponibilidade.</p>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
+
+      {/* Notifications Section */}
+      {myNotifications.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Notificações Pendentes</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {myNotifications.map(notification => (
+              <motion.div 
+                key={notification.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-blue-50 border border-blue-100 p-6 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6"
+              >
+                <div className="flex items-center gap-4 text-center sm:text-left">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">{notification.title}</h4>
+                    <p className="text-xs font-medium text-blue-600 mt-1">{notification.message}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button 
+                    onClick={async () => {
+                      if (notification.assignmentId) {
+                        await handleConfirm(notification.assignmentId);
+                      }
+                      await updateDocument('notifications', notification.id, { read: true });
+                    }}
+                    className="flex-1 sm:flex-none px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                  >
+                    Confirmar Presença
+                  </button>
+                  <button 
+                    onClick={() => updateDocument('notifications', notification.id, { read: true })}
+                    className="p-4 text-blue-400 hover:bg-blue-100 rounded-2xl transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
           className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'SCHEDULE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          Minhas Escalas
+          Minhas Diarias
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
@@ -1739,11 +1795,11 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
           {myAssignments.length === 0 ? (
             <div className="bg-white p-8 sm:p-12 rounded-[2rem] sm:rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center">
               <Calendar size={40} className="mx-auto mb-4 text-slate-200" />
-              <p className="text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Você não tem escalas agendadas no momento.</p>
+              <p className="text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Você não tem diarias agendadas no momento.</p>
             </div>
           ) : (
             myAssignments.map(as => {
-              const cli = MOCK_CLIENTS.find(c => c.id === as.clientId);
+              const cli = clients.find(c => c.id === as.clientId);
               return (
                 <div key={as.id} className="bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
                   <div className="flex items-center gap-4">
@@ -1796,7 +1852,7 @@ function EmployeeSchedule({ employeeId, employees, assignments }: { employeeId: 
           <div className="mt-8 sm:mt-10 flex items-start gap-3 sm:gap-4 p-4 sm:p-5 bg-blue-50 rounded-[1.25rem] sm:rounded-[1.5rem] border border-blue-100">
             <AlertCircle className="text-blue-600 shrink-0 mt-0.5" size={18} sm:size={20} />
             <p className="text-[11px] sm:text-sm text-blue-800 font-medium leading-relaxed">
-              Os dias marcados em <strong className="text-rose-600">vermelho</strong> indicam que você não poderá ser escalado pela agência. Informe com antecedência para evitar conflitos.
+              Os dias marcados em <strong className="text-rose-600">vermelho</strong> indicam que você não poderá ser agendado pela agência. Informe com antecedência para evitar conflitos.
             </p>
           </div>
         </div>
@@ -2170,7 +2226,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
   };
 
   const sendInactivityWarning = (emp: Employee) => {
-    const message = `Olá ${emp.firstName}, notamos que você está há mais de 30 dias sem realizar escalas. Informamos que seu cadastro poderá ser removido dos nossos registros em breve. Caso tenha interesse em continuar, entre em contato!`;
+    const message = `Olá ${emp.firstName}, notamos que você está há mais de 30 dias sem realizar diarias. Informamos que seu cadastro poderá ser removido dos nossos registros em breve. Caso tenha interesse em continuar, entre em contato!`;
     const whatsappUrl = `https://wa.me/55${emp.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -2494,7 +2550,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 text-base md:text-lg">Inatividade</h3>
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">+30 dias sem escalas</p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">+30 dias sem diarias</p>
               </div>
             </div>
             <span className="bg-orange-100 text-orange-700 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
@@ -2862,7 +2918,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                           <AlertCircle size={16} />
                           <span className="text-[9px] font-black uppercase tracking-wider">{selectedEmployee.complaints} Reclamações</span>
                         </div>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas escalas, porém precisa melhorar a pontualidade."</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas diarias, porém precisa melhorar a pontualidade."</p>
                       </div>
                     </div>
                     <div className="pt-2">
@@ -2937,8 +2993,8 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     // Create internal notification
     await createDocument('notifications', {
       userId: empId,
-      title: 'Nova Escala Agendada',
-      message: `Você foi escalado para ${client.name} no dia ${formatDateBR(selectedDate)}.`,
+      title: 'Nova Diaria Agendada',
+      message: `Você foi agendado para ${client.name} no dia ${formatDateBR(selectedDate)}.`,
       type: 'ASSIGNMENT',
       read: false,
       createdAt: new Date().toISOString(),
@@ -2949,11 +3005,11 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     // WhatsApp Notification with confirmation link
     const appUrl = window.location.origin;
     const confirmationLink = `${appUrl}?role=EMPLOYEE&tab=employee_profile`;
-    const message = `Olá ${emp.firstName}! Você foi escalado para atuar na unidade ${client.name}.\n\n📅 Data: ${formatDateBR(selectedDate)}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n✅ Por favor, confirme sua presença clicando no link abaixo:\n${confirmationLink}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa escala!`;
+    const message = `Olá ${emp.firstName}! Você foi agendado para atuar na unidade ${client.name}.\n\n📅 Data: ${formatDateBR(selectedDate)}\n⏰ Horário: 08:00\n📍 Localização: ${client.location || client.name}\n\n✅ Por favor, confirme sua presença clicando no link abaixo:\n${confirmationLink}\n\n⚠️ Lembre-se: Há um QR Code na parede da unidade para você bater o ponto usando o app. Boa diaria!`;
     const whatsappUrl = `https://wa.me/55${emp.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
 
-    alert(`${emp.firstName} escalado com sucesso para o dia ${formatDateBR(selectedDate)}!`);
+    alert(`${emp.firstName} agendado com sucesso para o dia ${formatDateBR(selectedDate)}!`);
   };
 
   return (
@@ -2998,7 +3054,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Diaria Inteligente</h2>
           <p className="text-slate-500 font-medium text-sm sm:text-base">Distribua sua equipe com base em performance e disponibilidade.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl sm:rounded-[1.5rem] border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
@@ -3006,7 +3062,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             onClick={() => setActiveSubTab('STAFFING')}
             className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            Escalar
+            Agendar
           </button>
           <button 
             onClick={() => setActiveSubTab('CONFIRMED')}
@@ -3058,7 +3114,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
-                Data da Escala
+                Data da Diaria
               </h3>
               <input 
                 type="date" 
@@ -3181,7 +3237,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                     <div className="flex flex-col">
                       <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
                       <span className={`text-[11px] sm:text-xs font-bold ${isAssigned ? 'text-rose-500' : 'text-emerald-500'}`}>
-                        {isAssigned ? 'Já escalado' : 'Disponível'}
+                        {isAssigned ? 'Já agendado' : 'Disponível'}
                       </span>
                     </div>
                     {!isAssigned && (
@@ -3189,7 +3245,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                         onClick={() => handleStaff(emp.id)}
                         className="px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
                       >
-                        Escalar
+                        Agendar
                       </button>
                     )}
                   </div>
@@ -4233,7 +4289,7 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data da Escala</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data da Diaria</label>
                 <div className="relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
                     <Calendar size={16} />
@@ -4296,7 +4352,7 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
                 ) : (
                   <>
                     <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                    <span>Solicitar Escala</span>
+                    <span>Solicitar Diaria</span>
                   </>
                 )}
               </button>
@@ -4485,7 +4541,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
               {selectedDate === today ? 'Equipe de Hoje' : `Equipe de ${formatDateBR(selectedDate)}`}
             </h3>
             <p className={`${selectedDate === today ? 'text-emerald-600' : 'text-blue-600'} text-[10px] font-black uppercase tracking-widest`}>
-              {dateEmployees.length} Profissionais escalados
+              {dateEmployees.length} Profissionais agendados
             </p>
           </div>
         </div>
@@ -4530,7 +4586,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
           </div>
         ) : (
           <div className="py-24 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-            <p className="text-slate-400 font-medium italic">Nenhum profissional escalado para esta data.</p>
+            <p className="text-slate-400 font-medium italic">Nenhum profissional agendado para esta data.</p>
           </div>
         )}
       </div>
@@ -5106,7 +5162,7 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div className="prose prose-slate max-w-none">
             <p className="text-slate-600 leading-relaxed font-medium text-sm">
-              Como gestor, você tem acesso a informações sensíveis de escalas e funcionários. O StaffLink garante que todos os dados sejam tratados com o mais alto nível de segurança e em conformidade com a <strong>LGPD</strong>.
+              Como gestor, você tem acesso a informações sensíveis de diarias e funcionários. O StaffLink garante que todos os dados sejam tratados com o mais alto nível de segurança e em conformidade com a <strong>LGPD</strong>.
             </p>
             <p className="text-[10px] text-slate-400 italic mt-6 font-medium">
               * O acesso é pessoal e intransferível. Todas as ações realizadas no portal são auditadas para sua segurança.
@@ -5144,7 +5200,7 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications }: 
 
   const handleConfirm = async (assignmentId: string) => {
     await updateDocument('assignments', assignmentId, { confirmed: true });
-    alert('Escala confirmada com sucesso!');
+    alert('Diaria confirmada com sucesso!');
   };
 
   return (
@@ -5364,7 +5420,7 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications }: 
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <PrivacyListItem title="Identificação Profissional" description="Para que as empresas saibam quem irá realizar o serviço." />
             <PrivacyListItem title="Controle de Ponto" description="Sua foto é utilizada no reconhecimento facial para autenticidade." />
-            <PrivacyListItem title="Comunicação" description="Seu telefone é usado para envio de escalas via WhatsApp." />
+            <PrivacyListItem title="Comunicação" description="Seu telefone é usado para envio de diarias via WhatsApp." />
             <PrivacyListItem title="Segurança" description="Documentos armazenados para conformidade e antecedentes." />
           </ul>
         </div>
@@ -5751,8 +5807,8 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
       className="space-y-10"
     >
       <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Minhas Escalas</h2>
-        <p className="text-slate-500 font-medium">Acompanhe os funcionários escalados para suas unidades.</p>
+        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Minhas Diarias</h2>
+        <p className="text-slate-500 font-medium">Acompanhe os funcionários agendados para suas unidades.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -5764,13 +5820,13 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
         />
         <StatCard 
           icon={<Calendar className="text-indigo-600" />} 
-          label="Total de Escalas" 
+          label="Total de Diarias" 
           value={myAssignments.length.toString()} 
           color="indigo"
         />
         <StatCard 
           icon={<Clock className="text-emerald-600" />} 
-          label="Próxima Escala" 
+          label="Próxima Diaria" 
           value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
           color="emerald"
         />
@@ -5778,7 +5834,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
 
       <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 sm:p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 gap-4">
-          <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Histórico de Escalas</h3>
+          <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Histórico de Diarias</h3>
           <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-slate-100 self-start sm:self-auto">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
             <span>Atualizado em tempo real</span>
@@ -5883,7 +5939,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
               <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-300">
                 <Calendar size={40} />
               </div>
-              <p className="text-sm text-slate-400 font-medium italic">Nenhuma escala encontrada para suas unidades.</p>
+              <p className="text-sm text-slate-400 font-medium italic">Nenhuma diaria encontrada para suas unidades.</p>
             </div>
           </div>
         )}
@@ -5959,7 +6015,7 @@ function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { cl
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-orange-500" />
         
         <div className="space-y-3">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Selecione a Escala</label>
+          <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Selecione a Diaria</label>
           <select 
             required
             className="input-field"
@@ -6433,7 +6489,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
               />
               <label htmlFor="lgpd" className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                Autorizo o uso dos meus dados pessoais para fins de cadastro e escalas de trabalho, conforme as diretrizes da <span className="font-bold text-slate-700">LGPD (Lei Geral de Proteção de Dados)</span>.
+                Autorizo o uso dos meus dados pessoais para fins de cadastro e diarias de trabalho, conforme as diretrizes da <span className="font-bold text-slate-700">LGPD (Lei Geral de Proteção de Dados)</span>.
               </label>
             </div>
 
