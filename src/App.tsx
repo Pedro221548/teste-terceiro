@@ -14,7 +14,9 @@ import {
   TrendingUp, 
   Building2,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
+  Info,
   Upload,
   Link as LinkIcon,
   LogOut,
@@ -36,7 +38,12 @@ import {
   Settings,
   Filter,
   Send,
-  Cake
+  Cake,
+  Database,
+  Bell,
+  ArrowUpRight,
+  ArrowRight,
+  TrendingUp as TrendingUpIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -99,6 +106,178 @@ class ErrorBoundary extends Component<any, any> {
     }
     return (this as any).props.children;
   }
+}
+
+function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout }: { 
+  role: string, 
+  activeTab: string, 
+  setActiveTab: (tab: string) => void,
+  isMobileMenuOpen: boolean,
+  setIsMobileMenuOpen: (open: boolean) => void,
+  userEmail: string | null,
+  userName: string | null,
+  userPhoto: string | null,
+  handleLogout: () => void
+}) {
+  const menuItems = role === 'ADMIN' || role === 'AGENCY' ? [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'staffing', label: 'Diaristas', icon: Users },
+    { id: 'companies', label: 'Empresas', icon: Building2 },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus },
+    { id: 'access_control', label: 'Controle de Acesso', icon: QrCode },
+    { id: 'pricing', label: 'Precificação', icon: CreditCard },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
+    { id: 'user_management', label: 'Gestão de Logins', icon: Lock },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
+  ] : role === 'COMPANY' ? [
+    { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard },
+    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star },
+    { id: 'company_diaristas', label: 'Diaristas', icon: Users },
+    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon },
+  ] : [
+    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar },
+    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon },
+    { id: 'employee_ponto', label: 'PONTO', icon: Scan },
+  ];
+
+  return (
+    <>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={`
+        fixed top-0 left-0 bottom-0 z-50 w-72 bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out lg:translate-x-0
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="flex flex-col h-full">
+          <div className="p-8 border-b border-slate-50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <Building2 size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black tracking-tighter text-slate-950 font-display">StaffLink</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Enterprise</p>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+            <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Menu Principal</p>
+            {menuItems.map((item) => (
+              <SidebarItem
+                key={item.id}
+                icon={<item.icon size={18} />}
+                label={item.label}
+                active={activeTab === item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsMobileMenuOpen(false);
+                }}
+              />
+            ))}
+          </nav>
+
+          <div className="p-4 border-t border-slate-50 bg-slate-50/50">
+            <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="relative">
+                  {userPhoto ? (
+                    <img src={userPhoto} alt={userName || ''} className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
+                      <UserIcon size={20} />
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tight">{role}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+              >
+                <LogOut size={14} />
+                Sair da Conta
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function Header({ activeTab, setIsMobileMenuOpen, user, role }: { 
+  activeTab: string, 
+  setIsMobileMenuOpen: (open: boolean) => void,
+  user: any,
+  role: string
+}) {
+  const getTitle = () => {
+    switch (activeTab) {
+      case 'dashboard': return 'Dashboard Geral';
+      case 'staffing': return 'Gestão de Diaristas';
+      case 'companies': return 'Empresas Parceiras';
+      case 'registrations': return 'Cadastros Pendentes';
+      case 'access_control': return 'Controle de Acesso';
+      case 'pricing': return 'Configuração de Preços';
+      case 'feedbacks': return 'Feedbacks & Avaliações';
+      case 'user_management': return 'Gestão de Usuários';
+      case 'profile': return 'Meu Perfil Profissional';
+      case 'manager_dashboard': return 'Minhas Diarias';
+      case 'evaluate_team': return 'Avaliação de Equipe';
+      case 'company_diaristas': return 'Equipe de Diaristas';
+      case 'company_profile': return 'Perfil da Empresa';
+      case 'employee_schedule': return 'Minha Agenda';
+      case 'employee_profile': return 'Meu Perfil';
+      case 'employee_ponto': return 'Registro de Ponto';
+      default: return 'Visão Geral';
+    }
+  };
+
+  return (
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2.5 bg-slate-50 text-slate-600 rounded-xl lg:hidden hover:bg-slate-100 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="hidden sm:block">
+            <h2 className="text-2xl font-black text-slate-950 tracking-tight font-display">{getTitle()}</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">StaffLink Platform</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
+              {user.displayName || 'Usuário'}
+            </p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{role}</p>
+          </div>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
+            <img src={user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
 }
 
 export default function App() {
@@ -546,190 +725,154 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen flex bg-slate-50 overflow-hidden">
-        {/* Left Side: Purpose/Branding - Website Style */}
-        <div className="hidden lg:flex lg:w-1/2 bg-slate-900 p-16 flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full -mr-64 -mt-64 blur-[120px]" />
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/20 rounded-full -ml-64 -mb-64 blur-[120px]" />
+      <div className="min-h-screen flex bg-white overflow-hidden">
+        {/* Left Side: Branding & Purpose */}
+        <div className="hidden lg:flex lg:w-1/2 bg-slate-950 p-20 flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full -mr-80 -mt-80 blur-[140px]" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full -ml-80 -mb-80 blur-[140px]" />
           
           <div className="relative z-10">
-            <div className="flex items-center gap-4 mb-16">
-              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40 transform -rotate-6">
-                <Building2 size={32} />
+            <div className="flex items-center gap-4 mb-20">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-2xl transform -rotate-6">
+                <Building2 size={28} />
               </div>
-              <h1 className="text-4xl font-black tracking-tighter text-white">StaffLink</h1>
+              <h1 className="text-3xl font-black tracking-tighter text-white font-display">StaffLink</h1>
             </div>
             
-            <div className="space-y-10 max-w-xl">
+            <div className="space-y-8 max-w-xl">
               <motion.h2 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-6xl font-black text-white leading-[1.1] tracking-tight"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-7xl font-black text-white leading-[0.95] tracking-tight font-display"
               >
-                A revolução na <br />
-                <span className="text-blue-500">Gestão de Diaristas.</span>
+                Gestão de <br />
+                <span className="text-slate-400 italic">Diaristas</span> <br />
+                em tempo real.
               </motion.h2>
               <motion.p 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-xl text-slate-400 font-medium leading-relaxed"
+                className="text-lg text-slate-400 font-medium leading-relaxed max-w-md"
               >
-                O StaffLink é o ecossistema completo para agências que buscam excelência operacional, automação de diarias e controle total em tempo real.
+                O ecossistema definitivo para agências que buscam automação, controle e excelência operacional.
               </motion.p>
               
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.15 }}
-                className="relative rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl"
+                transition={{ delay: 0.2 }}
+                className="relative rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl mt-12 group"
               >
                 <img 
                   src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
-                  alt="StaffLink Purpose" 
-                  className="w-full h-auto object-cover opacity-90 hover:opacity-100 transition-opacity"
+                  alt="StaffLink Dashboard" 
+                  className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="grid grid-cols-2 gap-8 pt-10"
-              >
-                <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all group">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                    <Calendar size={24} />
-                  </div>
-                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Diarias Inteligentes</h4>
-                  <p className="text-slate-500 text-sm font-medium">Distribua sua equipe com precisão cirúrgica.</p>
-                </div>
-                <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all group">
-                  <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
-                    <QrCode size={24} />
-                  </div>
-                  <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-2">Ponto Digital</h4>
-                  <p className="text-slate-500 text-sm font-medium">Segurança e transparência via QR Code.</p>
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
               </motion.div>
             </div>
           </div>
-          
-          <div className="relative z-10 flex items-center gap-6 text-slate-500 text-xs font-bold uppercase tracking-widest">
-            <span>© 2026 StaffLink</span>
-            <div className="w-1 h-1 rounded-full bg-slate-700" />
-            <span>Privacidade</span>
-            <div className="w-1 h-1 rounded-full bg-slate-700" />
-            <span>Termos</span>
+
+          <div className="relative z-10 flex items-center gap-8 text-slate-500 text-sm font-medium">
+            <span>© 2026 StaffLink Inc.</span>
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-white transition-colors">Privacidade</a>
+              <a href="#" className="hover:text-white transition-colors">Termos</a>
+            </div>
           </div>
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-white lg:bg-slate-50">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-[#FBFBFA]">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="w-full max-w-md space-y-10"
           >
-            <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200 border border-slate-100 relative overflow-hidden">
-              {/* Decorative background for the card */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 opacity-50" />
-              
-              <div className="text-center mb-12 relative z-10">
-                <div className="w-24 h-24 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mx-auto mb-8 shadow-inner transform hover:rotate-12 transition-transform duration-500">
-                  <Building2 size={48} />
+            <div className="lg:hidden flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white">
+                <Building2 size={24} />
+              </div>
+              <h1 className="text-2xl font-black tracking-tighter font-display">StaffLink</h1>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-3xl font-black text-slate-900 font-display">Bem-vindo de volta.</h3>
+              <p className="text-slate-500 font-medium">Acesse sua conta para gerenciar suas diarias.</p>
+            </div>
+
+            <form onSubmit={handleEmailLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="email" 
+                    placeholder="exemplo@stafflink.com"
+                    className="input-modern pl-12"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                  />
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Portal de Gestão</h3>
-                <p className="text-slate-500 font-medium px-4">Faça login para acessar o sistema de gestão de diaristas.</p>
               </div>
 
-              <form className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Usuário ou E-mail</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                      <Mail size={20} />
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="seu@email.com"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    className="input-modern pl-12"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    required
+                  />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center px-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                    <button type="button" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors">Esqueceu?</button>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                      <Lock size={20} />
-                    </div>
-                    <input 
-                      type="password" 
-                      placeholder="••••••••"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none font-bold text-slate-700 placeholder:text-slate-300"
-                    />
-                  </div>
-                </div>
-
-                {loginError && (
-                  <div className="flex items-center gap-2 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle size={14} />
-                    {loginError}
-                  </div>
-                )}
-
-                <button 
-                  type="submit"
-                  className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-[0.98] mt-4"
+              {loginError && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium"
                 >
-                  Entrar no Sistema
-                </button>
+                  <AlertCircle size={18} />
+                  {loginError}
+                </motion.div>
+              )}
 
-                <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Acesso de Demonstração (Admin)</p>
-                  <p className="text-[10px] font-bold text-slate-600">E-mail: <span className="text-blue-600">admin@stafflink.com</span></p>
-                  <p className="text-[10px] font-bold text-slate-600">Senha: <span className="text-blue-600">admin123</span></p>
-                </div>
-              </form>
-
-              <div className="relative my-12">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-100"></div>
-                </div>
-                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                  <span className="bg-white px-6 text-slate-400">Ou autentique com</span>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleLogin}
-                className="w-full flex items-center justify-center gap-4 bg-white border-2 border-slate-100 text-slate-700 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98] shadow-sm"
-              >
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                Entrar com Google
+              <button type="submit" className="btn-modern-primary w-full h-14 text-lg">
+                Entrar na Plataforma
+                <ChevronRight size={20} />
               </button>
+            </form>
 
-              <div className="mt-12 pt-8 border-t border-slate-50 text-center">
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-                  Novo por aqui? <button className="text-blue-600 hover:text-blue-800 transition-colors ml-1">Solicite Acesso</button>
-                </p>
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#FBFBFA] px-4 text-slate-400 font-bold tracking-widest">Ou continue com</span>
               </div>
             </div>
-            
-            {/* Mobile Purpose Text */}
-            <div className="lg:hidden mt-12 text-center px-6">
-              <h4 className="text-xl font-black text-slate-900 mb-2">StaffLink</h4>
-              <p className="text-slate-500 text-sm font-medium">Gestão inteligente para agências de diaristas.</p>
+
+            <button 
+              onClick={handleLogin}
+              className="btn-modern-secondary w-full h-14 flex items-center justify-center gap-3"
+            >
+              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+              Google Workspace
+            </button>
+
+            <div className="pt-8 text-center">
+              <p className="text-sm text-slate-500 font-medium">
+                Ainda não é parceiro? <br />
+                <a href="?role=COMPANY_REGISTRATION" className="text-slate-950 font-black hover:underline decoration-2 underline-offset-4">Cadastre sua empresa</a> ou <a href="?role=REGISTRATION" className="text-slate-950 font-black hover:underline decoration-2 underline-offset-4">seja um diarista</a>.
+              </p>
             </div>
           </motion.div>
         </div>
@@ -765,200 +908,29 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+      <div className="min-h-screen flex bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
         <RoleSwitcher />
-        
-        <div className="flex">
-          {/* Backdrop for Mobile Menu */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-30 lg:hidden"
-              />
-            )}
-          </AnimatePresence>
+        <Sidebar 
+          role={role} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          userEmail={user.email}
+          userName={user.displayName}
+          userPhoto={user.photoURL}
+          handleLogout={handleLogout}
+        />
 
-          {/* Sidebar */}
-          <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="h-full flex flex-col">
-              <div className="p-8 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                    <Building2 size={22} />
-                  </div>
-                  <h1 className="text-xl font-bold tracking-tight text-white">StaffLink</h1>
-                </div>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+        <div className="flex-1 lg:ml-72 flex flex-col min-h-screen">
+          <Header 
+            activeTab={activeTab} 
+            setIsMobileMenuOpen={setIsMobileMenuOpen} 
+            user={user}
+            role={role}
+          />
 
-              <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-                {role === 'AGENCY' && (
-                  <>
-                    <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Principal</div>
-                    <SidebarItem 
-                      icon={<LayoutDashboard size={18} />} 
-                      label="Dashboard" 
-                      active={activeTab === 'dashboard'} 
-                      onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<Calendar size={18} />} 
-                      label="Diaria" 
-                      active={activeTab === 'staffing'} 
-                      onClick={() => { setActiveTab('staffing'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <div className="px-4 py-2 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
-                    <SidebarItem 
-                      icon={<Building2 size={18} />} 
-                      label="Empresas" 
-                      active={activeTab === 'companies'} 
-                      onClick={() => { setActiveTab('companies'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<UserPlus size={18} />} 
-                      label="Cadastros" 
-                      active={activeTab === 'registrations'} 
-                      onClick={() => { setActiveTab('registrations'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<QrCode size={18} />} 
-                      label="Controle de Acesso" 
-                      active={activeTab === 'access_control'} 
-                      onClick={() => { setActiveTab('access_control'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<CreditCard size={18} />} 
-                      label="Precificação" 
-                      active={activeTab === 'pricing'} 
-                      onClick={() => { setActiveTab('pricing'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<MessageSquare size={18} />} 
-                      label="Feedbacks" 
-                      active={activeTab === 'feedbacks'} 
-                      onClick={() => { setActiveTab('feedbacks'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<Lock size={18} />} 
-                      label="Gestão de Logins" 
-                      active={activeTab === 'user_management'} 
-                      onClick={() => { setActiveTab('user_management'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<UserIcon size={18} />} 
-                      label="Meu Perfil" 
-                      active={activeTab === 'profile'} 
-                      onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }} 
-                    />
-                  </>
-                )}
-                {role === 'COMPANY' && (
-                  <>
-                    <SidebarItem 
-                      icon={<LayoutDashboard size={20} />} 
-                      label="Minhas Diarias" 
-                      active={activeTab === 'manager_dashboard'} 
-                      onClick={() => { setActiveTab('manager_dashboard'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<Star size={20} />} 
-                      label="Avaliar Equipe" 
-                      active={activeTab === 'evaluate_team'} 
-                      onClick={() => { setActiveTab('evaluate_team'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<Users size={20} />} 
-                      label="Diaristas" 
-                      active={activeTab === 'company_diaristas'} 
-                      onClick={() => { setActiveTab('company_diaristas'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<UserIcon size={20} />} 
-                      label="Meu Perfil" 
-                      active={activeTab === 'company_profile'} 
-                      onClick={() => { setActiveTab('company_profile'); setIsMobileMenuOpen(false); }} 
-                    />
-                  </>
-                )}
-                {role === 'EMPLOYEE' && (
-                  <>
-                    <SidebarItem 
-                      icon={<Calendar size={20} />} 
-                      label="Minha Agenda" 
-                      active={activeTab === 'employee_schedule'} 
-                      onClick={() => { setActiveTab('employee_schedule'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<UserIcon size={20} />} 
-                      label="Meu Perfil" 
-                      active={activeTab === 'employee_profile'} 
-                      onClick={() => { setActiveTab('employee_profile'); setIsMobileMenuOpen(false); }} 
-                    />
-                    <SidebarItem 
-                      icon={<Scan size={20} />} 
-                      label="PONTO" 
-                      active={activeTab === 'employee_ponto'} 
-                      onClick={() => { setActiveTab('employee_ponto'); setIsMobileMenuOpen(false); }} 
-                    />
-                  </>
-                )}
-              </nav>
-
-              <div className="p-6 border-t border-slate-800">
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-4 w-full p-4 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all group"
-                >
-                  <div className="group-hover:scale-110 transition-transform">
-                    <LogOut size={20} />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest">Sair</span>
-                </button>
-              </div>
-            </div>
-          </aside>
-
-          {/* Main Content */}
-          <main className="flex-1 lg:ml-72 min-h-screen bg-slate-50/30 pb-24 lg:pb-0">
-            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="lg:hidden p-2.5 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all"
-                >
-                  {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                </button>
-                <div className="lg:hidden flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                    <Building2 size={16} />
-                  </div>
-                  <span className="text-sm font-black tracking-tight text-slate-900">StaffLink</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 sm:gap-8 ml-auto">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
-                    {user.displayName || 'Usuário'}
-                  </p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{role}</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
-                  <img src={user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-              </div>
-            </header>
-
-            <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto">
+          <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
               {role === 'EMPLOYEE' && (
                 <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
                   <div className="flex items-center gap-4">
@@ -1227,81 +1199,35 @@ export default function App() {
                   </div>
                 )}
               </AnimatePresence>
-            </div>
           </main>
-
-          {/* Bottom Navigation for Mobile */}
-          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200 px-6 py-3 flex items-center justify-between pb-safe">
-            {role === 'AGENCY' && (
-              <>
-                <BottomNavItem icon={<LayoutDashboard size={20} />} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-                <BottomNavItem icon={<Calendar size={20} />} active={activeTab === 'staffing'} onClick={() => setActiveTab('staffing')} />
-                <BottomNavItem icon={<Building2 size={20} />} active={activeTab === 'companies'} onClick={() => setActiveTab('companies')} />
-                <BottomNavItem icon={<UserPlus size={20} />} active={activeTab === 'registrations'} onClick={() => setActiveTab('registrations')} />
-                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-              </>
-            )}
-            {role === 'COMPANY' && (
-              <>
-                <BottomNavItem icon={<LayoutDashboard size={20} />} active={activeTab === 'manager_dashboard'} onClick={() => setActiveTab('manager_dashboard')} />
-                <BottomNavItem icon={<Star size={20} />} active={activeTab === 'evaluate_team'} onClick={() => setActiveTab('evaluate_team')} />
-                <BottomNavItem icon={<Users size={20} />} active={activeTab === 'company_diaristas'} onClick={() => setActiveTab('company_diaristas')} />
-                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'company_profile'} onClick={() => setActiveTab('company_profile')} />
-                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-              </>
-            )}
-            {role === 'EMPLOYEE' && (
-              <>
-                <BottomNavItem icon={<Calendar size={20} />} active={activeTab === 'employee_schedule'} onClick={() => setActiveTab('employee_schedule')} />
-                <BottomNavItem icon={<Scan size={20} />} active={activeTab === 'employee_ponto'} onClick={() => setActiveTab('employee_ponto')} />
-                <BottomNavItem icon={<UserIcon size={20} />} active={activeTab === 'employee_profile'} onClick={() => setActiveTab('employee_profile')} />
-                <BottomNavItem icon={<Menu size={20} />} active={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-              </>
-            )}
-          </nav>
         </div>
       </div>
     </ErrorBoundary>
   );
 }
 
-function BottomNavItem({ icon, active, onClick }: { icon: React.ReactNode, active: boolean, onClick: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`p-3 rounded-2xl transition-all relative ${active ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:bg-slate-50'}`}
-    >
-      {icon}
-      {active && (
-        <motion.div 
-          layoutId="bottom-nav-active"
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-600"
-        />
-      )}
-    </button>
-  );
-}
 
-function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void, key?: string }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-4 w-full p-4 rounded-2xl transition-all group relative overflow-hidden ${
+      className={`flex items-center gap-4 w-full px-6 py-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
         active 
-          ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
-          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          ? 'bg-slate-950 text-white shadow-2xl shadow-slate-900/20' 
+          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
       }`}
     >
-      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
+      <div className={`transition-all duration-300 ${active ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-slate-950 group-hover:scale-110'}`}>
         {icon}
       </div>
-      <span className={`text-[10px] font-black uppercase tracking-widest transition-all ${active ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+      <span className={`text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
         {label}
       </span>
       {active && (
         <motion.div 
           layoutId="sidebar-active"
-          className="absolute right-2 w-1.5 h-1.5 rounded-full bg-white shadow-sm"
+          className="absolute left-0 w-1.5 h-6 bg-blue-500 rounded-r-full"
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
       )}
     </button>
@@ -1332,83 +1258,86 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Visão Geral</h2>
           <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho da sua agência hoje.</p>
         </div>
-        
         <button 
           onClick={onSeedData}
-          className="sm:absolute sm:top-0 sm:right-0 px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
+          className="px-6 py-3 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 hover:shadow-blue-500/20 active:scale-95 flex items-center gap-2"
         >
-          <Plus size={16} />
+          <Database size={14} />
           Cadastrar Dados de Teste
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           icon={<Users size={24} />} 
-          label="Funcionários Agendados" 
+          label="Diaristas Agendados" 
           value={todayAssignments.length.toString()} 
-          trend="+12% vs ontem"
+          trend="+12%"
           color="blue"
         />
         <StatCard 
           icon={<TrendingUp size={24} />} 
-          label="Valor Agregado (Hoje)" 
-          value={`R$ ${totalValue.toFixed(2)}`} 
-          trend={`Média R$ ${(totalValue / (todayAssignments.length || 1)).toFixed(2)}/func`}
+          label="Faturamento Hoje" 
+          value={`R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+          trend={`R$ ${(totalValue / (todayAssignments.length || 1)).toFixed(0)}/avg`}
           color="emerald"
         />
         <StatCard 
           icon={<Building2 size={24} />} 
-          label="Clientes Atendidos" 
+          label="Empresas Atendidas" 
           value={activeClients.toString()} 
-          trend="2 novos contratos"
+          trend="Ativo"
           color="purple"
         />
         <StatCard 
           icon={<Phone size={24} />} 
-          label="Contatos Pendentes" 
+          label="Novos Contatos" 
           value={pendingContacts.toString()} 
-          trend="Link Direto"
+          trend={pendingContacts > 0 ? "Urgente" : "Limpo"}
           alert={pendingContacts > 0}
           color="orange"
         />
       </div>
 
-      <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/5 rounded-full -mr-32 -mt-32 transition-all group-hover:scale-110"></div>
+      <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
         
         <div className="relative z-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 sm:mb-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500 shadow-inner shrink-0">
-                {pricing.type === 'STARS' ? <Star size={28} className="fill-yellow-400" /> : <Calendar size={28} />}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
               </div>
               <div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual.</p>
+                <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
               </div>
             </div>
             {pricing.type === 'DAILY' && (
-              <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit">
+              <div className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit shadow-sm">
                 Hoje: {todayName}
               </div>
             )}
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {pricing.type === 'STARS' ? (
               Object.entries(pricing.stars || {}).map(([stars, p]) => (
-                <div key={stars} className="p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-4 hover:bg-white hover:border-yellow-200 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group/price">
-                  <div className="flex gap-1">
+                <div key={stars} className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
+                  <div className="flex gap-1.5 relative z-10">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={12} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                      <Star key={i} size={16} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                     ))}
                   </div>
-                  <div className="text-center">
-                    <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
-                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Valor por diária</p>
+                  <div className="text-center relative z-10">
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-3">Valor por diária</p>
+                  </div>
+                  <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden relative z-10">
+                    <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${(parseInt(stars) / 5) * 100}%` }}></div>
                   </div>
                 </div>
               ))
@@ -1417,12 +1346,18 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
                 const isToday = day === todayName;
                 return (
-                  <div key={day} className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border flex flex-col items-center gap-4 transition-all group/price ${isToday ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5'}`}>
-                    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>{day}</span>
+                  <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden ${isToday ? 'bg-slate-950 border-slate-950 text-white shadow-2xl shadow-slate-950/30 scale-105 z-10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10'}`}>
+                    {isToday && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>}
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>{day}</span>
                     <div className="text-center">
-                      <p className={`text-xl sm:text-2xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
-                      <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-1 ${isToday ? 'text-blue-200' : 'text-slate-400'}`}>Valor por diária</p>
+                      <p className={`text-3xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
+                      <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${isToday ? 'text-slate-500' : 'text-slate-400'}`}>Valor por diária</p>
                     </div>
+                    {isToday && (
+                      <div className="px-4 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-500/20">
+                        Vigente Agora
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -1432,38 +1367,41 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                <Calendar size={20} />
+        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
+          <div className="flex items-center justify-between mb-10 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <Calendar size={24} />
               </div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Diarias do Dia</h3>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Diarias do Dia</h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Diaria ativa hoje</p>
+              </div>
             </div>
             <button 
               onClick={() => setActiveTab('agency_staffing')}
-              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-lg"
+              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
             >
-              Ver todas
+              Ver Agenda
             </button>
           </div>
           <div className="space-y-4 relative z-10">
             {todayAssignments.length === 0 ? (
-              <div className="py-12 text-center space-y-3">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                  <Calendar size={32} />
+              <div className="py-16 text-center space-y-4">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                  <Calendar size={40} />
                 </div>
-                <p className="text-slate-400 font-medium text-sm italic">Nenhuma diaria para hoje.</p>
+                <p className="text-slate-400 font-bold text-sm tracking-tight italic">Nenhuma diaria programada para hoje.</p>
               </div>
             ) : (
               todayAssignments.map(as => {
                 const emp = employees.find(e => e.id === as.employeeId);
                 const cli = clients.find(c => c.id === as.clientId);
                 return (
-                  <div key={as.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:shadow-blue-500/5 transition-all group/item">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover/item:scale-105 transition-transform">
+                  <div key={as.id} className="flex items-center justify-between p-6 rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden">
+                    <div className="flex items-center gap-6 relative z-10">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-4 border-white shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500">
                         <img 
                           src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
                           alt="" 
@@ -1472,21 +1410,23 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                         />
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 text-sm">{emp?.firstName} {emp?.lastName}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <MapPin size={10} className="text-blue-600" />
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight line-clamp-1">{cli?.name}</p>
+                        <p className="font-black text-slate-950 text-lg tracking-tight group-hover/item:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{cli?.name}</p>
+                          <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                          <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">08:00 - 17:00</p>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-black text-sm text-emerald-600">R$ {as.value.toFixed(2)}</p>
-                      <div className="flex items-center justify-end gap-1 mt-1">
-                        <div className={`w-1.5 h-1.5 rounded-full ${as.confirmed ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${as.confirmed ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {as.confirmed ? 'Confirmado' : 'Pendente'}
-                        </span>
-                      </div>
+                    <div className="flex flex-col items-end gap-2 relative z-10">
+                      <p className="text-2xl font-black text-slate-950 tracking-tight">R$ {as.value.toFixed(2)}</p>
+                      <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                        as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                        as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                        'bg-slate-50 text-slate-400 border-slate-200'
+                      }`}>
+                        {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                      </span>
                     </div>
                   </div>
                 );
@@ -1495,68 +1435,74 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           </div>
         </div>
 
-        <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-                <MessageSquare size={20} />
+        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
+          <div className="flex items-center justify-between mb-10 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 -rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <MessageSquare size={24} />
               </div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Novos Contatos</h3>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Novos Contatos</h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Leads do site</p>
+              </div>
             </div>
-            <span className="px-3 py-1.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg">
-              Aguardando
-            </span>
+            <div className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-amber-100 shadow-sm">
+              {contacts.filter(c => c.status === 'PENDING').length + employeeRegistrations.filter(r => r.status === 'PENDING').length} Pendentes
+            </div>
           </div>
           <div className="space-y-4 relative z-10">
-            {contacts.filter(c => c.status === 'PENDING').map(c => (
-              <div key={c.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50/30 hover:bg-white hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 transition-all group/contact">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm border border-amber-100 group-hover/contact:scale-105 transition-transform">
-                    <Phone size={20} />
-                  </div>
-                  <div>
-                    <p className="font-black text-slate-900 text-sm">{c.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{c.phone}</p>
-                  </div>
+            {contacts.filter(c => c.status === 'PENDING').length === 0 && employeeRegistrations.filter(r => r.status === 'PENDING').length === 0 ? (
+              <div className="py-16 text-center space-y-4">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                  <CheckCircle size={40} />
                 </div>
-                <button className="p-3 bg-slate-900 text-white rounded-xl hover:bg-black transition-all shadow-lg active:scale-95">
-                  <ChevronRight size={16} />
-                </button>
+                <p className="text-slate-400 font-bold text-sm tracking-tight italic">Tudo em dia por aqui.</p>
               </div>
-            ))}
-            {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
-              <div key={r.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-emerald-100 bg-emerald-50/30 hover:bg-white hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 transition-all group/reg">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm border border-emerald-100 group-hover/reg:scale-105 transition-transform">
-                    <UserIcon size={20} />
-                  </div>
-                  <div>
-                    <p className="font-black text-slate-900 text-sm">{r.firstName} {r.lastName}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{r.phone}</p>
-                      <span className="text-[9px] px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg font-black uppercase">Novo Cadastro</span>
+            ) : (
+              <>
+                {contacts.filter(c => c.status === 'PENDING').map(c => (
+                  <div key={c.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-500/5 transition-all group/contact">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-white text-slate-950 flex items-center justify-center shadow-xl border border-slate-100 group-hover/contact:scale-110 group-hover/contact:rotate-3 transition-transform duration-500">
+                        <Phone size={24} />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-950 text-base tracking-tight">{c.name}</p>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{c.phone}</p>
+                      </div>
                     </div>
+                    <button className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 group/btn">
+                      <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
                   </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    setSelectedRegistration(r);
-                    setShowProcessRegistrationModal(true);
-                  }}
-                  className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-lg active:scale-95"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            ))}
-            {contacts.filter(c => c.status === 'PENDING').length === 0 && employeeRegistrations.filter(r => r.status === 'PENDING').length === 0 && (
-              <div className="py-12 text-center space-y-3">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                  <MessageSquare size={32} />
-                </div>
-                <p className="text-slate-400 font-medium text-sm italic">Nenhum contato pendente.</p>
-              </div>
+                ))}
+                {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
+                  <div key={r.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-emerald-50/30 hover:bg-white hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/5 transition-all group/reg">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-xl border border-slate-100 group-hover/reg:scale-110 group-hover/reg:-rotate-3 transition-transform duration-500">
+                        <UserIcon size={24} />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-950 text-base tracking-tight">{r.firstName} {r.lastName}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{r.phone}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSelectedRegistration(r);
+                        setShowProcessRegistrationModal(true);
+                      }}
+                      className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-emerald-600 transition-all shadow-xl active:scale-95 group/btn"
+                    >
+                      <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -1645,68 +1591,61 @@ function ConfirmationModal({
 }
 
 function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' }) {
-  const colorClasses = {
-    blue: 'from-blue-50 to-indigo-50 text-blue-600 border-blue-100',
-    indigo: 'from-indigo-50 to-purple-50 text-indigo-600 border-indigo-100',
-    emerald: 'from-emerald-50 to-teal-50 text-emerald-600 border-emerald-100',
-    orange: 'from-orange-50 to-amber-50 text-orange-600 border-orange-100',
-    purple: 'from-purple-50 to-fuchsia-50 text-purple-600 border-purple-100',
-    rose: 'from-rose-50 to-pink-50 text-rose-600 border-rose-100',
+  const colorClasses: any = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    orange: 'bg-orange-50 text-orange-600 border-orange-100',
+    purple: 'bg-purple-50 text-purple-600 border-purple-100',
+    rose: 'bg-rose-50 text-rose-600 border-rose-100',
   };
 
   return (
-    <div className={`bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden ${alert ? 'ring-4 ring-orange-50/50 border-orange-200' : ''}`}>
-      <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500"></div>
-      
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-6">
-          <div className={`p-4 bg-gradient-to-br ${colorClasses[color]} rounded-2xl shadow-inner group-hover:scale-110 transition-transform duration-300`}>
-            {icon}
-          </div>
-          {alert && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-600 rounded-full animate-pulse">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-600" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Alerta</span>
-            </div>
-          )}
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/20 transition-all group relative overflow-hidden">
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-2xl ${colorClasses[color]} border transition-transform group-hover:scale-110 duration-500`}>
+          {icon}
         </div>
-        
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-          <h4 className="text-4xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{value}</h4>
-        </div>
-
         {trend && (
-          <div className="mt-4 flex items-center gap-2">
-            <div className="px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{trend}</span>
-            </div>
-          </div>
+          <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${colorClasses[color]} border`}>
+            {trend}
+          </span>
         )}
       </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
+      </div>
+      {alert && (
+        <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+      )}
     </div>
   );
 }
 
 function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
+  const [showSuccess, setShowSuccess] = useState(false);
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED');
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
 
   const handleConfirm = async (assignmentId: string) => {
     await updateDocument('assignments', assignmentId, { confirmed: true });
-    alert('Diaria confirmada com sucesso!');
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
   };
   
   if (!employee) {
     return (
-      <div className="bg-white p-8 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <UserIcon size={32} />
+      <div className="bg-white p-12 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+        <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100 rotate-6">
+          <UserIcon size={48} />
         </div>
-        <h3 className="text-lg sm:text-xl font-black text-slate-900">Perfil não encontrado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto text-sm sm:text-base">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
+        <div className="space-y-2">
+          <h3 className="text-2xl font-black text-slate-950 tracking-tight uppercase">Perfil não encontrado</h3>
+          <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium leading-relaxed">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
+        </div>
       </div>
     );
   }
@@ -1719,38 +1658,75 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     await updateDocument('employees', employee.id, { unavailableDates: newDates });
   };
 
+  const [viewDate, setViewDate] = useState(new Date());
+  const currentMonth = viewDate.getMonth();
+  const currentYear = viewDate.getFullYear();
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const prevMonth = () => setViewDate(new Date(currentYear, currentMonth - 1, 1));
+  const nextMonth = () => setViewDate(new Date(currentYear, currentMonth + 1, 1));
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Agenda do Funcionário</h2>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="space-y-10 relative"
+    >
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-3"
+          >
+            <CheckCircle size={20} />
+            Diaria confirmada com sucesso!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-col gap-2">
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
         <p className="text-slate-500 font-medium text-sm sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
 
       {/* Notifications Section */}
       {myNotifications.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Notificações Pendentes</h3>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Notificações Prioritárias</h3>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-6">
             {myNotifications.map(notification => (
               <motion.div 
                 key={notification.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-blue-50 border border-blue-100 p-6 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-slate-950 text-white p-8 sm:p-12 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between gap-10 shadow-2xl shadow-slate-950/40 relative overflow-hidden group"
               >
-                <div className="flex items-center gap-4 text-center sm:text-left">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                    <Calendar size={24} />
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] group-hover:scale-150 transition-transform duration-1000" />
+                
+                <div className="flex items-center gap-8 relative z-10">
+                  <div className="w-20 h-20 rounded-[2.5rem] bg-blue-600 text-white flex items-center justify-center shadow-2xl shadow-blue-500/50 rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                    <Bell size={40} className="animate-bounce" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">{notification.title}</h4>
-                    <p className="text-xs font-medium text-blue-600 mt-1">{notification.message}</p>
+                  <div className="text-center sm:text-left space-y-2">
+                    <h4 className="text-2xl font-black text-white tracking-tight uppercase">{notification.title}</h4>
+                    <p className="text-base font-medium text-slate-400 max-w-md leading-relaxed">{notification.message}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                
+                <div className="flex items-center gap-4 w-full lg:w-auto relative z-10">
                   <button 
                     onClick={async () => {
                       if (notification.assignmentId) {
@@ -1758,15 +1734,15 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                       }
                       await updateDocument('notifications', notification.id, { read: true });
                     }}
-                    className="flex-1 sm:flex-none px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                    className="flex-1 lg:flex-none px-12 py-6 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-2xl active:scale-95"
                   >
-                    Confirmar Presença
+                    Confirmar Agora
                   </button>
                   <button 
                     onClick={() => updateDocument('notifications', notification.id, { read: true })}
-                    className="p-4 text-blue-400 hover:bg-blue-100 rounded-2xl transition-all"
+                    className="p-6 text-slate-500 hover:text-white hover:bg-white/10 rounded-2xl transition-all"
                   >
-                    <X size={20} />
+                    <X size={28} />
                   </button>
                 </div>
               </motion.div>
@@ -1775,48 +1751,55 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
       )}
 
-      <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit">
+      <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'SCHEDULE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`flex-1 sm:flex-none px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Minhas Diarias
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`flex-1 sm:flex-none px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Indisponibilidade
         </button>
       </div>
 
       {activeTab === 'SCHEDULE' ? (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-6">
           {myAssignments.length === 0 ? (
-            <div className="bg-white p-8 sm:p-12 rounded-[2rem] sm:rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center">
-              <Calendar size={40} className="mx-auto mb-4 text-slate-200" />
-              <p className="text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Você não tem diarias agendadas no momento.</p>
+            <div className="bg-white p-16 sm:p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+              <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                <Calendar size={48} />
+              </div>
+              <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Você não tem diarias agendadas no momento.</p>
             </div>
           ) : (
             myAssignments.map(as => {
               const cli = clients.find(c => c.id === as.clientId);
               return (
-                <div key={as.id} className="bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
-                      <Building2 size={24} sm:size={28} />
+                <div key={as.id} className="bg-white p-8 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
+                  <div className="flex items-center gap-8 relative z-10">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner">
+                      <Building2 size={36} />
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 text-base sm:text-lg">{cli?.name}</h4>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
-                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-blue-500" /> {formatDateBR(as.date)}</span>
-                        <span className="flex items-center gap-1.5"><Clock size={12} className="text-blue-500" /> 08:00 - 17:00</span>
+                      <h4 className="font-black text-slate-950 text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors">{cli?.name}</h4>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[10px] font-black text-slate-400 mt-3 uppercase tracking-widest">
+                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={14} className="text-blue-600" /> {formatDateBR(as.date)}</span>
+                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={14} className="text-blue-600" /> 08:00 - 17:00</span>
+                        <span className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><MapPin size={14} className="text-blue-600" /> {cli?.location || 'Unidade Central'}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-50">
-                    <p className="text-xl sm:text-2xl font-black text-emerald-600">R$ {as.value.toFixed(2)}</p>
-                    <span className="text-[9px] sm:text-[10px] px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-black uppercase tracking-widest border border-blue-100">Confirmado</span>
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-4 pt-8 sm:pt-0 border-t sm:border-t-0 border-slate-50 relative z-10">
+                    <div className="text-right">
+                      <p className="text-3xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Valor Líquido</p>
+                    </div>
+                    <span className="text-[10px] px-6 py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
                   </div>
                 </div>
               );
@@ -1824,36 +1807,75 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           )}
         </div>
       ) : (
-        <div className="bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
-          <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 sm:mb-8 tracking-tight">Selecione os dias que você NÃO está disponível</h3>
-          <div className="grid grid-cols-7 gap-1 sm:gap-4">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-              <div key={d} className="text-center text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest py-2">{d}</div>
-            ))}
-            {[...Array(31)].map((_, i) => {
-              const day = i + 1;
-              const dateStr = `2026-03-${day.toString().padStart(2, '0')}`;
-              const isUnavailable = employee?.unavailableDates?.includes(dateStr);
-              return (
-                <button 
-                  key={i}
-                  onClick={() => toggleUnavailability(dateStr)}
-                  className={`aspect-square rounded-lg sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-sm transition-all active:scale-90 ${
-                    isUnavailable 
-                      ? 'bg-rose-50 text-rose-600 border-2 border-rose-100 shadow-sm shadow-rose-100/50' 
-                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-transparent'
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
+        <div className="bg-white p-10 sm:p-12 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-150 duration-1000"></div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12 relative z-10">
+            <div className="space-y-1">
+              <h3 className="text-2xl font-black text-slate-950 tracking-tight uppercase">Indisponibilidade</h3>
+              <p className="text-sm text-slate-400 font-medium">Selecione os dias que você NÃO poderá trabalhar.</p>
+            </div>
+            <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+              <button onClick={prevMonth} className="p-3 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-400 hover:text-slate-950">
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-xs font-black uppercase tracking-widest text-slate-950 min-w-[140px] text-center">
+                {monthNames[currentMonth]} {currentYear}
+              </span>
+              <button onClick={nextMonth} className="p-3 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-400 hover:text-slate-950">
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
-          <div className="mt-8 sm:mt-10 flex items-start gap-3 sm:gap-4 p-4 sm:p-5 bg-blue-50 rounded-[1.25rem] sm:rounded-[1.5rem] border border-blue-100">
-            <AlertCircle className="text-blue-600 shrink-0 mt-0.5" size={18} sm:size={20} />
-            <p className="text-[11px] sm:text-sm text-blue-800 font-medium leading-relaxed">
-              Os dias marcados em <strong className="text-rose-600">vermelho</strong> indicam que você não poderá ser agendado pela agência. Informe com antecedência para evitar conflitos.
-            </p>
+
+          <div className="relative z-10">
+            <div className="grid grid-cols-7 gap-2 sm:gap-4 mb-4">
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                <div key={d} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-2">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2 sm:gap-4">
+              {[...Array(firstDayOfMonth)].map((_, i) => (
+                <div key={`empty-${i}`} className="aspect-square" />
+              ))}
+              {[...Array(daysInMonth)].map((_, i) => {
+                const day = i + 1;
+                const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const isUnavailable = employee?.unavailableDates?.includes(dateStr);
+                const isPast = new Date(currentYear, currentMonth, day) < new Date(new Date().setHours(0,0,0,0));
+                
+                return (
+                  <button 
+                    key={day}
+                    disabled={isPast}
+                    onClick={() => toggleUnavailability(dateStr)}
+                    className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all relative group/day ${
+                      isUnavailable 
+                        ? 'bg-rose-500 text-white shadow-xl shadow-rose-500/20 scale-105 z-10' 
+                        : isPast
+                        ? 'bg-slate-50 text-slate-300 cursor-not-allowed opacity-50'
+                        : 'bg-slate-50 text-slate-700 hover:bg-white hover:shadow-xl hover:shadow-slate-900/5 hover:border-slate-200 border-2 border-transparent'
+                    }`}
+                  >
+                    <span className="text-sm sm:text-lg font-black tracking-tight">{day}</span>
+                    {isUnavailable && <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5 hidden sm:block">Indisponível</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-12 flex items-start gap-6 p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100 relative overflow-hidden group/info">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full -mr-16 -mt-16 transition-transform group-hover/info:scale-150 duration-700"></div>
+            <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-xl shadow-blue-500/20 rotate-3 group-hover/info:rotate-0 transition-transform duration-500 relative z-10">
+              <Info size={28} />
+            </div>
+            <div className="relative z-10">
+              <h4 className="text-sm font-black text-blue-900 uppercase tracking-widest mb-2">Importante</h4>
+              <p className="text-sm text-blue-700/80 font-medium leading-relaxed">
+                Informe sua indisponibilidade com pelo menos 24h de antecedência. Dias marcados em vermelho indicam que você não receberá convites para diarias.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -1872,30 +1894,40 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
         <p className="text-slate-500 font-medium text-sm sm:text-base">Avaliações enviadas pelos gerentes das unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-8">
         {feedbacks.map(f => {
           const emp = employees.find(e => e.id === f.employeeId);
           return (
-            <div key={f.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-6 sm:gap-10">
-              <div className="flex items-center gap-4 sm:min-w-[220px]">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-sm shrink-0">
-                  <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div key={f.id} className="bg-white p-10 sm:p-12 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-10 sm:gap-16 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full -mr-20 -mt-20 transition-transform group-hover:scale-150 duration-1000"></div>
+              
+              <div className="flex flex-col items-center sm:items-start gap-6 sm:min-w-[240px] relative z-10">
+                <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 overflow-hidden border-4 border-white shadow-2xl group-hover:scale-105 group-hover:-rotate-3 transition-all duration-500">
+                  <img src={`https://picsum.photos/seed/${emp?.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
-                <div>
-                  <p className="font-black text-slate-900 text-base sm:text-lg">{emp?.firstName} {emp?.lastName}</p>
-                  <div className="flex gap-1 mt-1">
+                <div className="text-center sm:text-left space-y-2">
+                  <p className="font-black text-slate-950 text-xl tracking-tight uppercase">{emp?.firstName} {emp?.lastName}</p>
+                  <div className="flex justify-center sm:justify-start gap-1.5">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                      <Star key={i} size={18} className={i < f.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-100'} />
                     ))}
                   </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-2">Avaliado por Gerente</p>
                 </div>
               </div>
-              <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-10 flex flex-col justify-center">
-                <p className="text-slate-600 font-medium italic text-sm sm:text-lg leading-relaxed">"{f.comment}"</p>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 sm:mt-6 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <span className="flex items-center gap-1.5"><Clock size={12} sm:size={14} className="text-blue-500" /> {formatDateBR(f.date)}</span>
-                  <span className="hidden sm:inline text-slate-200">•</span>
-                  <span className="flex items-center gap-1.5"><Building2 size={12} sm:size={14} className="text-blue-500" /> {clients.find(c => c.id === f.managerId)?.managerName || 'Empresa Parceira'}</span>
+              
+              <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-16 flex flex-col justify-center relative z-10">
+                <div className="relative">
+                  <span className="absolute -top-10 -left-6 text-8xl text-slate-100 font-serif pointer-events-none select-none">“</span>
+                  <p className="text-slate-700 font-medium italic text-lg sm:text-2xl leading-relaxed relative z-10">
+                    {f.comment}
+                  </p>
+                  <span className="absolute -bottom-16 -right-6 text-8xl text-slate-100 font-serif pointer-events-none select-none rotate-180">“</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-4 mt-10 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span className="flex items-center gap-2.5 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Calendar size={14} className="text-blue-600" /> {formatDateBR(f.date)}</span>
+                  <span className="flex items-center gap-2.5 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors"><Building2 size={14} className="text-blue-600" /> {clients.find(c => c.id === f.managerId)?.name || 'Unidade Parceira'}</span>
                 </div>
               </div>
             </div>
@@ -5807,142 +5839,112 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
       className="space-y-10"
     >
       <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Minhas Diarias</h2>
-        <p className="text-slate-500 font-medium">Acompanhe os funcionários agendados para suas unidades.</p>
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
         <StatCard 
-          icon={<Users className="text-blue-600" />} 
+          icon={<Users size={24} className="text-blue-600" />} 
           label="Equipe Hoje" 
           value={todayStaff.length.toString()} 
           color="blue"
         />
         <StatCard 
-          icon={<Calendar className="text-indigo-600" />} 
+          icon={<Calendar size={24} className="text-indigo-600" />} 
           label="Total de Diarias" 
           value={myAssignments.length.toString()} 
           color="indigo"
         />
         <StatCard 
-          icon={<Clock className="text-emerald-600" />} 
+          icon={<Clock size={24} className="text-emerald-600" />} 
           label="Próxima Diaria" 
           value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
           color="emerald"
         />
       </div>
 
-      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 sm:p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 gap-4">
-          <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Histórico de Diarias</h3>
-          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-slate-100 self-start sm:self-auto">
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
+        <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
+          <h3 className="text-[10px] font-black text-slate-950 tracking-[0.2em] uppercase">Histórico de Diarias</h3>
+          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 self-start sm:self-auto shadow-sm">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
             <span>Atualizado em tempo real</span>
           </div>
         </div>
         
-        {/* Desktop Table */}
-        <div className="block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[600px]">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-white">
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status</th>
+                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
+                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
+                <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
                 const emp = employees.find(e => e.id === as.employeeId);
+                const isToday = as.date === today;
                 return (
-                  <tr key={as.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-600 font-black text-sm border border-blue-100 shadow-sm group-hover:scale-110 transition-transform">
-                          {emp?.firstName[0]}
+                  <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
+                    <td className="p-8">
+                      <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
+                          <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         </div>
                         <div>
-                          <p className="font-black text-slate-900 tracking-tight">{emp?.firstName} {emp?.lastName}</p>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Profissional</p>
+                          <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-6">
-                      <div className="flex items-center gap-2 text-slate-500 font-bold">
-                        <Calendar size={14} className="text-blue-600" />
-                        <span className="text-sm">{formatDateBR(as.date)}</span>
+                    <td className="p-8">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
+                          <Calendar size={14} className="text-blue-600" />
+                          {formatDateBR(as.date)}
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
+                          <Clock size={12} className="text-slate-300" />
+                          08:00 - 17:00
+                        </div>
                       </div>
                     </td>
-                    <td className="p-6">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black uppercase tracking-widest text-[10px] ${
-                        as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 
-                        as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600' :
-                        'bg-slate-100 text-slate-400'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          as.status === 'COMPLETED' ? 'bg-emerald-600' : 
-                          as.status === 'SCHEDULED' ? 'bg-blue-600' :
-                          'bg-slate-400'
-                        }`} />
-                        {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
-                      </span>
+                    <td className="p-8">
+                      <div className="flex items-center gap-4">
+                        <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
+                          as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
+                          as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
+                          'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
+                        }`}>
+                          {as.status === 'COMPLETED' ? 'Concluído' : 
+                           as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
+                        </span>
+                        {isToday && (
+                          <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
+                            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                            Hoje
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
+              {myAssignments.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="p-24 text-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100 mb-6">
+                      <Calendar size={40} />
+                    </div>
+                    <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-
-        {/* Mobile Cards */}
-        <div className="md:hidden divide-y divide-slate-100">
-          {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
-            const emp = employees.find(e => e.id === as.employeeId);
-            return (
-              <div key={as.id} className="p-6 space-y-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs border border-blue-100">
-                      {emp?.firstName[0]}
-                    </div>
-                    <div>
-                      <p className="font-black text-slate-900 text-sm tracking-tight">{emp?.firstName} {emp?.lastName}</p>
-                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Profissional</p>
-                    </div>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] ${
-                    as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 
-                    as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600' :
-                    'bg-slate-100 text-slate-400'
-                  }`}>
-                    {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 pt-2 border-t border-slate-50">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar size={12} className="text-blue-600" />
-                    <span>{formatDateBR(as.date)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock size={12} className="text-blue-600" />
-                    <span>08:00 - 17:00</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {myAssignments.length === 0 && (
-          <div className="p-12 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-300">
-                <Calendar size={40} />
-              </div>
-              <p className="text-sm text-slate-400 font-medium italic">Nenhuma diaria encontrada para suas unidades.</p>
-            </div>
-          </div>
-        )}
       </div>
     </motion.div>
   );
