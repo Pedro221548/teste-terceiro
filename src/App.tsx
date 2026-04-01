@@ -14,6 +14,7 @@ import {
   TrendingUp, 
   Building2,
   ChevronRight,
+  ChevronDown,
   Upload,
   Link as LinkIcon,
   LogOut,
@@ -40,7 +41,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification } from './types';
 import { MOCK_EMPLOYEES, MOCK_CLIENTS, MOCK_ASSIGNMENTS, MOCK_FEEDBACKS, MOCK_CONTACTS, MOCK_ACCESS_POINTS, MOCK_CHECKINS, DEFAULT_PRICING } from './constants';
 import { auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
@@ -75,7 +76,7 @@ class ErrorBoundary extends Component<any, any> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
             <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Ops! Algo deu errado.</h2>
             <p className="text-gray-600 mb-6">
@@ -83,12 +84,12 @@ class ErrorBoundary extends Component<any, any> {
             </p>
             <button 
               onClick={() => window.location.reload()}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition-colors"
             >
               Recarregar Página
             </button>
             {process.env.NODE_ENV === 'development' && (
-              <pre className="mt-4 p-4 bg-gray-100 rounded text-left text-xs overflow-auto max-h-40">
+              <pre className="mt-4 p-4 bg-gray-100 rounded-sm text-left text-xs overflow-auto max-h-40">
                 {this.state.error?.message || JSON.stringify(this.state.error)}
               </pre>
             )}
@@ -120,6 +121,7 @@ export default function App() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
   const [impersonatedClientId, setImpersonatedClientId] = useState<string | null>(null);
@@ -297,6 +299,7 @@ export default function App() {
     const unsubUnits = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<Unit>('units', setUnits) : () => {};
     const unsubCompanyUsers = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyUser>('companyUsers', setCompanyUsers) : () => {};
     const unsubCompanyRequests = role === 'AGENCY' || role === 'COMPANY' ? subscribeToCollection<CompanyRequest>('companyRequests', setCompanyRequests) : () => {};
+    const unsubNotifications = subscribeToCollection<Notification>('notifications', setNotifications, [where('userId', '==', user.uid)]);
 
     return () => {
       unsubEmployees();
@@ -311,6 +314,7 @@ export default function App() {
       unsubUnits();
       unsubCompanyUsers();
       unsubCompanyRequests();
+      unsubNotifications();
     };
   }, [isAuthReady, user, role]);
 
@@ -406,8 +410,18 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role');
+    const tabParam = params.get('tab');
+    
     if (roleParam === 'REGISTRATION') {
       setRole('REGISTRATION');
+    } else if (roleParam === 'EMPLOYEE') {
+      setRole('EMPLOYEE');
+    } else if (roleParam === 'COMPANY') {
+      setRole('COMPANY');
+    }
+
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
   }, []);
 
@@ -425,7 +439,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white p-4 rounded-[2rem] shadow-2xl border border-slate-200 flex flex-col gap-4 mb-2 min-w-[240px]"
+              className="bg-white p-4 rounded-xl shadow-2xl border border-slate-200 flex flex-col gap-4 mb-2 min-w-[240px]"
             >
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Simulador de Perfis</h4>
@@ -624,7 +638,7 @@ export default function App() {
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 opacity-50" />
               
               <div className="text-center mb-12 relative z-10">
-                <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mx-auto mb-8 shadow-inner transform hover:rotate-12 transition-transform duration-500">
+                <div className="w-24 h-24 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mx-auto mb-8 shadow-inner transform hover:rotate-12 transition-transform duration-500">
                   <Building2 size={48} />
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Portal de Gestão</h3>
@@ -946,7 +960,7 @@ export default function App() {
 
             <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto">
               {role === 'EMPLOYEE' && (
-                <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                <div className="mb-8 p-6 bg-purple-50 border border-purple-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-200">
                       <UserIcon size={24} />
@@ -988,7 +1002,7 @@ export default function App() {
               )}
 
               {role === 'COMPANY' && (
-                <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
                       <Building2 size={24} />
@@ -1195,6 +1209,7 @@ export default function App() {
                       employeeId={impersonatedEmployeeId || user.uid}
                       employees={employees}
                       assignments={assignments}
+                      notifications={notifications}
                     />
                   </div>
                 )}
@@ -1325,7 +1340,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
         <StatCard 
           icon={<Users size={24} />} 
           label="Funcionários Escalados" 
@@ -1638,7 +1653,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue' }: { icon: 
   };
 
   return (
-    <div className={`bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden ${alert ? 'ring-4 ring-orange-50/50 border-orange-200' : ''}`}>
+    <div className={`bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden ${alert ? 'ring-4 ring-orange-50/50 border-orange-200' : ''}`}>
       <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500"></div>
       
       <div className="relative z-10">
@@ -2248,7 +2263,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-10"
+      className="space-y-6 sm:space-y-10"
     >
       <AnimatePresence>
         {showCreateUserModal && employeeToCreateUserFor && (
@@ -2265,24 +2280,24 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
           />
         )}
       </AnimatePresence>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Cadastre novos talentos ou gerencie os atuais.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg sm:text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
+          <p className="text-slate-500 font-medium text-[9px] sm:text-base">Cadastre novos talentos ou gerencie os atuais.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+        <div className="flex flex-row gap-2 w-full sm:w-auto">
           <button 
             onClick={() => setShowLinkModal(true)}
-            className="flex items-center justify-center gap-3 px-6 py-3.5 sm:py-4 border-2 border-blue-600 text-blue-600 rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-50 transition-all active:scale-95 w-full sm:w-auto"
+            className="flex-1 sm:w-auto flex items-center justify-center gap-1.5 px-2 py-2 border-2 border-blue-600 text-blue-600 rounded-lg sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:bg-blue-50 transition-all active:scale-95"
           >
-            <LinkIcon size={18} />
+            <LinkIcon size={12} className="sm:w-[14px] sm:h-[14px]" />
             Enviar Link
           </button>
           <button 
             onClick={() => setShowForm(true)}
-            className="flex items-center justify-center gap-3 px-6 py-3.5 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 w-full sm:w-auto"
+            className="flex-1 sm:w-auto flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-600 text-white rounded-lg sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
           >
-            <UserPlus size={18} />
+            <UserPlus size={12} className="sm:w-[14px] sm:h-[14px]" />
             Novo Cadastro
           </button>
         </div>
@@ -2333,114 +2348,115 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden relative"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg sm:max-w-2xl overflow-hidden relative"
           >
             {isCameraOpen && (
               <div className="absolute inset-0 z-50 bg-black flex flex-col">
                 <video ref={videoRef} autoPlay playsInline className="flex-1 object-cover" />
                 <canvas ref={canvasRef} className="hidden" />
-                <div className="p-8 flex justify-center gap-6 bg-black/50 backdrop-blur-md">
-                  <button onClick={stopCamera} className="p-5 bg-white/10 text-white rounded-full hover:bg-red-600 transition-all border border-white/20"><X size={24} /></button>
-                  <button onClick={takePhoto} className="p-5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/50"><Camera size={24} /></button>
+                <div className="p-4 flex justify-center gap-4 bg-black/50 backdrop-blur-md">
+                  <button onClick={stopCamera} className="p-3 bg-white/10 text-white rounded-full hover:bg-red-600 transition-all border border-white/20"><X size={20} /></button>
+                  <button onClick={takePhoto} className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/50"><Camera size={20} /></button>
                 </div>
               </div>
             )}
-            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{isEditing ? 'Editar Cadastro' : 'Cadastro Direto'}</h3>
-                <p className="text-xs text-slate-400 font-medium">{isEditing ? 'Atualize os dados do profissional.' : 'Preencha os dados do novo talento.'}</p>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{isEditing ? 'Editar Cadastro' : 'Cadastro Direto'}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">{isEditing ? 'Atualize os dados.' : 'Preencha os dados.'}</p>
               </div>
-              <button onClick={() => { setShowForm(false); setIsEditing(false); setSelectedEmployee(null); }} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
-                <X size={20} />
+              <button onClick={() => { setShowForm(false); setIsEditing(false); setSelectedEmployee(null); }} className="p-2 bg-white border border-slate-200 text-slate-400 rounded-lg hover:bg-slate-50 transition-all">
+                <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleRegister} className="p-6 sm:p-8 space-y-6 sm:space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome</label>
+            <form onSubmit={handleRegister} className="p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Nome</label>
                   <input 
                     required
                     type="text" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.firstName}
                     onChange={e => setFormData({...formData, firstName: e.target.value})}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Sobrenome</label>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Sobrenome</label>
                   <input 
                     required
                     type="text" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.lastName}
                     onChange={e => setFormData({...formData, lastName: e.target.value})}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">CPF</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">CPF</label>
                   <input 
                     required
                     type="text" 
                     placeholder="000.000.000-00"
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.cpf}
                     onChange={e => setFormData({...formData, cpf: e.target.value})}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Data de Nascimento</label>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Data de Nascimento</label>
                   <input 
                     required
                     type="date" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                     value={formData.birthDate}
                     onChange={e => setFormData({...formData, birthDate: e.target.value})}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">E-mail Pessoal</label>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">E-mail Pessoal</label>
                 <input 
                   required
                   type="email" 
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
                   value={formData.personalEmail}
                   onChange={e => setFormData({...formData, personalEmail: e.target.value})}
                 />
               </div>
-              <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                 <input 
                   required
                   type="checkbox" 
                   id="lgpd-agency"
-                  className="mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  className="mt-0.5 w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                   checked={formData.lgpdAuthorized}
                   onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
                 />
-                <label htmlFor="lgpd-agency" className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                  O colaborador autoriza o uso dos dados pessoais conforme a LGPD.
+                <label htmlFor="lgpd-agency" className="text-[9px] text-slate-500 font-medium leading-relaxed">
+                  Autorizo o uso dos dados conforme a LGPD.
                 </label>
               </div>
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Foto Profissional</label>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Foto Profissional</label>
+                <div className="grid grid-cols-2 gap-3">
                   <div 
                     onClick={startCamera}
-                    className="p-8 border-4 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all bg-slate-50/50 group"
+                    className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all bg-slate-50/50 group"
                   >
-                    <Camera size={32} className="mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Câmera</p>
+                    <Camera size={20} className="mb-1 group-hover:scale-110 transition-transform" />
+                    <p className="text-[9px] font-black uppercase tracking-widest">Câmera</p>
                   </div>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-8 border-4 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center text-slate-300 hover:border-emerald-400 hover:text-emerald-400 cursor-pointer transition-all bg-slate-50/50 group"
+                    className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-emerald-400 hover:text-emerald-400 cursor-pointer transition-all bg-slate-50/50 group"
                   >
-                    <Upload size={32} className="mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Galeria</p>
+                    <Upload size={20} className="mb-1 group-hover:scale-110 transition-transform" />
+                    <p className="text-[9px] font-black uppercase tracking-widest">Galeria</p>
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -2450,6 +2466,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                     />
                   </div>
                 </div>
+              </div>
                 {formData.photoUrl && (
                   <div className="flex justify-center mt-4">
                     <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
@@ -2460,7 +2477,6 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                     </div>
                   </div>
                 )}
-              </div>
               <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
                 {isEditing ? 'Salvar Alterações' : 'Finalizar Cadastro'}
               </button>
@@ -2469,19 +2485,19 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
-                <AlertCircle size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+        <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                <AlertCircle className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-lg">Inatividade</h3>
-                <p className="text-xs text-slate-400 font-medium">+30 dias sem escalas</p>
+                <h3 className="font-bold text-slate-900 text-base md:text-lg">Inatividade</h3>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">+30 dias sem escalas</p>
               </div>
             </div>
-            <span className="bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
+            <span className="bg-orange-100 text-orange-700 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
               {inactiveEmployees.length} Alertas
             </span>
           </div>
@@ -2552,25 +2568,25 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
         </div>
       </div>
 
-      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-          <h3 className="font-bold text-slate-900">Base de Funcionários</h3>
+      <div className="bg-white rounded-2xl sm:rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+          <h3 className="font-bold text-slate-900 text-sm sm:text-base">Base de Funcionários</h3>
           <div className="flex gap-2">
-            <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-slate-200 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Total: {employees.length}
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto hidden sm:block">
+        <div className="overflow-x-auto block">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white border-b border-slate-100">
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Funcionário</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nascimento</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Funcionário</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Documento</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Nascimento</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Performance</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -2580,9 +2596,9 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                   className="hover:bg-blue-50/30 transition-all cursor-pointer group"
                   onClick={() => setSelectedEmployee(emp)}
                 >
-                  <td className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-sm border-2 border-white shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
+                  <td className="p-2 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-[10px] sm:text-xs border-2 border-white shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
                         {emp.photoUrl ? (
                           <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -2590,23 +2606,23 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-[10px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
-                        {emp.personalEmail && <p className="text-[10px] text-blue-500 font-bold tracking-tight">{emp.personalEmail}</p>}
+                        <p className="font-bold text-slate-900 text-[10px] sm:text-xs group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
+                        {emp.personalEmail && <p className="text-[8px] sm:text-[9px] text-blue-500 font-bold tracking-tight hidden sm:block">{emp.personalEmail}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="p-6 text-xs text-slate-500 font-mono tracking-tighter">{emp.cpf}</td>
-                  <td className="p-6 text-xs text-slate-500 font-medium">{formatDateBR(emp.birthDate)}</td>
-                  <td className="p-6">
+                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-tighter hidden sm:table-cell">{emp.cpf}</td>
+                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 font-medium hidden sm:table-cell">{formatDateBR(emp.birthDate)}</td>
+                  <td className="p-2 sm:p-4 hidden md:table-cell">
                     <div className="flex gap-0.5 bg-slate-50 w-fit px-2 py-1 rounded-lg">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} size={10} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                       ))}
                     </div>
                   </td>
-                  <td className="p-6">
-                    <span className={`text-[10px] px-3 py-1.5 rounded-xl font-black uppercase tracking-widest border ${
+                  <td className="p-2 sm:p-4">
+                    <span className={`text-[8px] sm:text-[9px] px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg font-black uppercase tracking-wider border ${
                       emp.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                       emp.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-amber-100/50' :
                       'bg-slate-50 text-slate-400 border-slate-100'
@@ -2614,8 +2630,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                       {emp.status === 'ACTIVE' ? 'Ativo' : emp.status === 'PENDING' ? 'Pendente' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="p-6 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-3">
+                  <td className="p-2 sm:p-4 text-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2 sm:gap-3">
                       {emp.status === 'PENDING' && (
                         <button 
                           onClick={(e) => {
@@ -2623,7 +2639,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                             setEmployeeToCreateUserFor(emp);
                             setShowCreateUserModal(true);
                           }}
-                          className="text-[10px] bg-blue-600 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                          className="text-[8px] sm:text-[10px] bg-blue-600 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
                         >
                           Criar Usuário
                         </button>
@@ -2632,26 +2648,26 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                         onClick={() => {
                           onImpersonate(emp.id);
                         }}
-                        className={`p-2.5 rounded-xl transition-all ${impersonatedId === emp.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
+                        className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all ${impersonatedId === emp.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-slate-300 hover:text-purple-600 hover:bg-purple-50'}`}
                         title="Visualizar como este Funcionário"
                       >
-                        <Scan size={18} />
+                        <Scan className="w-3.5 h-3.5 sm:w-[18px] sm:h-[18px]" />
                       </button>
                       <button 
                         onClick={() => handleEdit(emp)}
-                        className="p-2.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                        className="p-1.5 sm:p-2.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all"
                         title="Editar Cadastro"
                       >
-                        <UserPlus size={18} />
+                        <UserPlus className="w-3.5 h-3.5 sm:w-[18px] sm:h-[18px]" />
                       </button>
                       <button 
                         onClick={() => handleDeleteEmployee(emp)}
-                        className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                        className="p-1.5 sm:p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg sm:rounded-xl transition-all"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 className="w-3.5 h-3.5 sm:w-[18px] sm:h-[18px]" />
                       </button>
-                      <div className="p-1 text-slate-300 group-hover:text-blue-600 transition-all transform group-hover:translate-x-1">
-                        <ChevronRight size={20} />
+                      <div className="p-0.5 sm:p-1 text-slate-300 group-hover:text-blue-600 transition-all transform group-hover:translate-x-1">
+                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                     </div>
                   </td>
@@ -2763,72 +2779,72 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden"
+              className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar"
             >
-              <div className="relative h-40 bg-gradient-to-br from-blue-600 to-indigo-700">
+              <div className="relative h-32 bg-gradient-to-br from-blue-600 to-indigo-700">
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
                 <button 
                   onClick={() => setSelectedEmployee(null)}
-                  className="absolute top-6 right-6 p-2.5 bg-white/10 text-white rounded-2xl hover:bg-white/20 transition-all backdrop-blur-md border border-white/10"
+                  className="absolute top-4 right-4 p-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all backdrop-blur-md border border-white/10"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
-              <div className="px-6 sm:px-10 pb-8 sm:pb-10">
-                <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8 flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-8">
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[1.5rem] sm:rounded-[2rem] border-4 sm:border-8 border-white bg-slate-100 overflow-hidden shadow-2xl shrink-0">
+              <div className="px-5 sm:px-8 pb-6 sm:pb-8">
+                <div className="relative -mt-8 sm:-mt-12 mb-4 sm:mb-6 flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[1.25rem] sm:rounded-[1.5rem] border-4 border-white bg-slate-100 overflow-hidden shadow-xl shrink-0">
                     <img src={selectedEmployee.photoUrl || `https://picsum.photos/seed/${selectedEmployee.id}/400`} alt="" className="w-full h-full object-cover" />
                   </div>
-                  <div className="pb-2 sm:pb-4 text-center sm:text-left">
-                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
-                    <div className="flex items-center justify-center sm:justify-start gap-3 mt-2">
-                      <div className="flex gap-0.5 bg-slate-50 px-2 py-1 rounded-lg">
+                  <div className="pb-1 sm:pb-2 text-center sm:text-left">
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
+                    <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
+                      <div className="flex gap-0.5 bg-slate-50 px-1.5 py-0.5 rounded-lg">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={12} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                          <Star key={i} size={10} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
                         ))}
                       </div>
-                      <span className="text-[10px] sm:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">({selectedEmployee.rating}.0)</span>
+                      <span className="text-[9px] sm:text-xs font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-lg">({selectedEmployee.rating}.0)</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10">
-                  <div className="space-y-6 sm:space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
+                  <div className="space-y-4 sm:space-y-6">
                     <div>
-                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Informações Gerais</h4>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                            <CreditCard size={16} />
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Informações Gerais</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                            <CreditCard size={14} />
                           </div>
                           <div>
-                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Documento</p>
-                            <p className="text-xs sm:text-sm font-mono font-bold text-slate-700">{selectedEmployee.cpf}</p>
+                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Documento</p>
+                            <p className="text-[11px] sm:text-xs font-mono font-bold text-slate-700">{selectedEmployee.cpf}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                            <Calendar size={16} />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                            <Calendar size={14} />
                           </div>
                           <div>
-                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Nascimento</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-700">{formatDateBR(selectedEmployee.birthDate)}</p>
+                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Nascimento</p>
+                            <p className="text-[11px] sm:text-xs font-bold text-slate-700">{formatDateBR(selectedEmployee.birthDate)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                            <Phone size={16} />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                            <Phone size={14} />
                           </div>
                           <div>
-                            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">WhatsApp</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-700">{selectedEmployee.phone}</p>
+                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">WhatsApp</p>
+                            <p className="text-[11px] sm:text-xs font-bold text-slate-700">{selectedEmployee.phone}</p>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Status Operacional</h4>
-                      <span className={`text-[9px] sm:text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest border shadow-sm ${
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Status Operacional</h4>
+                      <span className={`text-[8px] sm:text-[9px] px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border shadow-sm ${
                         selectedEmployee.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                         selectedEmployee.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                         'bg-slate-50 text-slate-400 border-slate-100'
@@ -2837,24 +2853,24 @@ function AgencyRegistrations({ employees, clients, ratingLabel, onImpersonate, i
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-6 sm:space-y-8">
+                  <div className="space-y-4 sm:space-y-6">
                     <div>
-                      <h4 className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Histórico & Feedback</h4>
-                      <div className="bg-slate-50 p-5 sm:p-6 rounded-[1.5rem] border border-slate-100 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/5 rounded-full -mr-10 -mt-10 transition-all group-hover:scale-150"></div>
-                        <div className="flex items-center gap-3 text-rose-600 mb-4">
-                          <AlertCircle size={18} />
-                          <span className="text-[10px] font-black uppercase tracking-wider">{selectedEmployee.complaints} Reclamações</span>
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Histórico & Feedback</h4>
+                      <div className="bg-slate-50 p-4 sm:p-5 rounded-[1.25rem] border border-slate-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
+                        <div className="flex items-center gap-2 text-rose-600 mb-3">
+                          <AlertCircle size={16} />
+                          <span className="text-[9px] font-black uppercase tracking-wider">{selectedEmployee.complaints} Reclamações</span>
                         </div>
-                        <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas escalas, porém precisa melhorar a pontualidade."</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed italic font-medium">"Funcionário demonstrou bom desempenho nas últimas escalas, porém precisa melhorar a pontualidade."</p>
                       </div>
                     </div>
-                    <div className="pt-4">
+                    <div className="pt-2">
                       <button 
                         onClick={() => handleDeleteEmployee(selectedEmployee)}
-                        className="w-full py-4 bg-white border-2 border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-rose-100/50"
+                        className="w-full py-3.5 bg-white border-2 border-rose-100 text-rose-600 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-100/30"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                         Excluir Registro
                       </button>
                     </div>
@@ -2874,11 +2890,32 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
+  const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const sortedEmployees = [...employees].sort((a, b) => {
-    if (filterType === 'RATING') return b.rating - a.rating;
-    return a.complaints - b.complaints;
-  });
+  const sortedEmployees = [...employees]
+    .filter(e => (e.firstName + ' ' + e.lastName).toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (filterType === 'RATING') return b.rating - a.rating;
+      return a.complaints - b.complaints;
+    });
+
+  const handleAttendRequest = async (req: CompanyRequest) => {
+    setActiveRequest(req);
+    setSelectedClientId(req.clientId);
+    setSelectedDate(req.date);
+    setActiveSubTab('STAFFING');
+    // Mark as being attended
+    await updateDocument('companyRequests', req.id, { status: 'PENDING' });
+  };
+
+  const handleFinishRequest = async () => {
+    if (activeRequest) {
+      await updateDocument('companyRequests', activeRequest.id, { status: 'ACCEPTED' });
+      setActiveRequest(null);
+      alert('Solicitação finalizada com sucesso!');
+    }
+  };
 
   const handleStaff = async (empId: string) => {
     const emp = employees.find(e => e.id === empId);
@@ -2894,8 +2931,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       confirmed: false
     };
 
-    await createDocument('assignments', newAs);
+    const assignmentId = await createDocument('assignments', newAs);
     await updateDocument('employees', empId, { lastAssignmentDate: selectedDate });
+    
+    // Create internal notification
+    await createDocument('notifications', {
+      userId: empId,
+      title: 'Nova Escala Agendada',
+      message: `Você foi escalado para ${client.name} no dia ${formatDateBR(selectedDate)}.`,
+      type: 'ASSIGNMENT',
+      read: false,
+      createdAt: new Date().toISOString(),
+      assignmentId: assignmentId,
+      link: 'employee_profile'
+    });
     
     // WhatsApp Notification with confirmation link
     const appUrl = window.location.origin;
@@ -2913,6 +2962,40 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-8"
     >
+      {activeRequest && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-600 p-6 rounded-[2rem] text-white shadow-2xl shadow-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+              <MessageSquare size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight">Atendendo Solicitação</h3>
+              <p className="text-blue-100 text-xs font-bold uppercase tracking-widest">
+                {clients.find(c => c.id === activeRequest.clientId)?.name} • {formatDateBR(activeRequest.date)} • {activeRequest.quantity} Profissionais
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Progresso</p>
+              <p className="text-xl font-black">
+                {assignments.filter(a => a.clientId === activeRequest.clientId && a.date === activeRequest.date).length} / {activeRequest.quantity}
+              </p>
+            </div>
+            <button 
+              onClick={handleFinishRequest}
+              className="px-6 py-3 bg-white text-blue-600 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all active:scale-95"
+            >
+              Finalizar
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Escala Inteligente</h2>
@@ -2944,8 +3027,37 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-1 space-y-6 sm:space-y-8">
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
+                  Buscar Profissional
+                </h3>
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                  <Search size={16} />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Nome do profissional..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
                 Data da Escala
               </h3>
               <input 
@@ -2959,7 +3071,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
                 Selecionar Parceiro
               </h3>
               <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
@@ -2987,7 +3099,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
                 Critério de Filtro
               </h3>
               <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
@@ -3016,7 +3128,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
         <div className="lg:col-span-2 bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">4</div>
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">5</div>
               Equipe Disponível
             </h3>
             <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100 w-fit">
@@ -3028,12 +3140,21 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {sortedEmployees.map(emp => {
               const isAssigned = assignments.some(a => a.employeeId === emp.id && a.date === selectedDate);
+              const isRequested = activeRequest?.employeeIds.includes(emp.id);
+              
               return (
                 <div key={emp.id} className={`p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 transition-all relative group ${
                   isAssigned 
                     ? 'bg-slate-50 border-slate-100 opacity-60 grayscale' 
+                    : isRequested
+                    ? 'bg-blue-50 border-blue-200 shadow-xl shadow-blue-500/5'
                     : 'bg-white border-slate-50 hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1'
                 }`}>
+                  {isRequested && !isAssigned && (
+                    <div className="absolute -top-2 -right-2 bg-blue-600 text-white px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg z-20 animate-bounce">
+                      Solicitado
+                    </div>
+                  )}
                   <div className="flex items-start justify-between mb-4 sm:mb-6">
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-[1.25rem] bg-slate-100 overflow-hidden border-2 sm:border-4 border-white shadow-lg group-hover:scale-105 transition-transform">
@@ -3183,10 +3304,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                       })}
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <button className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95">
+                      <button 
+                        onClick={() => handleAttendRequest(req)}
+                        className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                      >
                         Atender
                       </button>
-                      <button className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">
+                      <button 
+                        onClick={async () => {
+                          if (confirm('Deseja recusar esta solicitação?')) {
+                            await updateDocument('companyRequests', req.id, { status: 'REJECTED' });
+                          }
+                        }}
+                        className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95"
+                      >
                         Recusar
                       </button>
                     </div>
@@ -3646,7 +3777,17 @@ function AgencyCompanies({ companies, units, companyUsers, clients, onImpersonat
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{unit.name}</p>
-                        <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium truncate">{unit.location}</p>
+                        {unit.location && (
+                          <a 
+                            href={unit.location.startsWith('http') ? unit.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.location)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 bg-blue-50 text-blue-600 rounded-xl text-[9px] sm:text-[10px] font-bold hover:bg-blue-100 transition-all border border-blue-100 shadow-sm"
+                          >
+                            <MapPin size={12} />
+                            Ver Localização
+                          </a>
+                        )}
                         {unit.login && (
                           <p className="text-[9px] sm:text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
                         )}
@@ -3957,6 +4098,7 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -3971,7 +4113,8 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
   const filteredEmployees = employees.filter(emp => {
     if (emp.status !== 'ACTIVE') return false;
     if (emp.rating < minRating) return false;
-    return true;
+    const matchesSearch = (emp.firstName + ' ' + emp.lastName).toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   const isEmployeeAvailable = (empId: string, date: string) => {
@@ -4029,91 +4172,136 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6 sticky top-24">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                <Filter size={16} />
+          <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50 space-y-8 sticky top-24">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                  <Filter size={18} />
+                </div>
+                <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Filtros</h3>
               </div>
-              <h3 className="text-sm font-black text-slate-900 tracking-widest uppercase">Filtros</h3>
+              {(selectedUnitId !== clientUnits[0]?.id || minRating > 0 || quantity > 1) && (
+                <button 
+                  onClick={() => {
+                    setSelectedUnitId(clientUnits[0]?.id || '');
+                    setMinRating(0);
+                    setQuantity(1);
+                  }}
+                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                >
+                  Limpar
+                </button>
+              )}
             </div>
             
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Unidade</label>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Buscar por Nome</label>
                 <div className="relative group">
-                  <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                    <Search size={16} />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: João Silva..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Unidade de Destino</label>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                    <Building2 size={16} />
+                  </div>
                   <select 
                     value={selectedUnitId}
                     onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none shadow-inner"
+                    className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none shadow-inner"
                   >
                     {clientUnits.map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Desejada</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data da Escala</label>
                 <div className="relative group">
-                  <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                    <Calendar size={16} />
+                  </div>
                   <input 
                     type="date" 
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                    className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Quantidade Total</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Total de Profissionais</label>
                 <div className="relative group">
-                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                    <Users size={16} />
+                  </div>
                   <input 
                     type="number" 
                     min={1}
                     value={quantity}
                     onChange={(e) => setQuantity(parseInt(e.target.value))}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                    className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Filtrar por Estrelas</label>
-                <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Classificação Mínima</label>
+                  {minRating > 0 && <span className="text-[10px] font-black text-blue-600 uppercase">{minRating} Estrelas</span>}
+                </div>
+                <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 shadow-inner">
                   {[1, 2, 3, 4, 5].map(star => (
                     <button 
                       key={star}
                       onClick={() => setMinRating(star === minRating ? 0 : star)}
-                      className={`flex-1 h-10 rounded-xl flex items-center justify-center transition-all ${minRating >= star ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/20' : 'bg-white text-slate-300 hover:text-slate-400'}`}
+                      className={`flex-1 h-12 rounded-xl flex items-center justify-center transition-all ${minRating >= star ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/20 scale-105 z-10' : 'bg-white text-slate-300 hover:text-slate-400 hover:bg-slate-50'}`}
                     >
-                      <Star size={16} className={minRating >= star ? 'fill-current' : ''} />
+                      <Star size={18} className={minRating >= star ? 'fill-current' : ''} />
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <button 
-              onClick={handleSubmitRequest}
-              disabled={isSubmitting}
-              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-600 transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Enviando...</span>
-                </>
-              ) : (
-                <>
-                  <Send size={16} />
-                  <span>Solicitar Profissionais</span>
-                </>
-              )}
-            </button>
+            <div className="pt-4">
+              <button 
+                onClick={handleSubmitRequest}
+                disabled={isSubmitting}
+                className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-2xl shadow-blue-500/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 group"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <span>Solicitar Escala</span>
+                  </>
+                )}
+              </button>
+              <p className="text-[10px] text-slate-400 font-bold text-center mt-4 uppercase tracking-widest">A agência receberá sua solicitação em tempo real.</p>
+            </div>
           </div>
         </div>
 
@@ -4540,15 +4728,61 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
     setShowDeleteConfirm(null);
   };
 
-  const downloadQRCode = (id: string, location: string) => {
-    const canvas = document.getElementById(`canvas-${id}`) as HTMLCanvasElement;
+  const downloadQRCode = (ap: AccessPoint) => {
+    const canvas = document.getElementById(`canvas-${ap.id}`) as HTMLCanvasElement;
     if (canvas) {
-      const pngUrl = canvas
-        .toDataURL("image/png")
-        .replace("image/png", "image/octet-stream");
+      const unitId = ap.qrCodeValue.split('-')[1];
+      const unit = units.find(u => u.id === unitId);
+      const company = companies.find(c => c.id === unit?.companyId);
+      
+      // Create a new canvas for the box
+      const boxCanvas = document.createElement('canvas');
+      const ctx = boxCanvas.getContext('2d');
+      if (!ctx) return;
+
+      const width = 800;
+      const height = 1000;
+      boxCanvas.width = width;
+      boxCanvas.height = height;
+
+      // Draw background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw border
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 20;
+      ctx.strokeRect(10, 10, width - 20, height - 20);
+
+      // Draw QR Code
+      ctx.drawImage(canvas, 150, 100, 500, 500);
+
+      // Draw Text
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      
+      // Company Name
+      ctx.font = 'bold 40px Arial';
+      ctx.fillText(company?.name || 'Empresa', width / 2, 680);
+
+      // Unit Name
+      ctx.font = '30px Arial';
+      ctx.fillText(unit?.name || ap.location, width / 2, 740);
+
+      // Date
+      ctx.font = '24px Arial';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`Gerado em: ${formatDateBR(ap.createdAt)}`, width / 2, 800);
+
+      // Agency Name
+      ctx.font = 'bold 32px Arial';
+      ctx.fillStyle = '#2563eb';
+      ctx.fillText('StaffLink', width / 2, 900);
+
+      const pngUrl = boxCanvas.toDataURL("image/png");
       let downloadLink = document.createElement("a");
       downloadLink.href = pngUrl;
-      downloadLink.download = `qrcode-${location.replace(/\s+/g, '-').toLowerCase()}.png`;
+      downloadLink.download = `qrcode-${ap.location.replace(/\s+/g, '-').toLowerCase()}.png`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -4668,21 +4902,34 @@ function AgencyAccessControl({ accessPoints, clients, units, companies }: { acce
               </div>
             </div>
 
-            <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-100 flex gap-3 relative z-10">
-              <button 
-                onClick={() => downloadQRCode(ap.id, ap.location)}
-                className="flex-1 py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
-              >
-                <Download size={16} />
-                Baixar
-              </button>
-              <button 
-                onClick={() => setShowDeleteConfirm(ap.id)}
-                className="p-3 sm:p-4 bg-rose-50 text-rose-600 rounded-xl sm:rounded-[1.25rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95"
-                title="Excluir Empresa"
-              >
-                <Trash2 size={18} />
-              </button>
+            <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-100 flex flex-col gap-3 relative z-10">
+              {ap.location.startsWith('http') && (
+                <a 
+                  href={ap.location}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 sm:py-4 bg-blue-50 text-blue-600 rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-100 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                >
+                  <MapPin size={16} />
+                  Ver Localização
+                </a>
+              )}
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => downloadQRCode(ap)}
+                  className="flex-1 py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                >
+                  <Download size={16} />
+                  Baixar
+                </button>
+                <button 
+                  onClick={() => setShowDeleteConfirm(ap.id)}
+                  className="p-3 sm:p-4 bg-rose-50 text-rose-600 rounded-xl sm:rounded-[1.25rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                  title="Excluir Empresa"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -4878,9 +5125,10 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   );
 }
 
-function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: string, employees: Employee[], assignments: Assignment[] }) {
+function EmployeeProfile({ employeeId, employees, assignments, notifications }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[] }) {
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
+  const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
 
   if (!employee) {
     return (
@@ -4910,6 +5158,56 @@ function EmployeeProfile({ employeeId, employees, assignments }: { employeeId: s
         <h2 className="text-3xl font-black text-slate-900 tracking-tight">Meu Perfil</h2>
         <p className="text-slate-500 font-medium text-sm">Gerencie suas informações e acompanhe seu desempenho.</p>
       </div>
+
+      {/* Notifications Section */}
+      {myNotifications.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Notificações Pendentes</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {myNotifications.map(notification => (
+              <motion.div 
+                key={notification.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-blue-50 border border-blue-100 p-6 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-6"
+              >
+                <div className="flex items-center gap-4 text-center sm:text-left">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">{notification.title}</h4>
+                    <p className="text-xs font-medium text-blue-600 mt-1">{notification.message}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button 
+                    onClick={async () => {
+                      if (notification.assignmentId) {
+                        await handleConfirm(notification.assignmentId);
+                      }
+                      await updateDocument('notifications', notification.id, { read: true });
+                    }}
+                    className="flex-1 sm:flex-none px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                  >
+                    Confirmar Presença
+                  </button>
+                  <button 
+                    onClick={() => updateDocument('notifications', notification.id, { read: true })}
+                    className="p-4 text-blue-400 hover:bg-blue-100 rounded-2xl transition-all"
+                    title="Marcar como lida"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Profile Hero Card */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
@@ -5488,8 +5786,8 @@ function CompanyDashboard({ clientId, clients, assignments, employees }: { clien
         </div>
         
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="block overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-white">
                 <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
@@ -6273,16 +6571,16 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Logins</h2>
           <p className="text-slate-500 font-medium">Administre as credenciais de acesso de funcionários e empresas.</p>
         </div>
-        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex w-full sm:w-auto bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
           <button 
             onClick={() => setFilter('EMPLOYEE')}
-            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'EMPLOYEE' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'EMPLOYEE' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             Funcionários
           </button>
           <button 
             onClick={() => setFilter('COMPANY')}
-            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'COMPANY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl text-xs font-bold transition-all ${filter === 'COMPANY' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             Empresas
           </button>
@@ -6302,21 +6600,21 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-x-auto">
+        <table className="w-full text-left min-w-[600px]">
           <thead>
             <tr className="bg-slate-50/50 border-b border-slate-100">
-              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nome Completo</th>
-              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">E-mail de Login</th>
-              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
+              <th className="px-4 py-4 sm:px-8 sm:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nome Completo</th>
+              <th className="px-4 py-4 sm:px-8 sm:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">E-mail de Login</th>
+              <th className="px-4 py-4 sm:px-8 sm:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+              <th className="px-4 py-4 sm:px-8 sm:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {filter === 'EMPLOYEE' ? (
               filteredEmployees.map(emp => (
                 <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-8 py-6">
+                  <td className="px-4 py-4 sm:px-8 sm:py-6">
                     <div className="flex items-center gap-4">
                       {emp.photoUrl ? (
                         <img src={emp.photoUrl} alt={emp.firstName} className="w-10 h-10 rounded-xl object-cover" />
@@ -6328,10 +6626,10 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
                       <span className="font-bold text-slate-700">{emp.firstName} {emp.lastName}</span>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-4 py-4 sm:px-8 sm:py-6">
                     <span className="text-sm font-medium text-slate-500">{emp.loginEmail || 'Não definido'}</span>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-4 py-4 sm:px-8 sm:py-6">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${emp.loginEmail ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                       {emp.loginEmail ? 'Ativo' : 'Pendente'}
                     </span>

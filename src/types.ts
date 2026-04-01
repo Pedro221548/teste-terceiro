@@ -140,3 +140,15 @@ export interface EmployeeRegistration {
   status: 'PENDING' | 'PROCESSED';
   createdAt: string;
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'ASSIGNMENT' | 'INFO';
+  read: boolean;
+  createdAt: string;
+  link?: string;
+  assignmentId?: string;
+}
