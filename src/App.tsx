@@ -1391,6 +1391,7 @@ export default function App() {
                       employees={employees}
                       agencyId={currentAgencyId}
                       selectedAgencyId={selectedAgencyId}
+                      agencies={agencies}
                     />
                   </div>
                 )}
@@ -4982,7 +4983,7 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
   );
 }
 
-function AgencyCompanies({ companies, units, companyUsers, clients, assignments, employees, agencyId, selectedAgencyId }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[], assignments: Assignment[], employees: Employee[], agencyId: string | null, selectedAgencyId?: string | null }) {
+function AgencyCompanies({ companies, units, companyUsers, clients, assignments, employees, agencyId, selectedAgencyId, agencies }: { companies: Company[], units: Unit[], companyUsers: CompanyUser[], clients: Client[], assignments: Assignment[], employees: Employee[], agencyId: string | null, selectedAgencyId?: string | null, agencies: Agency[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING' | 'BLOCKED'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -5007,8 +5008,23 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     managerName: '',
     location: '',
     login: '',
-    password: ''
+    password: '',
+    confirmPassword: '',
+    phone: ''
   });
+
+  useEffect(() => {
+    if (unitData.managerName) {
+      const names = unitData.managerName.trim().split(/\s+/);
+      if (names.length >= 2) {
+        const targetAgencyId = selectedAgencyId || agencyId;
+        const agency = agencies.find(a => a.id === targetAgencyId);
+        const domain = agency?.name.toLowerCase().replace(/\s+/g, '') || 'agencia';
+        const login = `${names[0].toLowerCase()}.${names[1].toLowerCase()}@${domain}.com`;
+        setUnitData(prev => ({ ...prev, login }));
+      }
+    }
+  }, [unitData.managerName, selectedAgencyId, agencyId, agencies]);
   const [userData, setUserData] = useState({
     fullName: '',
     unitId: '',
@@ -5115,6 +5131,10 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
   const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showUnitModal) return;
+    if (unitData.password !== unitData.confirmPassword) {
+      alert('As senhas não coincidem!');
+      return;
+    }
     const company = companies.find(c => c.id === showUnitModal);
     if (!company) return;
 
@@ -5177,7 +5197,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     }
 
     setShowUnitModal(null);
-    setUnitData({ name: '', managerName: '', location: '', login: '', password: '' });
+    setUnitData({ name: '', managerName: '', location: '', login: '', password: '', confirmPassword: '', phone: '' });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -5889,6 +5909,12 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
               <form onSubmit={handleAddUnit} className="p-8 space-y-6">
                 <div className="space-y-6">
                   <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Empresa</label>
+                    <div className="w-full p-4 bg-slate-100 border-2 border-transparent rounded-2xl font-bold text-slate-500">
+                      {companies.find(c => c.id === showUnitModal)?.name}
+                    </div>
+                  </div>
+                  <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Unidade</label>
                     <input 
                       required
@@ -5911,6 +5937,17 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                     />
                   </div>
                   <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">WhatsApp</label>
+                    <input 
+                      required
+                      type="tel" 
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      placeholder="(00) 00000-0000"
+                      value={unitData.phone}
+                      onChange={e => setUnitData({...unitData, phone: e.target.value})}
+                    />
+                  </div>
+                  <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Localização / Endereço</label>
                     <input 
                       required
@@ -5921,28 +5958,41 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                       onChange={e => setUnitData({...unitData, location: e.target.value})}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Login do Responsável</label>
                       <input 
                         required
+                        readOnly
                         type="text" 
-                        className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                        className="w-full p-4 bg-slate-100 border-2 border-transparent rounded-2xl font-bold text-slate-500"
                         placeholder="Login"
                         value={unitData.login}
-                        onChange={e => setUnitData({...unitData, login: e.target.value})}
                       />
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha</label>
-                      <input 
-                        required
-                        type="password" 
-                        className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                        placeholder="••••••••"
-                        value={unitData.password}
-                        onChange={e => setUnitData({...unitData, password: e.target.value})}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha</label>
+                        <input 
+                          required
+                          type="password" 
+                          className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          placeholder="••••••••"
+                          value={unitData.password}
+                          onChange={e => setUnitData({...unitData, password: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Senha</label>
+                        <input 
+                          required
+                          type="password" 
+                          className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                          placeholder="••••••••"
+                          value={unitData.confirmPassword}
+                          onChange={e => setUnitData({...unitData, confirmPassword: e.target.value})}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -8276,15 +8326,45 @@ function PendingApproval({ onLogout }: { onLogout: () => void }) {
 
 function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const [formData, setFormData] = useState({
+    unitName: '',
     fullName: '',
     phone: '',
+    location: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  const [companyName, setCompanyName] = useState('');
+  const [agencyDomain, setAgencyDomain] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const urlParams = new URLSearchParams(window.location.search);
   const companyId = urlParams.get('companyId');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (companyId) {
+        const companyData = await getDocument<Company>('companies', companyId);
+        if (companyData) {
+          setCompanyName(companyData.name);
+          const agencyData = await getDocument<Agency>('agencies', companyData.agencyId);
+          if (agencyData) {
+            setAgencyDomain(agencyData.name.toLowerCase().replace(/\s+/g, ''));
+          }
+        }
+      }
+    };
+    fetchData();
+  }, [companyId]);
+
+  useEffect(() => {
+    if (formData.fullName && agencyDomain) {
+      const names = formData.fullName.trim().split(/\s+/);
+      if (names.length >= 2) {
+        const login = `${names[0].toLowerCase()}.${names[1].toLowerCase()}@${agencyDomain}.com`;
+        setFormData(prev => ({ ...prev, email: login }));
+      }
+    }
+  }, [formData.fullName, agencyDomain]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -8307,12 +8387,37 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const newUid = userCredential.user.uid;
 
-      if (companyId) {
-        // Use setDocument to ensure the document ID is the UID
+      if (companyId && agencyId) {
+        // Create the Unit first
+        const newUnit: Omit<Unit, 'id'> = {
+          agencyId,
+          companyId,
+          name: formData.unitName,
+          managerName: formData.fullName,
+          location: formData.location,
+          createdAt: new Date().toISOString()
+        };
+        const unitId = await createDocument('units', newUnit);
+
+        // Create the Client entry for staffing
+        const newClient: Omit<Client, 'id'> = {
+          agencyId,
+          name: `${companyName} - ${formData.unitName}`,
+          managerName: formData.fullName,
+          location: formData.location,
+          activeScales: 0
+        };
+        const clientId = await createDocument('clients', newClient);
+        if (unitId && clientId) {
+          await updateDocument('units', unitId, { clientId });
+        }
+
+        // Create CompanyUser
         await setDocument('companyUsers', newUid, {
           id: newUid,
           companyId,
           agencyId,
+          unitId,
           fullName: formData.fullName,
           email: formData.email,
           role: 'COMPANY',
@@ -8320,7 +8425,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           createdAt: new Date().toISOString()
         });
         
-        // Update user role to COMPANY
+        // Create User document
         await setDocument('users', newUid, { 
           id: newUid,
           role: 'COMPANY', 
@@ -8329,11 +8434,12 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           email: formData.email,
           fullName: formData.fullName,
           status: 'PENDING',
+          password: formData.password,
           createdAt: new Date().toISOString()
         });
       }
       
-      alert('Cadastro concluído com sucesso!');
+      alert('Cadastro concluído com sucesso! Aguarde a aprovação do administrador.');
       onComplete();
     } catch (error: any) {
       console.error('Error registering company:', error);
@@ -8363,98 +8469,129 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="max-w-xl w-full"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-xl w-full bg-white rounded-[40px] border border-slate-200 shadow-2xl overflow-hidden"
       >
-        <div className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 to-indigo-600" />
-          
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-purple-50 rounded-3xl flex items-center justify-center text-purple-600 mx-auto mb-4">
-              <Building2 size={40} />
-            </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Cadastro de Responsável</h2>
-            <p className="text-slate-500 mt-2 font-medium">Complete seu acesso para gerenciar sua empresa.</p>
+        <div className="p-10 bg-slate-900 text-white text-center space-y-2">
+          <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+            <Building2 size={32} />
           </div>
+          <h2 className="text-3xl font-black tracking-tight">Cadastro de Unidade</h2>
+          <p className="text-slate-400 font-medium">Complete os dados para acessar o portal.</p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
-              <input 
-                required
-                type="text" 
-                className="input-field"
-                placeholder="Ex: João Silva Santos"
-                value={formData.fullName}
-                onChange={e => setFormData({...formData, fullName: e.target.value})}
-              />
+        <form onSubmit={handleSubmit} className="p-10 space-y-8">
+          <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Empresa</label>
+              <div className="w-full p-4 bg-slate-100 border-2 border-transparent rounded-2xl font-bold text-slate-500">
+                {companyName || 'Carregando...'}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Unidade</label>
+                <input 
+                  required
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  placeholder="Ex: Unidade Centro"
+                  value={formData.unitName}
+                  onChange={e => setFormData({...formData, unitName: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Responsável</label>
+                <input 
+                  required
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  placeholder="Nome completo"
+                  value={formData.fullName}
+                  onChange={e => setFormData({...formData, fullName: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">WhatsApp</label>
                 <input 
                   required
                   type="tel" 
-                  className="input-field"
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
                   placeholder="(00) 00000-0000"
                   value={formData.phone}
                   onChange={e => setFormData({...formData, phone: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Localização</label>
                 <input 
                   required
-                  type="email" 
-                  className="input-field"
-                  placeholder="seu@email.com"
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  placeholder="Cidade/Estado"
+                  value={formData.location}
+                  onChange={e => setFormData({...formData, location: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Login Gerado</label>
+                <input 
+                  required
+                  readOnly
+                  type="text" 
+                  className="w-full p-4 bg-slate-100 border-2 border-transparent rounded-2xl font-bold text-slate-500"
                   value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
                 />
+                <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter italic">
+                  * O login é gerado automaticamente a partir do seu nome.
+                </p>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
-                <input 
-                  required
-                  type="password" 
-                  className="input-field"
-                  value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                <input 
-                  required
-                  type="password" 
-                  className="input-field"
-                  value={formData.confirmPassword}
-                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha</label>
+                  <input 
+                    required
+                    type="password" 
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Senha</label>
+                  <input 
+                    required
+                    type="password" 
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                  />
+                </div>
               </div>
             </div>
+          </div>
 
-            <div className="pt-6">
-              <button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="w-full py-5 bg-purple-600 text-white rounded-[24px] font-black text-xl hover:bg-purple-700 transition-all shadow-2xl shadow-purple-600/20 active:scale-[0.98] disabled:opacity-50"
-              >
-                {isSubmitting ? 'Processando...' : 'Finalizar Cadastro'}
-              </button>
-              <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">
-                Ao enviar, você concorda com nossos termos de uso e LGPD.
-              </p>
-            </div>
-          </form>
-        </div>
+          <button 
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-6 bg-blue-600 text-white rounded-3xl font-black text-lg shadow-2xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {isSubmitting ? 'Processando...' : 'Finalizar Cadastro'}
+          </button>
+        </form>
       </motion.div>
     </div>
   );
