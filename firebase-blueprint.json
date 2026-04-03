@@ -184,6 +184,7 @@
         "role": { "type": "string", "enum": ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"] },
         "agencyId": { "type": "string" },
         "companyId": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "PENDING", "BLOCKED"] },
         "forcePasswordChange": { "type": "boolean" },
         "createdAt": { "type": "string" }
       },

@@ -128,7 +128,7 @@ export interface CompanyUser {
   photoUrl?: string;
   role: 'COMPANY';
   createdAt: string;
-  status?: 'ACTIVE' | 'BLOCKED';
+  status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
 }
 
 export interface Assignment {

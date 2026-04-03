@@ -91,7 +91,11 @@ service cloud.firestore {
     // Collection: users
     // Fields:
     //   - email: string (required)
-    //   - role: string (required, enum: ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"])
+    //   - role: string (required, enum: ["ADMIN", "AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION", "AGENCY_REGISTRATION"])
+    //   - status: string (enum: ["ACTIVE", "PENDING", "BLOCKED"])
+    //   - agencyId: string
+    //   - companyId: string
+    //   - fullName: string
     //   - forcePasswordChange: bool
     //   - createdAt: string (required)
     //
@@ -165,6 +169,11 @@ service cloud.firestore {
              data.role in ['ADMIN', 'AGENCY', 'COMPANY', 'EMPLOYEE', 'REGISTRATION', 'COMPANY_REGISTRATION', 'AGENCY_REGISTRATION'] &&
              data.email is string &&
              data.createdAt is string &&
+             (!('status' in data) || data.status in ['ACTIVE', 'PENDING', 'BLOCKED']) &&
+             (!('agencyId' in data) || data.agencyId is string) &&
+             (!('companyId' in data) || data.companyId is string) &&
+             (!('fullName' in data) || data.fullName is string) &&
+             (!('id' in data) || data.id is string) &&
              (!('forcePasswordChange' in data) || data.forcePasswordChange is bool);
     }
 

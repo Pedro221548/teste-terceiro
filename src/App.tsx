@@ -35,6 +35,7 @@ import {
   Trash2,
   Mail,
   Lock,
+  Unlock,
   Search,
   Settings,
   Filter,
@@ -50,7 +51,6 @@ import {
   FileText,
   Briefcase,
   CheckCircle2,
-  Unlock,
   Key,
   XCircle,
   Edit2,
@@ -423,6 +423,7 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
 export default function App() {
   const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -442,6 +443,7 @@ export default function App() {
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [usersList, setUsersList] = useState<any[]>([]);
   const [currentAgencyId, setCurrentAgencyId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
@@ -584,8 +586,14 @@ export default function App() {
         const urlRole = urlParams.get('role') as UserRole;
 
         // Fetch or create user profile
-        const userDoc = await getDocument<{ role: UserRole, agencyId?: string, companyId?: string, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
+        const userDoc = await getDocument<{ role: UserRole, agencyId?: string, companyId?: string, forcePasswordChange?: boolean, status?: string }>('users', firebaseUser.uid);
         if (userDoc) {
+          if (userDoc.status === 'PENDING') {
+            setIsPending(true);
+            setUser(firebaseUser);
+            setIsAuthReady(true);
+            return;
+          }
           let currentRole = userDoc.role;
           if ((firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') && currentRole !== 'ADMIN') {
             currentRole = 'ADMIN';
@@ -625,6 +633,7 @@ export default function App() {
         setUser(prev => (prev as any)?.isCustom ? prev : null);
         setCurrentAgencyId(null);
         setCurrentCompanyId(null);
+        setIsPending(false);
         setRole('EMPLOYEE');
       }
       setIsAuthReady(true);
@@ -640,6 +649,7 @@ export default function App() {
 
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
+      unsubs.push(subscribeToCollection<any>('users', setUsersList));
     } else if (role === 'AGENCY' && currentAgencyId) {
       unsubs.push(subscribeToCollection<Agency>('agencies', (data) => {
         setAgencies(data);
@@ -852,6 +862,14 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
+    );
+  }
+
+  if (isPending && user) {
+    return (
+      <ErrorBoundary>
+        <PendingApproval onLogout={handleLogout} />
+      </ErrorBoundary>
     );
   }
 
@@ -1263,6 +1281,7 @@ export default function App() {
                       agencies={agencies}
                       companies={companies}
                       employees={employees}
+                      usersList={usersList}
                       onManageAgency={(id) => {
                         setSelectedAgencyId(id);
                         setActiveTab('admin_dashboard');
@@ -1511,7 +1530,7 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: { agencies: Agency[], companies: Company[], employees: Employee[], onManageAgency: (id: string) => void }) {
+function SuperAdminAgencies({ agencies, companies, employees, usersList, onManageAgency }: { agencies: Agency[], companies: Company[], employees: Employee[], usersList: any[], onManageAgency: (id: string) => void }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
@@ -1530,6 +1549,15 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
     setShowInviteModal(false);
     setInvitePhone('');
     setInviteRole('AGENCY_REGISTRATION');
+  };
+
+  const handleActivateAgency = async (agencyId: string) => {
+    await updateDocument('agencies', agencyId, { status: 'ACTIVE' });
+    const agencyUser = usersList.find(u => u.agencyId === agencyId && u.role === 'AGENCY');
+    if (agencyUser) {
+      await updateDocument('users', agencyUser.id, { status: 'ACTIVE' });
+    }
+    alert('Agência liberada com sucesso!');
   };
 
   const handleAddAgency = async (e: React.FormEvent) => {
@@ -1812,12 +1840,23 @@ function SuperAdminAgencies({ agencies, companies, employees, onManageAgency }: 
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all group relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 p-6">
+              <div className="absolute top-0 right-0 p-6 flex items-center gap-2">
                 <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  agency.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                  agency.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 
+                  agency.status === 'PENDING' ? 'bg-amber-50 text-amber-600' :
+                  'bg-red-50 text-red-600'
                 }`}>
-                  {agency.status === 'ACTIVE' ? 'Ativa' : 'Bloqueada'}
+                  {agency.status === 'ACTIVE' ? 'Ativa' : agency.status === 'PENDING' ? 'Pendente' : 'Bloqueada'}
                 </div>
+                {agency.status === 'PENDING' && (
+                  <button 
+                    onClick={() => handleActivateAgency(agency.id)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    title="Liberar Acesso"
+                  >
+                    <Unlock size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-4 mb-6">
@@ -4995,6 +5034,12 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     await updateDocument('companies', id, { status });
   };
 
+  const handleActivateCompanyUser = async (userId: string) => {
+    await updateDocument('companyUsers', userId, { status: 'ACTIVE' });
+    await updateDocument('users', userId, { status: 'ACTIVE' });
+    alert('Usuário liberado com sucesso!');
+  };
+
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetAgencyId = selectedAgencyId || agencyId;
@@ -5424,7 +5469,30 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
             </div>
             <div className="p-6 space-y-8">
               <div>
-                <h4 className="text-lg font-bold text-slate-800 mb-4">Informações Gerais</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-slate-800">Informações Gerais</h4>
+                  <div className="flex items-center gap-3">
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      showDetailsModal.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 
+                      showDetailsModal.status === 'PENDING' ? 'bg-amber-50 text-amber-600' :
+                      'bg-red-50 text-red-600'
+                    }`}>
+                      {showDetailsModal.status === 'ACTIVE' ? 'Ativa' : showDetailsModal.status === 'PENDING' ? 'Pendente' : 'Bloqueada'}
+                    </div>
+                    {showDetailsModal.status === 'PENDING' && (
+                      <button 
+                        onClick={() => {
+                          handleUpdateCompanyStatus(showDetailsModal.id, 'ACTIVE');
+                          setShowDetailsModal({...showDetailsModal, status: 'ACTIVE'});
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Ativar Empresa"
+                      >
+                        <Unlock size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-xl">
                     <p className="text-xs font-bold text-slate-400 uppercase">Nome</p>
@@ -5492,11 +5560,24 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                         <p className="text-sm font-bold text-slate-700">{user.fullName}</p>
                         <p className="text-xs text-slate-500">{user.email}</p>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        user.status === 'BLOCKED' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-                      }`}>
-                        {user.status === 'BLOCKED' ? 'BLOQUEADO' : 'ATIVO'}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          user.status === 'BLOCKED' ? 'bg-rose-100 text-rose-700' : 
+                          user.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {user.status === 'BLOCKED' ? 'BLOQUEADO' : user.status === 'PENDING' ? 'PENDENTE' : 'ATIVO'}
+                        </span>
+                        {user.status === 'PENDING' && (
+                          <button 
+                            onClick={() => handleActivateCompanyUser(user.id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Liberar Acesso"
+                          >
+                            <Unlock size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {companyUsers.filter(u => u.companyId === showDetailsModal.id).length === 0 && (
@@ -8075,6 +8156,37 @@ function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { cl
   );
 }
 
+function PendingApproval({ onLogout }: { onLogout: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-white p-12 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 text-center space-y-8"
+      >
+        <div className="w-24 h-24 bg-amber-50 rounded-[32px] flex items-center justify-center text-amber-500 mx-auto animate-pulse">
+          <Clock size={48} />
+        </div>
+        
+        <div className="space-y-3">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight font-display">Aguardando Aprovação</h2>
+          <p className="text-slate-500 font-medium leading-relaxed">
+            Seu cadastro foi recebido com sucesso! Nossa equipe está revisando seus dados. 
+            Você receberá um e-mail assim que seu acesso for liberado.
+          </p>
+        </div>
+
+        <button 
+          onClick={onLogout}
+          className="w-full py-5 bg-slate-950 text-white rounded-[24px] font-black text-lg shadow-2xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-[0.98]"
+        >
+          Sair da Conta
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -8117,6 +8229,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           fullName: formData.fullName,
           email: formData.email,
           role: 'COMPANY',
+          status: 'PENDING',
           createdAt: new Date().toISOString()
         });
         
@@ -8128,6 +8241,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           agencyId,
           email: formData.email,
           fullName: formData.fullName,
+          status: 'PENDING',
           createdAt: new Date().toISOString()
         });
       }
@@ -8359,10 +8473,12 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       
       // Update user role to AGENCY and link to agencyId
       await setDocument('users', newUid, { 
+        id: newUid,
         role: 'AGENCY', 
         agencyId, 
         email: formData.loginEmail,
         fullName: formData.responsibleName,
+        status: 'PENDING',
         createdAt: new Date().toISOString()
       });
       
