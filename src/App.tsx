@@ -4998,7 +4998,9 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     cnpj: '',
     phone: '',
     email: '',
-    address: ''
+    address: '',
+    password: '',
+    confirmPassword: ''
   });
   const [unitData, setUnitData] = useState({
     name: '',
@@ -5042,20 +5044,57 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      alert('As senhas não coincidem!');
+      return;
+    }
+
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
       alert('Selecione uma agência para gerenciar antes de adicionar uma empresa.');
       return;
     }
 
-    const newCompany: Omit<Company, 'id'> = {
+    const companyId = Math.random().toString(36).substr(2, 9);
+    const newCompany: Company = {
+      id: companyId,
       ...formData,
       agencyId: targetAgencyId,
+      status: 'PENDING',
       createdAt: new Date().toISOString()
     };
-    await createDocument('companies', newCompany);
+    await setDocument('companies', companyId, newCompany);
+
+    // If password provided, create the user documents
+    if (formData.password) {
+      const userId = Math.random().toString(36).substr(2, 9);
+      const newUser: Omit<CompanyUser, 'id'> = {
+        agencyId: targetAgencyId,
+        companyId: companyId,
+        fullName: formData.responsibleName,
+        email: formData.email,
+        password: formData.password,
+        role: 'COMPANY',
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+      await setDocument('companyUsers', userId, { ...newUser, id: userId });
+      
+      await setDocument('users', userId, {
+        id: userId,
+        role: 'COMPANY',
+        companyId: companyId,
+        agencyId: targetAgencyId,
+        email: formData.email,
+        fullName: formData.responsibleName,
+        status: 'PENDING',
+        password: formData.password, // Store password for custom login
+        createdAt: new Date().toISOString()
+      });
+    }
+
     setShowAddModal(false);
-    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '' });
+    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '', password: '', confirmPassword: '' });
   };
 
   const handleEditCompany = async (e: React.FormEvent) => {
@@ -5095,7 +5134,9 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     
     // Create a CompanyUser for the unit manager
     if (unitData.login && unitData.password) {
-      const newUser: Omit<CompanyUser, 'id'> = {
+      const userId = Math.random().toString(36).substr(2, 9);
+      const newUser: CompanyUser = {
+        id: userId,
         agencyId: targetAgencyId,
         companyId: showUnitModal,
         unitId: unitId,
@@ -5103,9 +5144,22 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         email: unitData.login,
         password: unitData.password,
         role: 'COMPANY',
+        status: 'PENDING',
         createdAt: new Date().toISOString()
       };
-      await createDocument('companyUsers', newUser);
+      await setDocument('companyUsers', userId, newUser);
+
+      await setDocument('users', userId, {
+        id: userId,
+        role: 'COMPANY',
+        companyId: showUnitModal,
+        agencyId: targetAgencyId,
+        email: unitData.login,
+        fullName: unitData.managerName,
+        status: 'PENDING',
+        password: unitData.password,
+        createdAt: new Date().toISOString()
+      });
     }
     
     // Also create a Client entry for the staffing system
@@ -5145,7 +5199,9 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     const domain = company.name.toLowerCase().replace(/\s+/g, '') + '.com';
     const login = `${userData.fullName.toLowerCase().replace(/\s+/g, '.')}@${domain}`;
 
-    const newUser: Omit<CompanyUser, 'id'> = {
+    const userId = Math.random().toString(36).substr(2, 9);
+    const newUser: CompanyUser = {
+      id: userId,
       agencyId: targetAgencyId,
       companyId: showUserModal,
       unitId: userData.unitId!,
@@ -5153,12 +5209,23 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       email: login,
       password: userData.password,
       role: 'COMPANY',
+      status: 'PENDING',
       createdAt: new Date().toISOString()
     };
 
-    // In a real app, we would use Firebase Auth to create the user with the password.
-    // Here we just save to companyUsers collection for the demo.
-    await createDocument('companyUsers', newUser);
+    await setDocument('companyUsers', userId, newUser);
+    
+    await setDocument('users', userId, {
+      id: userId,
+      role: 'COMPANY',
+      companyId: showUserModal,
+      agencyId: targetAgencyId,
+      email: login,
+      fullName: userData.fullName,
+      status: 'PENDING',
+      password: userData.password,
+      createdAt: new Date().toISOString()
+    });
     
     const message = `Olá ${userData.fullName}! Seu acesso ao portal StaffLink foi criado.\n\n📧 Login: ${login}\n🔑 Senha: ${userData.password}\n\nAcesse agora: ${window.location.origin}`;
     const whatsappUrl = `https://wa.me/55${company.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
@@ -5771,6 +5838,26 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                       placeholder="Rua, Número, Bairro, Cidade"
                       value={formData.address}
                       onChange={e => setFormData({...formData, address: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha de Acesso</label>
+                    <input 
+                      type="password" 
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={e => setFormData({...formData, password: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Senha</label>
+                    <input 
+                      type="password" 
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
                     />
                   </div>
                 </div>
