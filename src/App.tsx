@@ -443,6 +443,7 @@ export default function App() {
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [currentAgencyId, setCurrentAgencyId] = useState<string | null>(null);
+  const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
@@ -583,7 +584,7 @@ export default function App() {
         const urlRole = urlParams.get('role') as UserRole;
 
         // Fetch or create user profile
-        const userDoc = await getDocument<{ role: UserRole, agencyId?: string, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
+        const userDoc = await getDocument<{ role: UserRole, agencyId?: string, companyId?: string, forcePasswordChange?: boolean }>('users', firebaseUser.uid);
         if (userDoc) {
           let currentRole = userDoc.role;
           if ((firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') && currentRole !== 'ADMIN') {
@@ -592,6 +593,7 @@ export default function App() {
           }
           setRole(currentRole);
           if (userDoc.agencyId) setCurrentAgencyId(userDoc.agencyId);
+          if (userDoc.companyId) setCurrentCompanyId(userDoc.companyId);
           if (userDoc.forcePasswordChange) {
             setNeedsPasswordChange(true);
           }
@@ -621,6 +623,9 @@ export default function App() {
         setUser(firebaseUser);
       } else {
         setUser(prev => (prev as any)?.isCustom ? prev : null);
+        setCurrentAgencyId(null);
+        setCurrentCompanyId(null);
+        setRole('EMPLOYEE');
       }
       setIsAuthReady(true);
     });
@@ -1386,7 +1391,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
                   <div key="company-dashboard">
                     <CompanyDashboard 
-                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
+                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1397,7 +1402,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'manager_feedback' && (
                   <div key="company-feedback">
                     <CompanyFeedbackForm 
-                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1407,7 +1412,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'company_diaristas' && (
                   <div key="company-diaristas">
                     <CompanyDiaristas 
-                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       employees={employees}
                       assignments={assignments}
@@ -1419,7 +1424,7 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'evaluate_team' && (
                   <div key="company-evaluate">
                     <CompanyEvaluateTeam 
-                      clientId={companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -8091,6 +8096,14 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
     setIsSubmitting(true);
 
     try {
+      let agencyId = '';
+      if (companyId) {
+        const companyData = await getDocument<Company>('companies', companyId);
+        if (companyData) {
+          agencyId = companyData.agencyId;
+        }
+      }
+
       // Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const newUid = userCredential.user.uid;
@@ -8098,7 +8111,9 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       if (companyId) {
         // Use setDocument to ensure the document ID is the UID
         await setDocument('companyUsers', newUid, {
+          id: newUid,
           companyId,
+          agencyId,
           fullName: formData.fullName,
           email: formData.email,
           role: 'COMPANY',
@@ -8106,14 +8121,41 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         });
         
         // Update user role to COMPANY
-        await setDocument('users', newUid, { role: 'COMPANY', companyId, email: formData.email });
+        await setDocument('users', newUid, { 
+          id: newUid,
+          role: 'COMPANY', 
+          companyId, 
+          agencyId,
+          email: formData.email,
+          fullName: formData.fullName,
+          createdAt: new Date().toISOString()
+        });
       }
       
       alert('Cadastro concluído com sucesso!');
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering company:', error);
-      alert('Erro ao realizar cadastro. Tente novamente.');
+      let errorMessage = 'Erro ao realizar cadastro. Tente novamente.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este e-mail já está em uso.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'E-mail inválido.';
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error) {
+            errorMessage = `Erro de Permissão: ${parsedError.error}\nCaminho: ${parsedError.path}`;
+          }
+        } catch (e) {
+          errorMessage = `Erro: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

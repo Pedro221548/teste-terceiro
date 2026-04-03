@@ -182,6 +182,8 @@
         "id": { "type": "string" },
         "email": { "type": "string" },
         "role": { "type": "string", "enum": ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"] },
+        "agencyId": { "type": "string" },
+        "companyId": { "type": "string" },
         "forcePasswordChange": { "type": "boolean" },
         "createdAt": { "type": "string" }
       },
