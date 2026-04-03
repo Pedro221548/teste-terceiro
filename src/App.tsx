@@ -74,7 +74,8 @@ import {
   testConnection,
   setDocument,
   getDocument,
-  where
+  where,
+  or
 } from './services/firebaseService';
 
 function formatDateBR(dateString: string) {
@@ -707,10 +708,22 @@ export default function App() {
     const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
     const unsubCompanyRequests = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyRequest>('companyRequests', (data) => setCompanyRequests(filterByAgency(data))) : () => {};
 
+    const notificationConstraints = [];
+    if (role !== 'ADMIN') {
+      const conditions = [where('userId', '==', user.uid)];
+      if (role === 'AGENCY') conditions.push(where('userId', '==', 'AGENCY'));
+      if (role === 'COMPANY' && (user as any).companyId) conditions.push(where('userId', '==', 'COMPANY_' + (user as any).companyId));
+      
+      if (conditions.length > 1) {
+        notificationConstraints.push(or(...conditions));
+      } else {
+        notificationConstraints.push(conditions[0]);
+      }
+    }
+
     const unsubNotifications = subscribeToCollection<Notification>('notifications', (data) => {
-      const filtered = data.filter(n => n.userId === user.uid || (role === 'ADMIN' && n.agencyId === 'ADMIN'));
-      setNotifications(filtered);
-    });
+      setNotifications(data);
+    }, notificationConstraints);
 
     return () => {
       unsubEmployees();

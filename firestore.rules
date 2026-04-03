@@ -270,7 +270,7 @@ service cloud.firestore {
 
     match /companyUsers/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isSuperAdmin() || isAgency();
+      allow create: if isSuperAdmin() || isAgency() || isOwner(userId);
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
