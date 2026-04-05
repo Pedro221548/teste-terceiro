@@ -49,143 +49,32 @@ async function startServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
+  // Import Vercel handlers for local development
+  const sessionHandler = (await import("./api/didit/session.js")).default;
+  const webhookHandler = (await import("./api/didit/webhook.js")).default;
+  const createUserHandler = (await import("./api/create-user.js")).default;
+  const deleteUserHandler = (await import("./api/delete-user.js")).default;
+
   app.post("/api/create-user", async (req, res) => {
-    console.log("Received POST request to /api/create-user");
-    const { email, password, displayName } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
-
-    try {
-      const userRecord = await admin.auth().createUser({
-        email,
-        password,
-        displayName,
-      });
-      console.log(`Successfully created new user: ${userRecord.uid}`);
-      res.json({ uid: userRecord.uid });
-    } catch (error: any) {
-      console.error("Error creating user in Firebase Auth:", error);
-      res.status(500).json({ error: error.message || "Failed to create user" });
-    }
+    await createUserHandler(req, res);
   });
 
   app.post("/api/delete-user", async (req, res) => {
-    console.log("Received POST request to /api/delete-user");
-    console.log("Request body:", req.body);
-    
-    const { uid, email } = req.body;
-    if (!uid && !email) {
-      console.warn("Delete request missing both UID and Email");
-      return res.status(400).json({ error: "UID or Email is required" });
-    }
-
-    try {
-      if (uid) {
-        console.log(`Attempting to delete user by UID: ${uid}`);
-        try {
-          await admin.auth().deleteUser(uid);
-          console.log(`Successfully deleted user ${uid} from Firebase Auth`);
-          return res.json({ success: true });
-        } catch (error: any) {
-          if (error.code !== 'auth/user-not-found') throw error;
-          console.log(`User UID ${uid} not found in Auth.`);
-        }
-      }
-
-      if (email) {
-        console.log(`Attempting to delete user by Email: ${email}`);
-        try {
-          const userRecord = await admin.auth().getUserByEmail(email);
-          await admin.auth().deleteUser(userRecord.uid);
-          console.log(`Successfully deleted user with email ${email} (UID: ${userRecord.uid}) from Firebase Auth`);
-          return res.json({ success: true });
-        } catch (error: any) {
-          if (error.code !== 'auth/user-not-found') throw error;
-          console.log(`User email ${email} not found in Auth.`);
-        }
-      }
-
-      res.json({ success: true, message: "User not found in Auth, nothing to delete" });
-    } catch (error: any) {
-      console.error("Error deleting user from Firebase Auth:", error);
-      res.status(500).json({ error: error.message || "Failed to delete user" });
-    }
+    await deleteUserHandler(req, res);
   });
 
   app.post("/api/didit/session", async (req, res) => {
-    const { employeeId } = req.body;
-    if (!employeeId) return res.status(400).json({ error: "employeeId is required" });
-
-    try {
-      const fs = await import("fs");
-      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
-      const db = admin.firestore(config.firestoreDatabaseId);
-      
-      const sessionId = `didit_${Math.random().toString(36).substr(2, 9)}`;
-      const sessionUrl = `https://didit.me/verify/${sessionId}`; 
-
-      await db.collection('diditSessions').doc(sessionId).set({
-        employeeId,
-        status: 'PENDING',
-        createdAt: new Date().toISOString()
-      });
-
-      res.json({ sessionId, sessionUrl });
-    } catch (error: any) {
-      console.error("Error creating Didit session:", error);
-      res.status(500).json({ error: error.message || "Failed to create Didit session" });
-    }
+    // Vercel handlers expect (req, res)
+    await sessionHandler(req, res);
   });
 
   app.post("/api/didit/webhook", async (req: any, res) => {
-    const headers = req.headers;
-    const rawBody = req.rawBody || '';
-    const secret = process.env.DIDIT_CLIENT_SECRET || 'your-secret-here';
-
-    console.log("Didit Webhook Headers:", headers);
-    console.log("Didit Webhook Body:", req.body);
-
-    // Signature Verification (V2)
-    const signatureV2 = headers['x-signature-v2'];
-    const timestamp = headers['x-timestamp'];
-    const isTest = headers['x-didit-test-webhook'] === 'true';
-
-    if (!isTest && signatureV2 && timestamp) {
-      const hmac = crypto.createHmac('sha256', secret);
-      hmac.update(timestamp + rawBody);
-      const expectedSignature = hmac.digest('hex');
-
-      if (signatureV2 !== expectedSignature) {
-        console.warn("Invalid Didit Webhook Signature");
-        return res.status(401).json({ error: "Invalid signature" });
-      }
-    }
-
-    const { sessionId, status, result } = req.body;
-    if (!sessionId && !isTest) return res.status(400).json({ error: "sessionId is required" });
-
-    if (isTest) {
-      console.log("Received Test Webhook from Didit");
-      return res.json({ success: true, message: "Test webhook received" });
-    }
-
-    try {
-      const fs = await import("fs");
-      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
-      const db = admin.firestore(config.firestoreDatabaseId);
-
-      await db.collection('diditSessions').doc(sessionId).update({
-        status: status === 'success' ? 'COMPLETED' : 'FAILED',
-        result: result || {},
-        updatedAt: new Date().toISOString()
-      });
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error handling Didit webhook:", error);
-      res.status(500).json({ error: error.message || "Failed to handle webhook" });
-    }
+    // Vercel handlers expect (req, res)
+    // Note: sessionHandler and webhookHandler are standard (req, res) handlers
+    // But webhookHandler in Vercel disables bodyParser to get rawBody
+    // In Express, we already have req.rawBody from middleware
+    // So we can pass it along
+    await webhookHandler(req, res);
   });
 
   // Vite middleware for development
