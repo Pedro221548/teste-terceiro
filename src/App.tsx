@@ -64,6 +64,7 @@ import autoTable from 'jspdf-autotable';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
+import { createNewUser } from './secondary-auth';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { 
@@ -664,10 +665,10 @@ export default function App() {
 
     const filterByAgency = (data: any[]) => {
       if (role === 'ADMIN') {
-        if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId);
+        if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId || !d.agencyId);
         return data;
       }
-      if (role === 'AGENCY') return data.filter(d => d.agencyId === currentAgencyId);
+      if (role === 'AGENCY') return data.filter(d => d.agencyId === currentAgencyId || !d.agencyId);
       // For COMPANY and EMPLOYEE, they are already filtered by their specific constraints in subscribeToCollection if applicable, 
       // but we should ensure they only see their agency's data if they are linked to one.
       return data;
@@ -3089,23 +3090,8 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
     try {
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
       
-      // 1. Create Firebase Auth user via Admin API
-      const response = await fetch('/api/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: emailForAuth, 
-          password, 
-          displayName: `${employee.firstName} ${employee.lastName}` 
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
-      }
-
-      const { uid: newUid } = await response.json();
+      // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
+      const newUid = await createNewUser(emailForAuth, password);
 
       // 2. Update employee record with the new UID (moving from old ID to new UID)
       const { id: oldId, ...employeeData } = employee;
@@ -3216,26 +3202,11 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
       const targetAgencyId = selectedAgencyId || agencyId || registration.agencyId;
       if (!targetAgencyId) throw new Error('Agência não identificada');
 
-      // 1. Create Firebase Auth user via Admin API to avoid automatic sign-in
+      // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
       console.log("DEBUG: Creating user with:", emailForAuth, password);
       
-      const response = await fetch('/api/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: emailForAuth, 
-          password, 
-          displayName: `${registration.firstName} ${registration.lastName}` 
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
-      }
-
-      const { uid: newUid } = await response.json();
+      const newUid = await createNewUser(emailForAuth, password);
 
       // 2. Create employee record
       await setDocument('employees', newUid, {
@@ -3513,7 +3484,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
 
   const handleSendLink = (e: React.FormEvent) => {
     e.preventDefault();
-    const link = `${window.location.origin}?role=REGISTRATION`;
+    const targetAgencyId = selectedAgencyId || agencyId;
+    const link = `${window.location.origin}?role=REGISTRATION${targetAgencyId ? `&agencyId=${targetAgencyId}` : ''}`;
     const message = `Olá! Aqui está o link para o seu cadastro na agência: ${link}`;
     const cleanPhone = linkPhone.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -9181,6 +9153,9 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     const firstName = names[0];
     const lastName = names.slice(1).join(' ') || '';
 
+    const params = new URLSearchParams(window.location.search);
+    const agencyId = params.get('agencyId');
+
     const newEmployeeRegistration = {
       firstName,
       lastName,
@@ -9192,6 +9167,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       photoUrl: formData.photo || undefined,
       docUrl: formData.document ? formData.document.name : undefined,
       status: 'PENDING',
+      agencyId: agencyId || undefined,
       createdAt: new Date().toISOString()
     };
 

@@ -15,12 +15,13 @@ async function startServer() {
       
       console.log("Initializing Firebase Admin with project ID:", config.projectId);
       
+      // Explicitly set the project ID in the environment to help the SDK
+      process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
+      
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
         projectId: config.projectId,
       });
-      // Explicitly set the project ID in the environment to help the SDK
-      process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
       
       console.log("Firebase Admin initialized successfully.");
     }
