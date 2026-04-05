@@ -7770,6 +7770,19 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId })
       });
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If not JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
       if (data.sessionId) {
         setDiditSessionId(data.sessionId);
@@ -7779,9 +7792,9 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       } else {
         throw new Error(data.error || 'Failed to create session');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar sessão Didit:", error);
-      alert("Erro ao iniciar verificação Didit.");
+      alert(`Erro ao iniciar verificação Didit: ${error.message}`);
     }
   };
 

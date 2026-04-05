@@ -119,15 +119,14 @@ async function startServer() {
     if (!employeeId) return res.status(400).json({ error: "employeeId is required" });
 
     try {
-      // In a real scenario, you'd call Didit API here.
-      // For now, we'll simulate the session creation and return a mock URL.
-      // The user can replace this with actual Didit API calls.
+      const fs = await import("fs");
+      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+      const db = admin.firestore(config.firestoreDatabaseId);
       
       const sessionId = `didit_${Math.random().toString(36).substr(2, 9)}`;
-      // This URL would normally be provided by Didit
       const sessionUrl = `https://didit.me/verify/${sessionId}`; 
 
-      await admin.firestore().collection('diditSessions').doc(sessionId).set({
+      await db.collection('diditSessions').doc(sessionId).set({
         employeeId,
         status: 'PENDING',
         createdAt: new Date().toISOString()
@@ -173,7 +172,11 @@ async function startServer() {
     }
 
     try {
-      await admin.firestore().collection('diditSessions').doc(sessionId).update({
+      const fs = await import("fs");
+      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+      const db = admin.firestore(config.firestoreDatabaseId);
+
+      await db.collection('diditSessions').doc(sessionId).update({
         status: status === 'success' ? 'COMPLETED' : 'FAILED',
         result: result || {},
         updatedAt: new Date().toISOString()
