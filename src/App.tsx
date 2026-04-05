@@ -1508,6 +1508,7 @@ export default function App() {
                 
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
                   <div key="company-dashboard">
+                    {console.log('CompanyDashboard props:', { currentCompanyId, companyUsers, user, assignments, units })}
                     <CompanyDashboard 
                       companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
                       clients={clients}
@@ -1571,6 +1572,8 @@ export default function App() {
                       assignments={assignments}
                       notifications={notifications}
                       clients={clients}
+                      units={units}
+                      companies={companies}
                     />
                   </div>
                 )}
@@ -3101,7 +3104,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[] }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
@@ -3295,7 +3298,9 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           ) : (
             myAssignments.map(as => {
               const cli = clients.find(c => c.id === as.clientId);
-              const locationDisplay = cli?.location?.startsWith('http') ? 'Ver no Mapa' : (cli?.location || 'Unidade Central');
+              const unit = units.find(u => u.clientId === cli?.id);
+              const company = companies.find(c => c.id === unit?.companyId);
+              const locationDisplay = cli?.location?.startsWith('http') ? 'Ver no Mapa' : (cli?.location || company?.name || 'Unidade Central');
               return (
                 <div key={as.id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
@@ -7044,8 +7049,8 @@ function CompanyEvaluateTeam({ companyId, clients, assignments, employees, feedb
   const dateEmployeeIds = Array.from(new Set(dateAssignments.map(a => a.employeeId)));
   const dateEmployees = employees.filter(e => dateEmployeeIds.includes(e.id));
 
-  const workedEmployeeIds = Array.from(new Set(companyAssignments.map(a => a.employeeId)));
-  const workedEmployees = employees.filter(e => workedEmployeeIds.includes(e.id) && !dateEmployeeIds.includes(e.id));
+  const workedEmployeeIds = Array.from(new Set(companyAssignments.filter(a => a.status === 'COMPLETED').map(a => a.employeeId)));
+  const workedEmployees = employees.filter(e => workedEmployeeIds.includes(e.id));
 
   return (
     <motion.div 
@@ -8468,14 +8473,16 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 }
 
 function CompanyDashboard({ companyId, clients, assignments, employees, feedbacks, units, companies }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[] }) {
+  if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
   const company = companies.find(c => c.id === companyId);
   const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
+  console.log('CompanyDashboard:', { companyId, companyUnitClientIds, assignments, units });
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
 
-  const myAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId));
+  const myAssignments = assignments.filter(a => units.some(u => u.clientId === a.clientId && u.companyId === companyId));
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
