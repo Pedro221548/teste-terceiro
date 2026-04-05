@@ -38,7 +38,7 @@
   }
 
   body {
-    @apply bg-[#FBFBFA] text-slate-900 antialiased selection:bg-slate-900 selection:text-white;
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-slate-800 selection:text-white;
   }
   
   h1, h2, h3, h4 {
@@ -48,19 +48,19 @@
 
 @layer components {
   .card-modern {
-    @apply bg-white border border-slate-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)];
+    @apply bg-slate-900 border border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.2)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)];
   }
   
   .btn-modern-primary {
-    @apply px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:scale-[0.98] transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
   }
   
   .btn-modern-secondary {
-    @apply px-6 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all shadow-sm flex items-center justify-center gap-2;
+    @apply px-6 py-3 bg-slate-800 text-slate-100 border border-slate-700 rounded-xl font-semibold hover:bg-slate-700 active:scale-[0.98] transition-all shadow-sm flex items-center justify-center gap-2;
   }
   
   .input-modern {
-    @apply w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium;
+    @apply w-full px-4 py-3.5 bg-slate-900 border border-slate-800 rounded-xl focus:ring-4 focus:ring-blue-900/20 focus:border-blue-600 outline-none transition-all placeholder:text-slate-500 font-medium;
   }
 
   .nav-item-active {
