@@ -50,6 +50,10 @@ export interface Agency {
   pricing?: PricingConfig;
   ratingLabel?: string;
   
+  // Limits
+  maxEmployees?: number;
+  maxCompanies?: number;
+  
   // Operational Capacity
   employeeCount?: number;
   regime?: 'CLT' | 'TEMPORARY' | 'BOTH';

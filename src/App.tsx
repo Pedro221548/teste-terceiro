@@ -1319,6 +1319,7 @@ export default function App() {
                       agencies={agencies}
                       selectedAgencyId={selectedAgencyId}
                       onClearAgency={() => setSelectedAgencyId(null)}
+                      onSelectAgency={(id: string) => setSelectedAgencyId(id)}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
                     />
@@ -1376,6 +1377,7 @@ export default function App() {
                       agencies={agencies}
                       selectedAgencyId={selectedAgencyId}
                       onClearAgency={() => setSelectedAgencyId(null)}
+                      onSelectAgency={() => {}}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
                     />
@@ -1401,6 +1403,7 @@ export default function App() {
                       companyUsers={companyUsers}
                       companies={companies}
                       units={units}
+                      agencies={agencies}
                     />
                   </div>
                 )}
@@ -2087,10 +2090,33 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, agencyId, companyUsers }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, agencyId: string | null, companyUsers: CompanyUser[] }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
+  const [editingAgencyLimits, setEditingAgencyLimits] = useState<Agency | null>(null);
+  const [maxEmployees, setMaxEmployees] = useState<string>('');
+  const [maxCompanies, setMaxCompanies] = useState<string>('');
+  const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
+
+  const handleUpdateLimits = async () => {
+    if (!editingAgencyLimits) return;
+    setIsUpdatingLimits(true);
+    try {
+      await updateDocument('agencies', editingAgencyLimits.id, {
+        maxEmployees: maxEmployees === '' ? null : parseInt(maxEmployees),
+        maxCompanies: maxCompanies === '' ? null : parseInt(maxCompanies)
+      });
+      setEditingAgencyLimits(null);
+      alert('Limites atualizados com sucesso!');
+    } catch (error) {
+      console.error('Error updating limits:', error);
+      alert('Erro ao atualizar limites.');
+    } finally {
+      setIsUpdatingLimits(false);
+    }
+  };
+
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
@@ -2168,6 +2194,198 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
     
     return acc;
   }, {} as Record<string, { assignments: Assignment[], units: Record<string, Assignment[]> }>);
+
+  if (role === 'ADMIN' && !selectedAgencyId) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="space-y-10"
+      >
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Dashboard Super Admin</h2>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho global da plataforma.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard 
+            icon={<ShieldCheck size={24} />} 
+            label="Total de Agências" 
+            value={agencies.length.toString()} 
+            trend="Cadastradas"
+            color="slate"
+            onClick={() => setActiveTab('admin_agencies')}
+          />
+          <StatCard 
+            icon={<Building2 size={24} />} 
+            label="Total de Empresas" 
+            value={totalCompanies.toString()} 
+            trend="Operando"
+            color="blue"
+          />
+          <StatCard 
+            icon={<CheckCircle2 size={24} />} 
+            label="Empresas Ativas" 
+            value={activeCompanies.toString()} 
+            trend="Limpo"
+            color="emerald"
+          />
+          <StatCard 
+            icon={<Clock size={24} />} 
+            label="Empresas Pendentes" 
+            value={pendingCompanies.toString()} 
+            trend="Limpo"
+            color="orange"
+          />
+          <StatCard 
+            icon={<Users size={24} />} 
+            label="Gerentes Pendentes" 
+            value={pendingManagers.toString()} 
+            trend="Cadastrados"
+            color="orange"
+          />
+          <StatCard 
+            icon={<Users size={24} />} 
+            label="Total de Funcionários" 
+            value={totalEmployees.toString()} 
+            trend="Ativos"
+            color="purple"
+          />
+          <StatCard 
+            icon={<Briefcase size={24} />} 
+            label="Serviços em Andamento" 
+            value={servicesInProgress.toString()} 
+            trend={alerts > 0 ? "Alertas" : "Tudo OK"}
+            alert={alerts > 0}
+            color="indigo"
+          />
+        </div>
+
+        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20">
+              <Building2 size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Agências Cadastradas</h3>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Lista de parceiros na plataforma</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {agencies.map(agency => {
+              const agencyEmployees = employees.filter(e => e.agencyId === agency.id).length;
+              const agencyCompanies = companies.filter(c => c.agencyId === agency.id).length;
+              return (
+                <div key={agency.id} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{agency.name}</h4>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-1.5">
+                          <Users size={12} className="text-slate-400" />
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{agencyEmployees} Colaboradores</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Building2 size={12} className="text-slate-400" />
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{agencyCompanies} Empresas</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setEditingAgencyLimits(agency);
+                          setMaxEmployees(agency.maxEmployees?.toString() || '');
+                          setMaxCompanies(agency.maxCompanies?.toString() || '');
+                        }}
+                        className="p-3 bg-white rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                        title="Definir Limites"
+                      >
+                        <Settings size={16} />
+                      </button>
+                      <button 
+                        onClick={() => onSelectAgency && onSelectAgency(agency.id)}
+                        className="p-3 bg-white rounded-xl border border-slate-200 text-slate-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {editingAgencyLimits && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+              >
+                <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Limites da Agência</h3>
+                    <p className="text-xs text-slate-400 font-black uppercase tracking-widest mt-1">{editingAgencyLimits.name}</p>
+                  </div>
+                  <button onClick={() => setEditingAgencyLimits(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Limite de Funcionários</label>
+                      <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input 
+                          type="number" 
+                          placeholder="Sem limite"
+                          className="w-full pl-12 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-slate-900 outline-none transition-all font-bold text-slate-700"
+                          value={maxEmployees}
+                          onChange={e => setMaxEmployees(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-2 font-medium italic">Deixe vazio para não ter limite de cadastros.</p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Limite de Empresas</label>
+                      <div className="relative">
+                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input 
+                          type="number" 
+                          placeholder="Sem limite"
+                          className="w-full pl-12 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-slate-900 outline-none transition-all font-bold text-slate-700"
+                          value={maxCompanies}
+                          onChange={e => setMaxCompanies(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-2 font-medium italic">Deixe vazio para não ter limite de cadastros.</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleUpdateLimits}
+                    disabled={isUpdatingLimits}
+                    className="w-full py-5 bg-slate-950 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                  >
+                    {isUpdatingLimits ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
@@ -2308,146 +2526,150 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         </div>
       )}
 
-      <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
-        
-        <div className="relative z-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
-              </div>
-              <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
-                </h3>
-                <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
-              </div>
-            </div>
-            {pricing.type === 'DAILY' && (
-              <div className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit shadow-sm">
-                Hoje: {todayName}
-              </div>
-            )}
-          </div>
+      {role !== 'ADMIN' && (
+        <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {pricing.type === 'STARS' ? (
-              Object.entries(pricing.stars || {}).map(([stars, p]) => (
-                <div key={stars} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
-                  <div className="flex gap-1.5 relative z-10">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={16} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
-                    ))}
-                  </div>
-                  <div className="text-center relative z-10">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-3">Valor por diária</p>
-                  </div>
-                  <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden relative z-10">
-                    <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${(parseInt(stars) / 5) * 100}%` }}></div>
-                  </div>
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
                 </div>
-              ))
-            ) : (
-              ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map(day => {
-                const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
-                const isToday = day === todayName;
-                return (
-                  <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden ${isToday ? 'bg-slate-950 border-slate-950 text-white shadow-2xl shadow-slate-950/30 scale-105 z-10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10'}`}>
-                    {isToday && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>}
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>{day}</span>
-                    <div className="text-center">
-                      <p className={`text-3xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
-                      <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${isToday ? 'text-slate-500' : 'text-slate-400'}`}>Valor por diária</p>
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
+                  </h3>
+                  <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
+                </div>
+              </div>
+              {pricing.type === 'DAILY' && (
+                <div className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit shadow-sm">
+                  Hoje: {todayName}
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {pricing.type === 'STARS' ? (
+                Object.entries(pricing.stars || {}).map(([stars, p]) => (
+                  <div key={stars} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
+                    <div className="flex gap-1.5 relative z-10">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={16} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                      ))}
                     </div>
-                    {isToday && (
-                      <div className="px-4 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-500/20">
-                        Vigente Agora
-                      </div>
-                    )}
+                    <div className="text-center relative z-10">
+                      <p className="text-3xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-3">Valor por diária</p>
+                    </div>
+                    <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden relative z-10">
+                      <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${(parseInt(stars) / 5) * 100}%` }}></div>
+                    </div>
                   </div>
-                );
-              })
-            )}
+                ))
+              ) : (
+                ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map(day => {
+                  const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
+                  const isToday = day === todayName;
+                  return (
+                    <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden ${isToday ? 'bg-slate-950 border-slate-950 text-white shadow-2xl shadow-slate-950/30 scale-105 z-10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10'}`}>
+                      {isToday && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>}
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>{day}</span>
+                      <div className="text-center">
+                        <p className={`text-3xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${isToday ? 'text-slate-500' : 'text-slate-400'}`}>Valor por diária</p>
+                      </div>
+                      {isToday && (
+                        <div className="px-4 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-500/20">
+                          Vigente Agora
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
-          <div className="flex items-center justify-between mb-10 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                <Calendar size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Diarias do Dia</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Diaria ativa hoje</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setActiveTab('agency_staffing')}
-              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
-            >
-              Ver Agenda
-            </button>
-          </div>
-          <div className="space-y-8 relative z-10">
-            {todayAssignments.length === 0 ? (
-              <div className="py-16 text-center space-y-4">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
-                  <Calendar size={40} />
+      {role !== 'ADMIN' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
+            <div className="flex items-center justify-between mb-10 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <Calendar size={24} />
                 </div>
-                <p className="text-slate-400 font-bold text-sm tracking-tight italic">Nenhuma diaria programada para hoje.</p>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Diarias do Dia</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Diaria ativa hoje</p>
+                </div>
               </div>
-            ) : (
-              Object.entries(groupedByCompany).map(([companyId, data]) => {
-                const company = companies.find(c => c.id === companyId);
-                const client = clients.find(c => c.id === companyId);
-                const companyName = company?.name || client?.name || 'Empresa não encontrada';
-                const isExpanded = expandedCompanies[companyId] === true;
-                
-                return (
-                  <div key={companyId} className="space-y-4">
-                    <button 
-                      onClick={() => toggleCompany(companyId)}
-                      className="w-full flex items-center gap-3 px-2 group/header"
-                    >
-                      <div className={`w-8 h-8 rounded-lg ${isExpanded ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'} flex items-center justify-center border border-blue-100 transition-all`}>
-                        <Building2 size={16} />
-                      </div>
-                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{companyName}</h4>
-                      <div className="flex-1 h-px bg-slate-100"></div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{data.assignments.length} Diárias</span>
-                        <div className={`p-1.5 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
-                          <ChevronDown size={14} />
+              <button 
+                onClick={() => setActiveTab('agency_staffing')}
+                className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
+              >
+                Ver Agenda
+              </button>
+            </div>
+            <div className="space-y-8 relative z-10">
+              {todayAssignments.length === 0 ? (
+                <div className="py-16 text-center space-y-4">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                    <Calendar size={40} />
+                  </div>
+                  <p className="text-slate-400 font-bold text-sm tracking-tight italic">Nenhuma diaria programada para hoje.</p>
+                </div>
+              ) : (
+                Object.entries(groupedByCompany).map(([companyId, data]) => {
+                  const company = companies.find(c => c.id === companyId);
+                  const client = clients.find(c => c.id === companyId);
+                  const companyName = company?.name || client?.name || 'Empresa não encontrada';
+                  const isExpanded = expandedCompanies[companyId] === true;
+                  
+                  return (
+                    <div key={companyId} className="space-y-4">
+                      <button 
+                        onClick={() => toggleCompany(companyId)}
+                        className="w-full flex items-center gap-3 px-2 group/header"
+                      >
+                        <div className={`w-8 h-8 rounded-lg ${isExpanded ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'} flex items-center justify-center border border-blue-100 transition-all`}>
+                          <Building2 size={16} />
                         </div>
-                      </div>
-                    </button>
-                    
-                    {isExpanded && (
-                      <div className="space-y-6 pl-4 border-l-2 border-slate-50 ml-4">
-                        {Object.entries(data.units).map(([unitId, unitAssignments]) => {
-                          const unit = units.find(u => u.id === unitId);
-                          const unitName = unit?.name || 'Geral';
-                          
-                          return (
-                            <div key={unitId} className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <MapPin size={12} className="text-slate-400" />
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{unitName}</span>
-                              </div>
-                              <div className="grid grid-cols-1 gap-4">
-                                {unitAssignments.map(as => {
-                                  const emp = employees.find(e => e.id === as.employeeId);
-                                  return (
-                                    <div key={as.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden gap-4 sm:gap-6">
-                                      <div className="flex items-center gap-4 sm:gap-6 relative z-10">
-                                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden border-2 sm:border-4 border-white shadow-lg sm:shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500 shrink-0">
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{companyName}</h4>
+                        <div className="flex-1 h-px bg-slate-100"></div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {data.assignments.length} {data.assignments.length === 1 ? 'Diária' : 'Diárias'}
+                          </span>
+                          <div className={`p-1.5 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
+                            <ChevronDown size={14} />
+                          </div>
+                        </div>
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="space-y-6 pl-4 border-l-2 border-slate-50 ml-4">
+                          {Object.entries(data.units).map(([unitId, unitAssignments]) => {
+                            const unit = units.find(u => u.id === unitId);
+                            const unitName = unit?.name || 'Geral';
+                            
+                            return (
+                              <div key={unitId} className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <MapPin size={12} className="text-slate-400" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{unitName}</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                  {unitAssignments.map(as => {
+                                    const emp = employees.find(e => e.id === as.employeeId);
+                                    return (
+                                      <div key={as.id} className="flex items-center p-4 sm:p-6 rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden gap-4">
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-4 border-white shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500 shrink-0">
                                           <img 
                                             src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
                                             alt="" 
@@ -2455,135 +2677,143 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                                             referrerPolicy="no-referrer"
                                           />
                                         </div>
-                                        <div className="min-w-0">
-                                          <p className="font-black text-slate-950 text-sm sm:text-lg tracking-tight group-hover/item:text-blue-600 transition-colors truncate">{emp?.firstName} {emp?.lastName}</p>
-                                          <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 mt-0.5 sm:mt-1">
-                                            <p className="text-[8px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest">08:00 - 17:00</p>
-                                          </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-black text-slate-900 text-sm sm:text-base tracking-tight truncate uppercase leading-tight">
+                                            {emp?.firstName} {emp?.lastName}
+                                          </p>
+                                          <p className="text-[9px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">
+                                            08:00 - 17:00
+                                          </p>
                                         </div>
-                                      </div>
-                                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 relative z-10 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                        <div className="flex items-center gap-2">
-                                          {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
-                                            <button 
-                                              onClick={() => setEvaluatingEmployee(emp || null)}
-                                              className="p-2 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
-                                              title="Avaliar Profissional"
-                                            >
-                                              <Star size={14} />
-                                            </button>
-                                          )}
-                                          <p className="text-lg sm:text-2xl font-black text-slate-950 tracking-tight">R$ {as.value.toFixed(2)}</p>
-                                        </div>
-                                        <span className={`px-2 sm:px-3 py-1 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-widest border ${
-                                          as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                                          as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                          'bg-slate-50 text-slate-400 border-slate-200'
-                                        }`}>
-                                          {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
-        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
-          <div className="flex items-center justify-between mb-10 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 -rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                <MessageSquare size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Novos Contatos</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Leads do site</p>
-              </div>
-            </div>
-            <div className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-amber-100 shadow-sm">
-              {contacts.filter(c => c.status === 'PENDING').length + employeeRegistrations.filter(r => r.status === 'PENDING').length} Pendentes
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                          <div className="flex items-center gap-2">
+                                            {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                                              <button 
+                                                onClick={() => setEvaluatingEmployee(emp || null)}
+                                                className="p-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-90"
+                                                title="Avaliar Profissional"
+                                              >
+                                                <Star size={12} />
+                                              </button>
+                                            )}
+                                            <p className="text-sm sm:text-xl font-black text-slate-950 tracking-tight leading-none">
+                                              R$ {as.value.toFixed(2)}
+                                            </p>
+                                          </div>
+                                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border whitespace-nowrap ${
+                                            as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                                            as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                            'bg-slate-50 text-slate-400 border-slate-200'
+                                          }`}>
+                                            {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
-          <div className="space-y-4 relative z-10">
-            {contacts.filter(c => c.status === 'PENDING').length === 0 && employeeRegistrations.filter(r => r.status === 'PENDING').length === 0 ? (
-              <div className="py-16 text-center space-y-4">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
-                  <CheckCircle size={40} />
+
+          <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
+            <div className="flex items-center justify-between mb-10 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 -rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <MessageSquare size={24} />
                 </div>
-                <p className="text-slate-400 font-bold text-sm tracking-tight italic">Tudo em dia por aqui.</p>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Novos Contatos</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Leads do site</p>
+                </div>
               </div>
-            ) : (
-              <>
-                {contacts.filter(c => c.status === 'PENDING').map(c => (
-                  <div key={c.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-500/5 transition-all group/contact">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-white text-slate-950 flex items-center justify-center shadow-xl border border-slate-100 group-hover/contact:scale-110 group-hover/contact:rotate-3 transition-transform duration-500">
-                        <Phone size={24} />
-                      </div>
-                      <div>
-                        <p className="font-black text-slate-950 text-base tracking-tight">{c.name}</p>
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{c.phone}</p>
-                      </div>
-                    </div>
-                    <button className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 group/btn">
-                      <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
-                    </button>
+              <div className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-amber-100 shadow-sm">
+                {contacts.filter(c => c.status === 'PENDING').length + employeeRegistrations.filter(r => r.status === 'PENDING').length} Pendentes
+              </div>
+            </div>
+            <div className="space-y-4 relative z-10">
+              {contacts.filter(c => c.status === 'PENDING').length === 0 && employeeRegistrations.filter(r => r.status === 'PENDING').length === 0 ? (
+                <div className="py-16 text-center space-y-4">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                    <CheckCircle size={40} />
                   </div>
-                ))}
-                {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
-                  <div key={r.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-emerald-50/30 hover:bg-white hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/5 transition-all group/reg">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-xl border border-slate-100 group-hover/reg:scale-110 group-hover/reg:-rotate-3 transition-transform duration-500">
-                        <UserIcon size={24} />
-                      </div>
-                      <div>
-                        <p className="font-black text-slate-950 text-base tracking-tight">{r.firstName} {r.lastName}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{r.phone}</p>
+                  <p className="text-slate-400 font-bold text-sm tracking-tight italic">Tudo em dia por aqui.</p>
+                </div>
+              ) : (
+                <>
+                  {contacts.filter(c => c.status === 'PENDING').map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-500/5 transition-all group/contact">
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-white text-slate-950 flex items-center justify-center shadow-xl border border-slate-100 group-hover/contact:scale-110 group-hover/contact:rotate-3 transition-transform duration-500">
+                          <Phone size={24} />
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-950 text-base tracking-tight">{c.name}</p>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{c.phone}</p>
                         </div>
                       </div>
+                      <button className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 group/btn">
+                        <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => {
-                        setSelectedRegistration(r);
-                        setShowProcessRegistrationModal(true);
-                      }}
-                      className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-emerald-600 transition-all shadow-xl active:scale-95 group/btn"
-                    >
-                      <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
+                  ))}
+                  {employeeRegistrations.filter(r => r.status === 'PENDING').map(r => (
+                    <div key={r.id} className="flex items-center justify-between p-5 rounded-3xl border border-slate-100 bg-emerald-50/30 hover:bg-white hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/5 transition-all group/reg">
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-xl border border-slate-100 group-hover/reg:scale-110 group-hover/reg:-rotate-3 transition-transform duration-500">
+                          <UserIcon size={24} />
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-950 text-base tracking-tight">{r.firstName} {r.lastName}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{r.phone}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setSelectedRegistration(r);
+                          setShowProcessRegistrationModal(true);
+                        }}
+                        className="p-4 bg-slate-950 text-white rounded-2xl hover:bg-emerald-600 transition-all shadow-xl active:scale-95 group/btn"
+                      >
+                        <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
-        </div>
 
-        {showProcessRegistrationModal && selectedRegistration && (
-          <ProcessRegistrationModal 
-            registration={selectedRegistration}
-            onClose={() => setShowProcessRegistrationModal(false)}
-            onComplete={() => {
-              setShowProcessRegistrationModal(false);
-              setSelectedRegistration(null);
-            }}
-            agencyId={agencyId}
-            selectedAgencyId={selectedAgencyId}
-          />
-        )}
-      </div>
+          {showProcessRegistrationModal && selectedRegistration && (
+            <ProcessRegistrationModal 
+              registration={selectedRegistration}
+              onClose={() => setShowProcessRegistrationModal(false)}
+              onComplete={() => {
+                setShowProcessRegistrationModal(false);
+                setSelectedRegistration(null);
+              }}
+              agencyId={agencyId}
+              selectedAgencyId={selectedAgencyId}
+              agencies={agencies}
+              employees={employees}
+            />
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {evaluatingEmployee && (
@@ -3232,7 +3462,7 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
   );
 }
 
-function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId, selectedAgencyId }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void, agencyId: string | null, selectedAgencyId?: string | null }) {
+function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId, selectedAgencyId, agencies, employees }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void, agencyId: string | null, selectedAgencyId?: string | null, agencies: Agency[], employees: Employee[] }) {
   const [username, setUsername] = useState(`${registration.firstName.toLowerCase()}.${registration.lastName.toLowerCase().split(' ')[0]}`);
   const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
   const [isSending, setIsSending] = useState(false);
@@ -3244,6 +3474,17 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
     try {
       const targetAgencyId = selectedAgencyId || agencyId || registration.agencyId;
       if (!targetAgencyId) throw new Error('Agência não identificada');
+
+      // Check limits
+      const agency = agencies.find(a => a.id === targetAgencyId);
+      if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
+        const currentEmployees = employees.filter(emp => emp.agencyId === targetAgencyId).length;
+        if (currentEmployees >= agency.maxEmployees) {
+          alert(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
+          setIsSending(false);
+          return;
+        }
+      }
 
       // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
@@ -3365,7 +3606,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
   );
 }
 
-function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, selectedAgencyId, companyUsers, companies, units }: { employees: Employee[], clients: Client[], ratingLabel: string, agencyId: string | null, selectedAgencyId?: string | null, companyUsers: CompanyUser[], companies: Company[], units: Unit[] }) {
+function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, selectedAgencyId, companyUsers, companies, units, agencies }: { employees: Employee[], clients: Client[], ratingLabel: string, agencyId: string | null, selectedAgencyId?: string | null, companyUsers: CompanyUser[], companies: Company[], units: Unit[], agencies: Agency[] }) {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -3564,6 +3805,16 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       await updateDocument('employees', selectedEmployee.id, formData);
       alert('Cadastro atualizado com sucesso!');
     } else {
+      // Check limits
+      const agency = agencies.find(a => a.id === targetAgencyId);
+      if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
+        const currentEmployees = employees.length;
+        if (currentEmployees >= agency.maxEmployees) {
+          alert(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
+          return;
+        }
+      }
+
       const newEmp: Omit<Employee, 'id'> = {
         ...formData,
         agencyId: targetAgencyId,
@@ -5238,6 +5489,16 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     if (!targetAgencyId) {
       alert('Selecione uma agência para gerenciar antes de adicionar uma empresa.');
       return;
+    }
+
+    // Check limits
+    const agency = agencies.find(a => a.id === targetAgencyId);
+    if (agency && agency.maxCompanies !== undefined && agency.maxCompanies !== null) {
+      const currentCompanies = companies.length;
+      if (currentCompanies >= agency.maxCompanies) {
+        alert(`Limite de empresas atingido (${agency.maxCompanies}). Entre em contato com o administrador para aumentar o limite.`);
+        return;
+      }
     }
 
     const companyId = Math.random().toString(36).substr(2, 9);
