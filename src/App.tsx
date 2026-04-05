@@ -1278,6 +1278,7 @@ export default function App() {
                       selectedAgencyId={selectedAgencyId}
                       onClearAgency={() => setSelectedAgencyId(null)}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      companyUsers={companyUsers}
                     />
                   </div>
                 )}
@@ -1334,6 +1335,7 @@ export default function App() {
                       selectedAgencyId={selectedAgencyId}
                       onClearAgency={() => setSelectedAgencyId(null)}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                      companyUsers={companyUsers}
                     />
                   </div>
                 )}
@@ -1354,6 +1356,9 @@ export default function App() {
                       ratingLabel={ratingLabel}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       selectedAgencyId={selectedAgencyId}
+                      companyUsers={companyUsers}
+                      companies={companies}
+                      units={units}
                     />
                   </div>
                 )}
@@ -2035,7 +2040,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, agencyId }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, agencyId: string | null }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, agencyId, companyUsers }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, agencyId: string | null, companyUsers: CompanyUser[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -2089,6 +2094,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
   const totalCompanies = companies.length;
   const activeCompanies = companies.filter(c => c.status === 'ACTIVE').length;
   const pendingCompanies = companies.filter(c => c.status === 'PENDING').length;
+  const pendingManagers = companyUsers.filter(cu => cu.status === 'PENDING').length;
   const totalEmployees = employees.length;
   const servicesInProgress = assignments.filter(a => a.status === 'IN_PROGRESS' || a.status === 'SCHEDULED').length;
   const companiesWithRejectedDocs = companies.filter(c => c.documents?.some(d => d.status === 'REJECTED')).length;
@@ -2178,6 +2184,16 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           trend={pendingCompanies > 0 ? "Aguardando" : "Limpo"}
           alert={pendingCompanies > 0}
           color="orange"
+          onClick={() => setActiveTab('admin_companies')}
+        />
+        <StatCard 
+          icon={<UserPlus size={24} />} 
+          label="Gerentes Pendentes" 
+          value={pendingManagers.toString()} 
+          trend={pendingManagers > 0 ? "Aguardando" : "Limpo"}
+          alert={pendingManagers > 0}
+          color="blue"
+          onClick={() => setActiveTab('registrations')}
         />
         <StatCard 
           icon={<Users size={24} />} 
@@ -3331,7 +3347,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
   );
 }
 
-function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, selectedAgencyId }: { employees: Employee[], clients: Client[], ratingLabel: string, agencyId: string | null, selectedAgencyId?: string | null }) {
+function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, selectedAgencyId, companyUsers, companies, units }: { employees: Employee[], clients: Client[], ratingLabel: string, agencyId: string | null, selectedAgencyId?: string | null, companyUsers: CompanyUser[], companies: Company[], units: Unit[] }) {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -3342,6 +3358,19 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [employeeToCreateUserFor, setEmployeeToCreateUserFor] = useState<Employee | null>(null);
+
+  const pendingManagers = companyUsers.filter(cu => cu.status === 'PENDING');
+
+  const handleUpdateUserStatus = async (userId: string, status: string) => {
+    try {
+      await updateDocument('companyUsers', userId, { status });
+      await updateDocument('users', userId, { status });
+      alert(`Status do usuário atualizado para ${status === 'ACTIVE' ? 'Ativo' : status}!`);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Erro ao atualizar status do usuário.');
+    }
+  };
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -3759,7 +3788,57 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-12">
+        <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                <UserPlus className="w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base md:text-lg">Novos Gerentes</h3>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Aguardando liberação</p>
+              </div>
+            </div>
+            <span className="bg-blue-100 text-blue-700 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
+              {pendingManagers.length} Pendentes
+            </span>
+          </div>
+          <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
+            {pendingManagers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-slate-300">
+                <CheckCircle size={32} className="mb-2 opacity-20" />
+                <p className="text-sm font-medium italic">Tudo em dia.</p>
+              </div>
+            ) : (
+              pendingManagers.map(manager => {
+                const company = companies.find(c => c.id === manager.companyId);
+                const unit = units.find(u => u.id === manager.unitId);
+                return (
+                  <div key={manager.id} className="flex items-center justify-between bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group/item">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
+                        {manager.fullName[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">{manager.fullName}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">{company?.name} - {unit?.name}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleUpdateUserStatus(manager.id, 'ACTIVE')}
+                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                      title="Liberar Acesso"
+                    >
+                      <CheckCircle size={18} />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
         <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
           <div className="flex items-center justify-between mb-4 md:mb-6">
             <div className="flex items-center gap-3 md:gap-4">
@@ -5058,10 +5137,16 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     await updateDocument('companies', id, { status });
   };
 
-  const handleActivateCompanyUser = async (userId: string) => {
-    await updateDocument('companyUsers', userId, { status: 'ACTIVE' });
-    await updateDocument('users', userId, { status: 'ACTIVE' });
-    alert('Usuário liberado com sucesso!');
+  const handleUpdateUserStatus = async (userId: string, status: 'ACTIVE' | 'PENDING' | 'BLOCKED') => {
+    try {
+      await updateDocument('companyUsers', userId, { status });
+      await updateDocument('users', userId, { status });
+      const message = status === 'ACTIVE' ? 'Usuário liberado com sucesso!' : 'Status atualizado com sucesso!';
+      alert(message);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Erro ao atualizar status do usuário.');
+    }
   };
 
   const handleAddCompany = async (e: React.FormEvent) => {
@@ -5439,47 +5524,75 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {units.filter(u => u.companyId === company.id).map(unit => (
-                  <div key={unit.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-500/5 transition-all group/unit gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/unit:bg-blue-50 group-hover/unit:text-blue-600 transition-all shrink-0">
-                        <MapPin size={16} />
+                {units.filter(u => u.companyId === company.id).map(unit => {
+                  const manager = companyUsers.find(cu => cu.unitId === unit.id);
+                  return (
+                    <div key={unit.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-500/5 transition-all group/unit gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/unit:bg-blue-50 group-hover/unit:text-blue-600 transition-all shrink-0">
+                          <MapPin size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{unit.name}</p>
+                          {unit.location && (
+                            <a 
+                              href={unit.location.startsWith('http') ? unit.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.location)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 bg-blue-50 text-blue-600 rounded-xl text-[9px] sm:text-[10px] font-bold hover:bg-blue-100 transition-all border border-blue-100 shadow-sm"
+                            >
+                              <MapPin size={12} />
+                              Ver Localização
+                            </a>
+                          )}
+                          {unit.login && (
+                            <p className="text-[9px] sm:text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{unit.name}</p>
-                        {unit.location && (
-                          <a 
-                            href={unit.location.startsWith('http') ? unit.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.location)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 bg-blue-50 text-blue-600 rounded-xl text-[9px] sm:text-[10px] font-bold hover:bg-blue-100 transition-all border border-blue-100 shadow-sm"
+
+                      {manager?.status === 'PENDING' && (
+                        <div className="flex items-center gap-3 bg-amber-50/50 p-2 rounded-2xl border border-amber-100">
+                          <button 
+                            onClick={() => setShowDetailsModal(company)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm group/btn"
                           >
-                            <MapPin size={12} />
-                            Ver Localização
-                          </a>
-                        )}
-                        {unit.login && (
-                          <p className="text-[9px] sm:text-[10px] text-blue-500 font-bold mt-1">Login: {unit.login}</p>
-                        )}
+                            <Eye size={14} />
+                            Revisar
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateUserStatus(manager.id, 'ACTIVE')}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 group/btn"
+                          >
+                            <CheckCircle size={14} />
+                            Liberar
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between sm:justify-end gap-4">
+                        <div className="text-left sm:text-right">
+                          <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase">Gerente</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-600">{unit.managerName}</p>
+                            {manager?.status === 'PENDING' && (
+                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded-md uppercase tracking-tighter animate-pulse">Pendente</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setShowDeleteUnitConfirm(unit.id)}
+                            className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
+                            title="Excluir Unidade"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                      <div className="text-left sm:text-right">
-                        <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase">Gerente</p>
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-600">{unit.managerName}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => setShowDeleteUnitConfirm(unit.id)}
-                          className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
-                          title="Excluir Unidade"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {units.filter(u => u.companyId === company.id).length === 0 && (
                   <div className="py-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
                     <p className="text-xs text-slate-400 font-medium italic">Nenhuma unidade cadastrada.</p>
@@ -5663,11 +5776,11 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                         </span>
                         {user.status === 'PENDING' && (
                           <button 
-                            onClick={() => handleActivateCompanyUser(user.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                            title="Liberar Acesso"
+                            onClick={() => handleUpdateUserStatus(user.id, 'ACTIVE')}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
                           >
-                            <Unlock size={16} />
+                            <CheckCircle size={16} />
+                            Liberar Acesso
                           </button>
                         )}
                       </div>
