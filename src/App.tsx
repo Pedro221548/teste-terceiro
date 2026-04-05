@@ -3299,7 +3299,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           ) : (
             myAssignments.map(as => {
               const cli = clients.find(c => c.id === as.clientId);
-              const unit = units.find(u => u.clientId === cli?.id);
+              const unit = as.unitId ? units.find(u => u.id === as.unitId) : units.find(u => u.clientId === cli?.id);
               const company = companies.find(c => c.id === unit?.companyId);
               const agency = agencies.find(a => a.id === as.agencyId);
               return (
@@ -8514,7 +8514,7 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
 
-  const myAssignments = assignments.filter(a => units.some(u => u.clientId === a.clientId && u.companyId === companyId));
+  const myAssignments = assignments.filter(a => units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId));
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
@@ -8595,6 +8595,7 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
               <thead>
                 <tr className="bg-white">
                   <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
+                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unidade</th>
                   <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
                   <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
                 </tr>
@@ -8602,6 +8603,7 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
               <tbody className="divide-y divide-slate-50">
                 {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
                   const emp = employees.find(e => e.id === as.employeeId);
+                  const unit = units.find(u => u.id === as.unitId);
                   const isToday = as.date === today;
                   return (
                     <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
@@ -8612,9 +8614,13 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
                           </div>
                           <div>
                             <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro • ★ {emp?.rating}</p>
+                            <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">{emp?.phone}</p>
                           </div>
                         </div>
+                      </td>
+                      <td className="p-8">
+                        <p className="font-black text-slate-950 tracking-tight text-sm">{unit?.name || 'N/A'}</p>
                       </td>
                       <td className="p-8">
                         <div className="space-y-2">
