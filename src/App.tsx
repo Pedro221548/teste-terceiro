@@ -66,7 +66,7 @@ import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
 import { createNewUser } from './secondary-auth';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { onSnapshot, doc, collection, query, getDocs } from 'firebase/firestore';
 import { 
   subscribeToCollection, 
   createDocument, 
@@ -458,6 +458,18 @@ export default function App() {
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
+  const [orgInfo, setOrgInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      const unsubscribe = onSnapshot(doc(db, 'settings', 'organization'), (snapshot) => {
+        if (snapshot.exists()) {
+          setOrgInfo(snapshot.data());
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [role]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -613,7 +625,17 @@ export default function App() {
             await updateDocument('users', firebaseUser.uid, { role: 'ADMIN' });
           }
           setRole(currentRole);
-          if (userDoc.agencyId) setCurrentAgencyId(userDoc.agencyId);
+          if (userDoc.agencyId) {
+            setCurrentAgencyId(userDoc.agencyId);
+          } else if (currentRole === 'AGENCY') {
+            // Fallback: try to find agency by email
+            const agencyDoc = await getDocs(query(collection(db, 'agencies'), where('email', '==', firebaseUser.email)));
+            if (!agencyDoc.empty) {
+              const foundAgencyId = agencyDoc.docs[0].id;
+              setCurrentAgencyId(foundAgencyId);
+              await updateDocument('users', firebaseUser.uid, { agencyId: foundAgencyId });
+            }
+          }
           if (userDoc.companyId) setCurrentCompanyId(userDoc.companyId);
           if (userDoc.forcePasswordChange) {
             setNeedsPasswordChange(true);
@@ -664,9 +686,14 @@ export default function App() {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
       unsubs.push(subscribeToCollection<any>('users', setUsersList));
     } else if (role === 'AGENCY' && currentAgencyId) {
-      unsubs.push(subscribeToCollection<Agency>('agencies', (data) => {
-        setAgencies(data);
-      }, [where('id', '==', currentAgencyId)]));
+      const unsubAgency = onSnapshot(doc(db, 'agencies', currentAgencyId), (docSnap) => {
+        if (docSnap.exists()) {
+          setAgencies([{ id: docSnap.id, ...docSnap.data() } as Agency]);
+        }
+      }, (error) => {
+        console.error('Error fetching agency:', error);
+      });
+      unsubs.push(unsubAgency);
     }
 
     const filterByAgency = (data: any[]) => {
@@ -1188,11 +1215,15 @@ export default function App() {
           userName={
             role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
             role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+            role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
+            role === 'ADMIN' ? orgInfo?.name || user.displayName :
             user.displayName
           }
           userPhoto={
             role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
             role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+            role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
+            role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
             user.photoURL
           }
           handleLogout={handleLogout}
@@ -1209,11 +1240,15 @@ export default function App() {
             userName={
               role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
               role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+              role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
+              role === 'ADMIN' ? orgInfo?.name || user.displayName :
               user.displayName
             }
             userPhoto={
               role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
               role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+              role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
+              role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
               user.photoURL
             }
           />
@@ -1319,7 +1354,7 @@ export default function App() {
                       role={role}
                       employee={role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email) : undefined}
                       companyUser={role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email) : undefined}
-                      agency={role === 'AGENCY' ? agencies.find(a => a.email === user?.email || a.responsibleName === user?.displayName) : undefined}
+                      agency={role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId) : undefined}
                     />
                   </div>
                 )}
@@ -4157,7 +4192,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
 }
 
 function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkIns }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkIns: CheckIn[] }) {
-  const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
+  const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
@@ -4258,6 +4293,10 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   };
 
   const handleStaff = async (empId: string) => {
+    if (!selectedClientId) {
+      alert('Por favor, selecione um parceiro antes de escalar o funcionário.');
+      return;
+    }
     const emp = employees.find(e => e.id === empId);
     const client = clients.find(c => c.id === selectedClientId);
     if (!emp || !client) return;
@@ -9884,9 +9923,164 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
 };
 
 const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User | null, role: UserRole, employee?: Employee, companyUser?: CompanyUser, agency?: Agency }) => {
-  console.log('UserProfile - role:', role, 'agency:', agency);
   const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [resetErrorMessage, setResetErrorMessage] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SAVING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  
+  const [orgInfo, setOrgInfo] = useState({
+    logoUrl: agency?.logoUrl || '',
+    name: agency?.name || '',
+    email: agency?.email || user?.email || '',
+    legalName: agency?.legalName || agency?.tradeName || '',
+    addressLine1: agency?.address?.addressLine1 || agency?.address?.street || '',
+    addressLine2: agency?.address?.addressLine2 || agency?.address?.complement || '',
+    city: agency?.address?.city || '',
+    state: agency?.address?.state || '',
+    zipCode: agency?.address?.zipCode || '',
+    country: agency?.address?.country || 'Brasil',
+    phone: agency?.phone || '',
+    taxId: agency?.taxId || agency?.cnpj || '',
+    website: agency?.website || '',
+    termsUrl: agency?.termsUrl || ''
+  });
+
+  useEffect(() => {
+    if (role === 'AGENCY' && agency && !isEditing) {
+      setOrgInfo({
+        logoUrl: agency.logoUrl || '',
+        name: agency.name || '',
+        email: agency.email || user?.email || '',
+        legalName: agency.legalName || agency.tradeName || '',
+        addressLine1: agency.address?.addressLine1 || agency.address?.street || '',
+        addressLine2: agency.address?.addressLine2 || agency.address?.complement || '',
+        city: agency.address?.city || '',
+        state: agency.address?.state || '',
+        zipCode: agency.address?.zipCode || '',
+        country: agency.address?.country || 'Brasil',
+        phone: agency.phone || '',
+        taxId: agency.taxId || agency.cnpj || '',
+        website: agency.website || '',
+        termsUrl: agency.termsUrl || ''
+      });
+    }
+  }, [agency, role, user?.email, isEditing]);
+
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      const unsubscribe = onSnapshot(doc(db, 'settings', 'organization'), (snapshot) => {
+        if (snapshot.exists() && !isEditing) {
+          const data = snapshot.data();
+          setOrgInfo(prev => ({ ...prev, ...data }));
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [role, isEditing]);
+
+  const handleSaveOrgInfo = async () => {
+    if (role === 'AGENCY' && !agency) {
+      alert('Erro: Dados da agência não encontrados. Tente sair e entrar novamente.');
+      return;
+    }
+
+    setSaveStatus('SAVING');
+    try {
+      if (role === 'AGENCY' && agency) {
+        console.log('Saving agency info for ID:', agency.id);
+        await updateDocument('agencies', agency.id, {
+          logoUrl: orgInfo.logoUrl,
+          name: orgInfo.name,
+          email: orgInfo.email,
+          legalName: orgInfo.legalName,
+          phone: orgInfo.phone,
+          taxId: orgInfo.taxId,
+          website: orgInfo.website,
+          termsUrl: orgInfo.termsUrl,
+          address: {
+            ...agency.address,
+            addressLine1: orgInfo.addressLine1,
+            addressLine2: orgInfo.addressLine2,
+            city: orgInfo.city,
+            state: orgInfo.state,
+            zipCode: orgInfo.zipCode,
+            country: orgInfo.country
+          }
+        });
+      } else if (role === 'ADMIN') {
+        console.log('Saving admin org info');
+        await setDocument('settings', 'organization', {
+          ...orgInfo,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      setSaveStatus('SUCCESS');
+      setIsEditing(false);
+      setTimeout(() => setSaveStatus('IDLE'), 3000);
+    } catch (err: any) {
+      console.error('Error saving org info:', err);
+      setSaveStatus('ERROR');
+      let errorMessage = 'Erro ao salvar informações.';
+      
+      // Detailed error analysis
+      const errorStr = err.message || String(err);
+      if (errorStr.includes('quota')) {
+        errorMessage = 'Cota do Firestore excedida. Tente novamente amanhã.';
+      } else if (errorStr.includes('permission-denied')) {
+        errorMessage = 'Sem permissão para salvar. Verifique se você é o dono desta agência.';
+      } else if (errorStr.includes('too large') || errorStr.includes('1,048,576 bytes')) {
+        errorMessage = 'A imagem do logotipo é muito grande, mesmo após compressão. Tente uma imagem bem menor.';
+      } else {
+        errorMessage = `Erro: ${errorStr}`;
+      }
+      alert(errorMessage);
+    }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('O arquivo é muito grande (máx 2MB).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Max dimensions for logo
+          const MAX_SIZE = 400;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setOrgInfo(prev => ({ ...prev, logoUrl: compressedBase64 }));
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSendResetEmail = async () => {
     const email = employee?.personalEmail || companyUser?.email || user?.email;
@@ -9921,8 +10115,12 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
         <div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600 relative">
           <div className="absolute -bottom-12 left-12">
             <div className="w-24 h-24 rounded-[2rem] bg-white p-2 shadow-xl">
-              <div className="w-full h-full rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-slate-400">
-                <UserIcon size={40} />
+              <div className="w-full h-full rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
+                {orgInfo.logoUrl ? (
+                  <img src={orgInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon size={40} />
+                )}
               </div>
             </div>
           </div>
@@ -9971,6 +10169,247 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
               </div>
             )}
           </div>
+
+          {(role === 'ADMIN' || role === 'AGENCY') && (
+            <div className="space-y-8 pt-8 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-900">Informações da conta</h3>
+                <button 
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                >
+                  {isEditing ? 'Cancelar' : 'Editar Informações'}
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Logotipo */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Logotipo da organização</label>
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                      {orgInfo.logoUrl ? (
+                        <img src={orgInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Upload size={24} className="text-slate-300" />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setOrgInfo(prev => ({ ...prev, logoUrl: '' }))}
+                          className="px-4 py-2 bg-white border border-red-100 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all"
+                        >
+                          Excluir
+                        </button>
+                        <label className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all cursor-pointer">
+                          Carregar
+                          <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={!isEditing} />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-medium">Tamanho máximo do arquivo: 2 MB</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Nome da organização */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome da organização</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.name}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="StaffLink"
+                    />
+                  </div>
+
+                  {/* Endereço de email */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Endereço de email</label>
+                    <input 
+                      type="email"
+                      disabled={!isEditing}
+                      value={orgInfo.email}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="exemplo@email.com"
+                    />
+                  </div>
+
+                  {/* Nome legal */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome legal</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.legalName}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, legalName: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="StaffLink LTDA"
+                    />
+                  </div>
+
+                  {/* Endereço Linha 1 */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Endereço Linha 1</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.addressLine1}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, addressLine1: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. 123 Rua Principal"
+                    />
+                  </div>
+
+                  {/* Linha de endereço 2 */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Linha de endereço 2</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.addressLine2}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, addressLine2: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. Suíte 100"
+                    />
+                  </div>
+
+                  {/* Cidade */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Cidade</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.city}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. São Francisco"
+                    />
+                  </div>
+
+                  {/* Estado/Província */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Estado/Província</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.state}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, state: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. Califórnia"
+                    />
+                  </div>
+
+                  {/* Código postal */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Código postal</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.zipCode}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, zipCode: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. 94102"
+                    />
+                  </div>
+
+                  {/* País */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">País</label>
+                    <select 
+                      disabled={!isEditing}
+                      value={orgInfo.country}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, country: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm appearance-none"
+                    >
+                      <option value="Brasil">Brasil</option>
+                      <option value="EUA">EUA</option>
+                      <option value="Portugal">Portugal</option>
+                    </select>
+                  </div>
+
+                  {/* Telefone da empresa */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Telefone da empresa</label>
+                    <div className="flex gap-2">
+                      <div className="w-24 p-4 bg-slate-50 border-2 border-transparent rounded-2xl flex items-center gap-2">
+                        <span className="text-sm">🇧🇷 +55</span>
+                      </div>
+                      <input 
+                        type="text"
+                        disabled={!isEditing}
+                        value={orgInfo.phone}
+                        onChange={e => setOrgInfo(prev => ({ ...prev, phone: e.target.value }))}
+                        className="flex-1 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        placeholder="(27) 99204-9176"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Número de identificação fiscal */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Número de identificação fiscal</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.taxId}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, taxId: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Ex. 1234567890"
+                    />
+                  </div>
+
+                  {/* Site */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Site</label>
+                    <input 
+                      type="text"
+                      disabled={!isEditing}
+                      value={orgInfo.website}
+                      onChange={e => setOrgInfo(prev => ({ ...prev, website: e.target.value }))}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      placeholder="Exemplo: https://www.9labs.com"
+                    />
+                  </div>
+                </div>
+
+                {/* URL dos termos de serviço */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">URL dos termos de serviço</label>
+                  <input 
+                    type="text"
+                    disabled={!isEditing}
+                    value={orgInfo.termsUrl}
+                    onChange={e => setOrgInfo(prev => ({ ...prev, termsUrl: e.target.value }))}
+                    className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                    placeholder="Exemplo: https://www.9labs.com/terms"
+                  />
+                </div>
+
+                {isEditing && (
+                  <div className="pt-4">
+                    <button 
+                      onClick={handleSaveOrgInfo}
+                      disabled={saveStatus === 'SAVING'}
+                      className="w-full py-5 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                    >
+                      {saveStatus === 'SAVING' ? 'Salvando...' : 'Salvar Alterações'}
+                    </button>
+                  </div>
+                )}
+
+                {saveStatus === 'SUCCESS' && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-medium text-center">
+                    Informações salvas com sucesso!
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {agency && (
             <div className="space-y-8 pt-6 border-t border-slate-100">

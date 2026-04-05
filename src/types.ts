@@ -18,6 +18,9 @@ export interface Agency {
     neighborhood: string;
     city: string;
     state: string;
+    country?: string;
+    addressLine1?: string;
+    addressLine2?: string;
   };
 
   // Responsável Legal
@@ -26,6 +29,13 @@ export interface Agency {
   responsibleRole: string; // Cargo
   phone: string;
   email: string;
+  
+  // Additional Info
+  logoUrl?: string;
+  legalName?: string;
+  taxId?: string;
+  website?: string;
+  termsUrl?: string;
 
   // Documentação
   documents?: {

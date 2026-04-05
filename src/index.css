@@ -6,6 +6,15 @@
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-full: 0px;
+
   --color-brand-50: #f8fafc;
   --color-brand-100: #f1f5f9;
   --color-brand-200: #e2e8f0;
@@ -24,6 +33,10 @@
 }
 
 @layer base {
+  div, section, aside, header, footer, button, input, select, textarea, article, main, nav, form {
+    border-radius: 0 !important;
+  }
+
   body {
     @apply bg-[#FBFBFA] text-slate-900 antialiased selection:bg-slate-900 selection:text-white;
   }
