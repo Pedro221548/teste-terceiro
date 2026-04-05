@@ -574,9 +574,15 @@ export default function App() {
     
     // Check server health
     fetch('/api/health')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Health check failed');
+        return r.json();
+      })
       .then(d => console.log('Server health check:', d))
-      .catch(e => console.error('Server health check failed:', e));
+      .catch(e => {
+        // Silent fail for health check to avoid console noise if server is starting
+        console.log('Server health check pending or failed');
+      });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('Auth state changed:', firebaseUser);
@@ -8337,20 +8343,35 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const [companyName, setCompanyName] = useState('');
   const [agencyDomain, setAgencyDomain] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const urlParams = new URLSearchParams(window.location.search);
   const companyId = urlParams.get('companyId');
 
   useEffect(() => {
     const fetchData = async () => {
       if (companyId) {
-        const companyData = await getDocument<Company>('companies', companyId);
-        if (companyData) {
-          setCompanyName(companyData.name);
-          const agencyData = await getDocument<Agency>('agencies', companyData.agencyId);
-          if (agencyData) {
-            setAgencyDomain(agencyData.name.toLowerCase().replace(/\s+/g, ''));
+        setIsLoading(true);
+        try {
+          const companyData = await getDocument<Company>('companies', companyId);
+          if (companyData) {
+            setCompanyName(companyData.name);
+            const agencyData = await getDocument<Agency>('agencies', companyData.agencyId);
+            if (agencyData) {
+              setAgencyDomain(agencyData.name.toLowerCase().replace(/\s+/g, ''));
+            }
+          } else {
+            setNotFound(true);
           }
+        } catch (error) {
+          console.error("Error fetching registration data:", error);
+          setNotFound(true);
+        } finally {
+          setIsLoading(false);
         }
+      } else {
+        setIsLoading(false);
+        setNotFound(true);
       }
     };
     fetchData();
@@ -8372,6 +8393,12 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       alert('As senhas não coincidem!');
       return;
     }
+
+    if (!formData.email) {
+      alert('O login ainda não foi gerado. Certifique-se de preencher o nome completo corretamente.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -8381,6 +8408,12 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         if (companyData) {
           agencyId = companyData.agencyId;
         }
+      }
+
+      if (!agencyId) {
+        alert('Não foi possível identificar a agência vinculada a esta empresa. Por favor, entre em contato com o suporte.');
+        setIsSubmitting(false);
+        return;
       }
 
       // Create Firebase Auth user
@@ -8467,6 +8500,42 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-600 font-bold">Carregando formulário...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !companyId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-[40px] border border-slate-200 shadow-2xl p-10 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mx-auto text-red-500">
+            <AlertCircle size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black text-slate-900">Link Inválido</h2>
+            <p className="text-slate-500 font-medium leading-relaxed">
+              O link de cadastro está incompleto, expirou ou a empresa não foi encontrada. 
+              Por favor, solicite um novo link à sua agência.
+            </p>
+          </div>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="w-full p-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
+          >
+            Voltar ao Início
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">

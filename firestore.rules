@@ -207,7 +207,7 @@ service cloud.firestore {
     }
 
     match /agencies/{agencyId} {
-      allow get: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow get: if true;
       allow list: if isSuperAdmin() || isAgency();
       allow create: if isSuperAdmin() || isAuthenticated();
       allow update: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
@@ -264,7 +264,8 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      allow read: if isAuthenticated();
+      allow get: if true;
+      allow list: if isAuthenticated();
       allow create: if isSuperAdmin() || isAgency();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
