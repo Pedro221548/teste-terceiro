@@ -125,8 +125,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
     }
 
+    function getCompanyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+    }
+
     function isAgencyOwner(data) {
       return isAgency() && data.agencyId == getAgencyId();
+    }
+
+    function isCompanyOwner(data) {
+      return isCompany() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             'companyId' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+             data.companyId == getCompanyId();
     }
 
     function isAdmin() {
@@ -274,8 +285,8 @@ service cloud.firestore {
     match /units/{unitId} {
       allow read: if isAuthenticated();
       allow create: if isSuperAdmin() || isAgency() || isCompany() || isAuthenticated();
-      allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
-      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
+      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompanyOwner(resource.data);
+      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompanyOwner(resource.data);
     }
 
     match /companyUsers/{userId} {

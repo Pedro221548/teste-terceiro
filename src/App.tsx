@@ -2187,15 +2187,6 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           onClick={() => setActiveTab('admin_companies')}
         />
         <StatCard 
-          icon={<UserPlus size={24} />} 
-          label="Gerentes Pendentes" 
-          value={pendingManagers.toString()} 
-          trend={pendingManagers > 0 ? "Aguardando" : "Limpo"}
-          alert={pendingManagers > 0}
-          color="blue"
-          onClick={() => setActiveTab('registrations')}
-        />
-        <StatCard 
           icon={<Users size={24} />} 
           label="Total de Funcionários" 
           value={totalEmployees.toString()} 
@@ -3788,57 +3779,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-12">
-        <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <UserPlus className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-base md:text-lg">Novos Gerentes</h3>
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Aguardando liberação</p>
-              </div>
-            </div>
-            <span className="bg-blue-100 text-blue-700 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
-              {pendingManagers.length} Pendentes
-            </span>
-          </div>
-          <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
-            {pendingManagers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-300">
-                <CheckCircle size={32} className="mb-2 opacity-20" />
-                <p className="text-sm font-medium italic">Tudo em dia.</p>
-              </div>
-            ) : (
-              pendingManagers.map(manager => {
-                const company = companies.find(c => c.id === manager.companyId);
-                const unit = units.find(u => u.id === manager.unitId);
-                return (
-                  <div key={manager.id} className="flex items-center justify-between bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group/item">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-                        {manager.fullName[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-700">{manager.fullName}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{company?.name} - {unit?.name}</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleUpdateUserStatus(manager.id, 'ACTIVE')}
-                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                      title="Liberar Acesso"
-                    >
-                      <CheckCircle size={18} />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-12">
         <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
           <div className="flex items-center justify-between mb-4 md:mb-6">
             <div className="flex items-center gap-3 md:gap-4">
@@ -5551,32 +5492,21 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                         </div>
                       </div>
 
-                      {manager?.status === 'PENDING' && (
-                        <div className="flex items-center gap-3 bg-amber-50/50 p-2 rounded-2xl border border-amber-100">
-                          <button 
-                            onClick={() => setShowDetailsModal(company)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm group/btn"
-                          >
-                            <Eye size={14} />
-                            Revisar
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateUserStatus(manager.id, 'ACTIVE')}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 group/btn"
-                          >
-                            <CheckCircle size={14} />
-                            Liberar
-                          </button>
-                        </div>
-                      )}
+
 
                       <div className="flex items-center justify-between sm:justify-end gap-4">
                         <div className="text-left sm:text-right">
                           <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase">Gerente</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             <p className="text-[10px] sm:text-xs font-bold text-slate-600">{unit.managerName}</p>
                             {manager?.status === 'PENDING' && (
-                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded-md uppercase tracking-tighter animate-pulse">Pendente</span>
+                              <button 
+                                onClick={() => handleUpdateUserStatus(manager.id, 'ACTIVE')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 active:scale-95"
+                              >
+                                <CheckCircle size={12} />
+                                Ativar Conta
+                              </button>
                             )}
                           </div>
                         </div>
