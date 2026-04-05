@@ -1422,28 +1422,31 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
                   <div key="company-dashboard">
                     <CompanyDashboard 
-                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
+                      companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
                       feedbacks={feedbacks}
+                      units={units}
+                      companies={companies}
                     />
                   </div>
                 )}
                 {role === 'COMPANY' && activeTab === 'manager_feedback' && (
                   <div key="company-feedback">
                     <CompanyFeedbackForm 
-                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
+                      units={units}
                     />
                   </div>
                 )}
                 {role === 'COMPANY' && activeTab === 'company_diaristas' && (
                   <div key="company-diaristas">
                     <CompanyDiaristas 
-                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       employees={employees}
                       assignments={assignments}
@@ -1455,11 +1458,12 @@ export default function App() {
                 {role === 'COMPANY' && activeTab === 'evaluate_team' && (
                   <div key="company-evaluate">
                     <CompanyEvaluateTeam 
-                      clientId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
                       feedbacks={feedbacks}
+                      units={units}
                     />
                   </div>
                 )}
@@ -2183,6 +2187,15 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           value={pendingCompanies.toString()} 
           trend={pendingCompanies > 0 ? "Aguardando" : "Limpo"}
           alert={pendingCompanies > 0}
+          color="orange"
+          onClick={() => setActiveTab('admin_companies')}
+        />
+        <StatCard 
+          icon={<Users size={24} />} 
+          label="Gerentes Pendentes" 
+          value={pendingManagers.toString()} 
+          trend={pendingManagers > 0 ? "Aguardando" : "Limpo"}
+          alert={pendingManagers > 0}
           color="orange"
           onClick={() => setActiveTab('admin_companies')}
         />
@@ -6144,7 +6157,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
   );
 }
 
-function CompanyDiaristas({ clientId, clients, employees, assignments, companies, units }: { clientId: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
+function CompanyDiaristas({ companyId, clients, employees, assignments, companies, units }: { companyId: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [minRating, setMinRating] = useState(0);
@@ -6153,7 +6166,7 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const clientUnits = units.filter(u => u.clientId === clientId);
+  const clientUnits = units.filter(u => u.companyId === companyId);
   
   useEffect(() => {
     if (clientUnits.length > 0 && !selectedUnitId) {
@@ -6189,10 +6202,11 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
     }
     setIsSubmitting(true);
     try {
+      const selectedUnit = units.find(u => u.id === selectedUnitId);
       const newRequest: Omit<CompanyRequest, 'id'> = {
-        agencyId: units.find(u => u.id === selectedUnitId)?.agencyId || '',
-        companyId: units.find(u => u.id === selectedUnitId)?.companyId || '',
-        clientId: clientId,
+        agencyId: selectedUnit?.agencyId || '',
+        companyId: selectedUnit?.companyId || '',
+        clientId: selectedUnit?.clientId || '',
         employeeIds: selectedEmployeeIds,
         quantity: Math.max(quantity, selectedEmployeeIds.length),
         date: selectedDate,
@@ -6276,9 +6290,14 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
                     onChange={(e) => setSelectedUnitId(e.target.value)}
                     className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none shadow-inner"
                   >
-                    {clientUnits.map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
+                    {clientUnits.map(u => {
+                      const client = clients.find(c => c.id === u.clientId);
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {client?.name || u.name}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                     <ChevronDown size={16} />
@@ -6444,8 +6463,8 @@ function CompanyDiaristas({ clientId, clients, employees, assignments, companies
   );
 }
 
-function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedbacks }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
-  const client = clients.find(c => c.id === clientId);
+function CompanyEvaluateTeam({ companyId, clients, assignments, employees, feedbacks, units }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[] }) {
+  const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
@@ -6457,11 +6476,11 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
     if (!evaluatingEmployee) return;
     setIsSubmittingEval(true);
     try {
-      const assignment = assignments.find(a => a.clientId === clientId && a.employeeId === evaluatingEmployee.id && a.date === selectedDate);
+      const assignment = assignments.find(a => companyUnitClientIds.includes(a.clientId) && a.employeeId === evaluatingEmployee.id && a.date === selectedDate);
       const newFeedback: Omit<Feedback, 'id'> = {
         agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
-        managerId: clientId,
+        managerId: companyId,
         assignmentId: assignment?.id || 'manual',
         rating: evalRating,
         comment: evalComment,
@@ -6483,19 +6502,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
     }
   };
 
-  if (!client) {
-    return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <Users size={40} />
-        </div>
-        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para avaliar sua equipe.</p>
-      </div>
-    );
-  }
-
-  const companyAssignments = assignments.filter(a => a.clientId === clientId);
+  const companyAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId));
   const dateAssignments = companyAssignments.filter(a => a.date === selectedDate);
   const dateEmployeeIds = Array.from(new Set(dateAssignments.map(a => a.employeeId)));
   const dateEmployees = employees.filter(e => dateEmployeeIds.includes(e.id));
@@ -6602,7 +6609,7 @@ function CompanyEvaluateTeam({ clientId, clients, assignments, employees, feedba
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {workedEmployees.map(emp => {
-          const empFeedbacks = feedbacks.filter(f => f.employeeId === emp.id && f.managerId === clientId);
+          const empFeedbacks = feedbacks.filter(f => f.employeeId === emp.id && f.managerId === companyId);
           return (
             <div key={emp.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
@@ -7907,26 +7914,15 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
   );
 }
 
-function CompanyDashboard({ clientId, clients, assignments, employees, feedbacks }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[] }) {
-  const client = clients.find(c => c.id === clientId);
+function CompanyDashboard({ companyId, clients, assignments, employees, feedbacks, units, companies }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[] }) {
+  const company = companies.find(c => c.id === companyId);
+  const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
 
-  if (!client) {
-    return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <Building2 size={40} />
-        </div>
-        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para visualizar o dashboard.</p>
-      </div>
-    );
-  }
-
-  const myAssignments = assignments.filter(a => a.clientId === clientId);
+  const myAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId));
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
@@ -7938,7 +7934,7 @@ function CompanyDashboard({ clientId, clients, assignments, employees, feedbacks
       const newFeedback: Omit<Feedback, 'id'> = {
         agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
-        managerId: clientId,
+        managerId: companyId,
         assignmentId: assignment?.id || 'manual',
         rating: evalRating,
         comment: evalComment,
@@ -8211,26 +8207,13 @@ function CompanyDashboard({ clientId, clients, assignments, employees, feedbacks
   );
 }
 
-function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { clientId: string, clients: Client[], assignments: Assignment[], employees: Employee[] }) {
-  const client = clients.find(c => c.id === clientId);
-
-  if (!client) {
-    return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <MessageSquare size={40} />
-        </div>
-        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione uma empresa cadastrada no seletor de teste acima para enviar feedbacks.</p>
-      </div>
-    );
-  }
-
+function CompanyFeedbackForm({ companyId, clients, assignments, employees, units }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], units: Unit[] }) {
+  const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
-  const completedAssignments = assignments.filter(a => a.clientId === clientId && a.status === 'COMPLETED');
+  const completedAssignments = assignments.filter(a => companyUnitClientIds.includes(a.clientId) && a.status === 'COMPLETED');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -8242,7 +8225,7 @@ function CompanyFeedbackForm({ clientId, clients, assignments, employees }: { cl
     const newFeedback: Omit<Feedback, 'id'> = {
       agencyId: assignment.agencyId,
       employeeId: assignment.employeeId,
-      managerId: clientId,
+      managerId: companyId,
       assignmentId: selectedAssignmentId,
       rating,
       comment,
