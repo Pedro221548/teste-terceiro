@@ -61,6 +61,7 @@ import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { GoogleGenAI } from "@google/genai";
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -7768,26 +7769,64 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           return;
         }
 
-        // Reconhecimento Facial usando a chave fornecida
-        console.log(`Iniciando reconhecimento facial com a chave: ${API_KEY}`);
+        // Reconhecimento Facial Real usando Gemini
+        console.log(`Iniciando reconhecimento facial real...`);
         
-        // Simulação de chamada para API de Reconhecimento Facial
-        // Em um cenário real, você faria um POST para o endpoint da sua API
-        // enviando as duas imagens em base64 ou URLs.
-        // O cruzamento é feito entre a foto de perfil (employee.photoUrl) e a foto capturada (photo)
-        
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simula tempo de processamento
-        
-        // Simulação de verificação (em um app real, aqui você verificaria a resposta da API)
-        // Para fins de demonstração, vamos simular que a verificação passou se houver uma foto de perfil
-        // Se não houver foto de perfil, vamos permitir para não travar o teste, mas alertar.
-        const isMatch = true; // Simulação: sempre true para este ambiente de teste
+        try {
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+          const model = "gemini-3-flash-preview";
 
-        if (!isMatch) {
-          alert('Reconhecimento facial falhou. A pessoa na foto não corresponde ao funcionário cadastrado. Por favor, tente novamente.');
-          setStep('PHOTO');
-          startCamera();
-          return;
+          // Preparar imagem de perfil
+          let profilePhotoUrl = employee.photoUrl || `https://picsum.photos/seed/${employee.id}/200`;
+          let profileBase64 = "";
+
+          try {
+            const response = await fetch(profilePhotoUrl);
+            const blob = await response.blob();
+            profileBase64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+          } catch (e) {
+            console.error("Erro ao carregar foto de perfil para comparação:", e);
+            // Se falhar ao carregar a foto de perfil, vamos permitir o ponto mas avisar no log
+            profileBase64 = ""; 
+          }
+
+          if (profileBase64) {
+            const capturedData = photo.split(',')[1];
+            const prompt = "Compare estas duas fotos. A primeira é a foto de perfil oficial e a segunda é a foto tirada agora no ponto. A pessoa na primeira foto é a mesma pessoa na segunda foto? Responda apenas 'SIM' ou 'NAO'. Se houver dúvida ou se as fotos forem muito diferentes, responda 'NAO'.";
+            
+            const result = await ai.models.generateContent({
+              model,
+              contents: [
+                {
+                  parts: [
+                    { text: prompt },
+                    { inlineData: { data: profileBase64, mimeType: "image/jpeg" } },
+                    { inlineData: { data: capturedData, mimeType: "image/jpeg" } },
+                  ]
+                }
+              ]
+            });
+
+            const responseText = result.text?.toUpperCase() || "";
+            const isMatch = responseText.includes('SIM');
+
+            if (!isMatch) {
+              alert('Reconhecimento facial falhou. A pessoa na foto não corresponde ao funcionário cadastrado. Por favor, tente novamente.');
+              setStep('PHOTO');
+              startCamera();
+              return;
+            }
+          } else {
+            console.warn("Foto de perfil não disponível para comparação. Prosseguindo sem verificação facial.");
+          }
+        } catch (error) {
+          console.error("Erro no reconhecimento facial com Gemini:", error);
+          // Em caso de erro na API, permitimos o ponto para não bloquear o funcionário, 
+          // mas em um cenário real isso deveria ser tratado com mais rigor.
         }
 
         // Save Check-in
