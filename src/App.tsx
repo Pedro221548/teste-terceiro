@@ -5063,7 +5063,54 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                         <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase">{companyName}</h4>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{companyData.assignments.length} Profissionais Confirmados</p>
                       </div>
-                      <div className="flex-1 h-px bg-slate-100"></div>
+                      <div className="flex-1 h-px bg-slate-100 mx-4"></div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const text = companyData.assignments
+                              .map(a => {
+                                const emp = employees.find(e => e.id === a.employeeId);
+                                return emp ? `${emp.firstName} ${emp.lastName} - CPF: ${emp.cpf || 'N/A'}` : '';
+                              })
+                              .join('\n');
+                            navigator.clipboard.writeText(text);
+                            alert('Lista copiada!');
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-black uppercase tracking-widest text-[9px] hover:bg-blue-100 transition-all"
+                        >
+                          Copiar Lista
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const JSZip = (await import('jszip')).default;
+                            const { saveAs } = await import('file-saver');
+                            const zip = new JSZip();
+                            
+                            const promises = companyData.assignments.map(async (a) => {
+                              const emp = employees.find(e => e.id === a.employeeId);
+                              if (emp && emp.photoUrl) {
+                                try {
+                                  const response = await fetch(emp.photoUrl);
+                                  const blob = await response.blob();
+                                  const fileName = `${emp.firstName}_${emp.lastName}_${emp.cpf || 'N_A'}.jpg`;
+                                  zip.file(fileName, blob);
+                                } catch (e) {
+                                  console.error('Error fetching photo:', e);
+                                }
+                              }
+                            });
+                            
+                            await Promise.all(promises);
+                            const content = await zip.generateAsync({ type: 'blob' });
+                            saveAs(content, `fotos_diaristas_${companyName.replace(/\s+/g, '_')}.zip`);
+                          }}
+                          className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-100 font-black uppercase tracking-widest text-[9px] hover:bg-slate-100 transition-all"
+                        >
+                          Baixar Fotos
+                        </button>
+                      </div>
                       <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
                         <ChevronDown size={16} />
                       </div>
@@ -8214,7 +8261,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           a.date === today &&
           a.status === 'SCHEDULED'
         );
-        if (assignment && type === 'IN') {
+        if (assignment && type === 'OUT') {
           await updateDocument('assignments', assignment.id, { status: 'COMPLETED' });
         }
 
