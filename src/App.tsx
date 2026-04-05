@@ -7796,7 +7796,15 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
           if (profileBase64) {
             const capturedData = photo.split(',')[1];
-            const prompt = "Compare estas duas fotos. A primeira é a foto de perfil oficial e a segunda é a foto tirada agora no ponto. A pessoa na primeira foto é a mesma pessoa na segunda foto? Responda apenas 'SIM' ou 'NAO'. Se houver dúvida ou se as fotos forem muito diferentes, responda 'NAO'.";
+            const prompt = `Você é um sistema de segurança de ponto eletrônico. Compare estas duas fotos. 
+A primeira é a foto de perfil oficial e a segunda é a foto tirada agora no ponto.
+Analise rigorosamente:
+1. A pessoa na primeira foto é a mesma pessoa na segunda foto?
+2. Detecção de Vivacidade (Liveness): A segunda foto parece ser de uma pessoa real e viva presente no momento? 
+   - Rejeite (NAO) se parecer uma foto de uma foto (bordas de papel, textura de papel).
+   - Rejeite (NAO) se parecer uma foto de uma tela (padrões de moiré, reflexos de tela, bordas de monitor, pixels visíveis).
+   - Rejeite (NAO) se a iluminação ou profundidade parecerem artificiais (como uma máscara ou recorte).
+Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. Caso contrário, responda 'NAO'.`;
             
             const result = await ai.models.generateContent({
               model,
@@ -7940,6 +7948,11 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
               />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-48 h-64 sm:w-64 sm:h-80 border-2 border-white/50 rounded-[80px] sm:rounded-[100px] border-dashed" />
+              </div>
+              <div className="absolute bottom-6 left-0 w-full flex justify-center px-6">
+                <div className="bg-blue-600/90 backdrop-blur-md px-4 py-2 rounded-full border border-blue-400/30 shadow-lg">
+                  <p className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-[0.2em] animate-pulse">Pisque ou sorria para a câmera</p>
+                </div>
               </div>
             </div>
             <button 
