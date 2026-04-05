@@ -206,6 +206,20 @@
         "assignmentId": { "type": "string" }
       },
       "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "DiditSession": {
+      "title": "DiditSession",
+      "description": "A session for Didit face verification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "COMPLETED", "FAILED"] },
+        "result": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["employeeId", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -222,6 +236,7 @@
     "/settings": { "schema": "Setting", "description": "Collection of global settings." },
     "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." },
     "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
-    "/users": { "schema": "User", "description": "Collection of user profiles." }
+    "/users": { "schema": "User", "description": "Collection of user profiles." },
+    "/diditSessions": { "schema": "DiditSession", "description": "Collection of Didit verification sessions." }
   }
 }

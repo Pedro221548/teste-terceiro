@@ -31,6 +31,7 @@ import {
   MapPin,
   Plus,
   ShieldCheck,
+  UserCheck,
   Download,
   Trash2,
   Mail,
@@ -7684,11 +7685,59 @@ function PrivacyListItem({ title, description }: { title: string, description: s
 }
 
 function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[] }) {
-  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
+  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'DIDIT_VERIFY' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [diditSessionId, setDiditSessionId] = useState<string | null>(null);
   const employee = employees.find(e => e.id === employeeId);
+
+  useEffect(() => {
+    if (diditSessionId && step === 'VERIFYING') {
+      const unsubscribe = onSnapshot(doc(db, 'diditSessions', diditSessionId), async (snapshot) => {
+        const data = snapshot.data();
+        if (data && data.status === 'COMPLETED') {
+          await completeCheckIn();
+        } else if (data && data.status === 'FAILED') {
+          alert('Verificação Didit falhou. Por favor, tente novamente.');
+          setStep('INITIAL');
+          setDiditSessionId(null);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [diditSessionId, step, employeeId, scannedPoint]);
+
+  const completeCheckIn = async () => {
+    if (!scannedPoint || !employee) return;
+
+    // Save Check-in
+    const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const todayCheckIns = checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(today));
+    const type = todayCheckIns.length % 2 === 0 ? 'IN' : 'OUT';
+
+    const newCheckIn: Omit<CheckIn, 'id'> = {
+      agencyId: employee.agencyId,
+      employeeId: employeeId,
+      accessPointId: scannedPoint.id,
+      location: scannedPoint.location,
+      timestamp: new Date().toISOString(),
+      photoUrl: employee.photoUrl || `https://picsum.photos/seed/${employee.id}/200`,
+      type: type
+    };
+    await createDocument('checkIns', newCheckIn);
+
+    // Update Assignment status
+    const assignment = assignments.find(a => 
+      a.employeeId === employeeId && 
+      (a.clientId === scannedPoint.clientId || a.clientId === scannedPoint.id) && 
+      a.date === today &&
+      a.status === 'SCHEDULED'
+    );
+    if (assignment && type === 'IN') {
+      await updateDocument('assignments', assignment.id, { status: 'COMPLETED' });
+    }
+
+    setStep('SUCCESS');
+  };
 
   if (!employee) {
     return (
@@ -7702,170 +7751,37 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     );
   }
 
-  const API_KEY = "i7mnz8H5KviiNkyLMMicWRRrPj1A201ysktJ56ShgJw"; // Chave de Reconhecimento Facial
-
   const handleScan = (text: string) => {
     if (text) {
-      console.log("QR Code lido:", text);
-      console.log("Access Points disponíveis:", accessPoints.map(ap => ap.qrCodeValue));
       const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
-        setStep('PHOTO');
-        startCamera();
+        setStep('DIDIT_VERIFY');
       } else {
-        console.warn("QR Code não encontrado na lista de AccessPoints.");
         alert('QR Code inválido para esta unidade.');
       }
     }
   };
 
-  const handleError = (err: any) => {
-    console.error(err);
-  };
-
-  const startCamera = async () => {
+  const createDiditSession = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.error("Erro ao acessar câmera:", err);
-      alert("Não foi possível acessar a câmera para a selfie.");
-    }
-  };
-
-  const takePhoto = async () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const photo = canvas.toDataURL('image/jpeg');
-        setCapturedPhoto(photo);
-        
-        // Stop camera
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-
+      const response = await fetch('/api/didit/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId })
+      });
+      const data = await response.json();
+      if (data.sessionId) {
+        setDiditSessionId(data.sessionId);
+        // Open verification URL
+        window.open(data.sessionUrl, '_blank');
         setStep('VERIFYING');
-
-        // Geolocation verification
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
-          });
-          const { latitude, longitude } = position.coords;
-          console.log(`Localização atual: ${latitude}, ${longitude}`);
-        } catch (err) {
-          console.error("Erro ao obter localização:", err);
-          alert("Não foi possível obter sua localização. Por favor, permita o acesso.");
-          setStep('PHOTO');
-          return;
-        }
-
-        // Reconhecimento Facial Real usando Gemini
-        console.log(`Iniciando reconhecimento facial real...`);
-        
-        try {
-          const ai = new GoogleGenAI({ apiKey: API_KEY || process.env.GEMINI_API_KEY || '' });
-          const model = "gemini-3-flash-preview";
-
-          // Preparar imagem de perfil
-          let profilePhotoUrl = employee.photoUrl || `https://picsum.photos/seed/${employee.id}/200`;
-          let profileBase64 = "";
-
-          try {
-            const response = await fetch(profilePhotoUrl);
-            const blob = await response.blob();
-            profileBase64 = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-              reader.readAsDataURL(blob);
-            });
-          } catch (e) {
-            console.error("Erro ao carregar foto de perfil para comparação:", e);
-            // Se falhar ao carregar a foto de perfil, vamos permitir o ponto mas avisar no log
-            profileBase64 = ""; 
-          }
-
-          if (profileBase64) {
-            const capturedData = photo.split(',')[1];
-            const prompt = `Você é um sistema de segurança de ponto eletrônico. Compare estas duas fotos. 
-A primeira é a foto de perfil oficial e a segunda é a foto tirada agora no ponto.
-Analise rigorosamente:
-1. A pessoa na primeira foto é a mesma pessoa na segunda foto?
-2. Detecção de Vivacidade (Liveness): A segunda foto parece ser de uma pessoa real e viva presente no momento? 
-   - Rejeite (NAO) se parecer uma foto de uma foto (bordas de papel, textura de papel).
-   - Rejeite (NAO) se parecer uma foto de uma tela (padrões de moiré, reflexos de tela, bordas de monitor, pixels visíveis).
-   - Rejeite (NAO) se a iluminação ou profundidade parecerem artificiais (como uma máscara ou recorte).
-Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. Caso contrário, responda 'NAO'.`;
-            
-            const result = await ai.models.generateContent({
-              model,
-              contents: [
-                {
-                  parts: [
-                    { text: prompt },
-                    { inlineData: { data: profileBase64, mimeType: "image/jpeg" } },
-                    { inlineData: { data: capturedData, mimeType: "image/jpeg" } },
-                  ]
-                }
-              ]
-            });
-
-            const responseText = result.text?.toUpperCase() || "";
-            const isMatch = responseText.includes('SIM');
-
-            if (!isMatch) {
-              alert('Reconhecimento facial falhou. A pessoa na foto não corresponde ao funcionário cadastrado. Por favor, tente novamente.');
-              setStep('PHOTO');
-              startCamera();
-              return;
-            }
-          } else {
-            console.warn("Foto de perfil não disponível para comparação. Prosseguindo sem verificação facial.");
-          }
-        } catch (error) {
-          console.error("Erro no reconhecimento facial com Gemini:", error);
-          // Em caso de erro na API, permitimos o ponto para não bloquear o funcionário, 
-          // mas em um cenário real isso deveria ser tratado com mais rigor.
-        }
-
-        // Save Check-in
-        const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        const todayCheckIns = checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(today));
-        const type = todayCheckIns.length % 2 === 0 ? 'IN' : 'OUT';
-
-        const newCheckIn: Omit<CheckIn, 'id'> = {
-          agencyId: employee.agencyId,
-          employeeId: employeeId,
-          accessPointId: scannedPoint!.id,
-          location: scannedPoint!.location,
-          timestamp: new Date().toISOString(),
-          photoUrl: photo,
-          type: type
-        };
-        await createDocument('checkIns', newCheckIn);
-
-        // Update Assignment status
-        const assignment = assignments.find(a => 
-          a.employeeId === employeeId && 
-          (a.clientId === scannedPoint!.clientId || a.clientId === scannedPoint!.id) && 
-          a.date === today &&
-          a.status === 'SCHEDULED'
-        );
-        if (assignment && type === 'IN') {
-          await updateDocument('assignments', assignment.id, { status: 'COMPLETED' });
-        }
-
-        setStep('SUCCESS');
+      } else {
+        throw new Error(data.error || 'Failed to create session');
       }
+    } catch (error) {
+      console.error("Erro ao criar sessão Didit:", error);
+      alert("Erro ao iniciar verificação Didit.");
     }
   };
 
@@ -7886,8 +7802,7 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
         {step === 'INITIAL' && (
           <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <div className="w-24 h-24 sm:w-32 sm:h-32 bg-blue-50 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-blue-600 shadow-inner">
-              <Scan size={48} className="sm:hidden" />
-              <Scan size={64} className="hidden sm:block" />
+              <Scan size={64} />
             </div>
             <div className="text-center space-y-2">
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Pronto para começar?</h3>
@@ -7911,7 +7826,7 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
                     handleScan(result[0].rawValue);
                   }
                 }}
-                onError={handleError}
+                onError={(err) => console.error(err)}
                 styles={{
                   container: { width: '100%', height: '100%' },
                   video: { width: '100%', height: '100%', objectFit: 'cover' }
@@ -7919,9 +7834,6 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
                 allowMultiple={false}
                 scanDelay={300}
               />
-              <div className="absolute inset-0 border-[30px] sm:border-[60px] border-black/40 pointer-events-none">
-                <div className="w-full h-full border-2 border-white/50 border-dashed rounded-xl" />
-              </div>
             </div>
             <button 
               onClick={() => setStep('INITIAL')}
@@ -7932,36 +7844,23 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
           </div>
         )}
 
-        {step === 'PHOTO' && (
+        {step === 'DIDIT_VERIFY' && (
           <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <div className="text-center space-y-1">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial Didit</h3>
               <p className="text-[10px] sm:text-sm text-blue-600 font-bold uppercase tracking-widest">{scannedPoint?.location}</p>
             </div>
-            <div className="relative aspect-square w-full rounded-2xl sm:rounded-[2rem] overflow-hidden bg-black border-4 border-blue-600 shadow-2xl">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-64 sm:w-64 sm:h-80 border-2 border-white/50 rounded-[80px] sm:rounded-[100px] border-dashed" />
-              </div>
-              <div className="absolute bottom-6 left-0 w-full flex justify-center px-6">
-                <div className="bg-blue-600/90 backdrop-blur-md px-4 py-2 rounded-full border border-blue-400/30 shadow-lg">
-                  <p className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-[0.2em] animate-pulse">Pisque ou sorria para a câmera</p>
-                </div>
-              </div>
+            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
+              <UserCheck size={64} />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-slate-500 font-medium">Para garantir sua segurança, utilizaremos o Didit para prova de vida e reconhecimento facial.</p>
             </div>
             <button 
-              onClick={takePhoto}
+              onClick={createDiditSession}
               className="w-full py-4 sm:py-5 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
             >
-              <Camera size={20} className="sm:hidden" />
-              <Camera size={24} className="hidden sm:block" />
-              Tirar Foto e Bater Ponto
+              Iniciar Verificação Didit
             </button>
           </div>
         )}
@@ -7969,23 +7868,20 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
         {step === 'VERIFYING' && (
           <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
             <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
-              <div className="absolute inset-0 border-4 sm:border-8 border-slate-100 rounded-full" />
+              <div className="absolute inset-0 border-8 border-slate-100 rounded-full" />
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
+                className="absolute inset-0 border-8 border-blue-600 rounded-full border-t-transparent"
               />
               <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                <Camera size={32} className="sm:hidden" />
-                <Camera size={40} className="hidden sm:block" />
+                <ShieldCheck size={40} />
               </div>
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Validando Identidade</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Processando reconhecimento facial via IA...</p>
-              <div className="mt-4 sm:mt-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 rounded-xl inline-block border border-slate-100">
-                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">Protocolo: {API_KEY.substring(0, 8)}</p>
-              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Aguardando Didit</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Por favor, complete a verificação na janela que se abriu.</p>
+              <p className="text-[10px] text-blue-600 font-bold uppercase animate-pulse">Sincronizando com o servidor...</p>
             </div>
           </div>
         )}
@@ -7997,38 +7893,17 @@ Responda APENAS 'SIM' se for a mesma pessoa E a foto for claramente real/viva. C
               animate={{ scale: 1 }}
               className="w-24 h-24 sm:w-32 sm:h-32 bg-emerald-50 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-emerald-600 shadow-inner"
             >
-              <CheckCircle size={48} className="sm:hidden" />
-              <CheckCircle size={64} className="hidden sm:block" />
+              <CheckCircle size={64} />
             </motion.div>
-            <div className="text-center space-y-4">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Ponto Registrado!</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Seu registro foi processado e enviado com sucesso.</p>
-              <div className="p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-[2rem] text-left space-y-3 sm:space-y-4 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                    <MapPin size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Localização</p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                    <Clock size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-700">{new Date().toLocaleString('pt-BR')}</p>
-                  </div>
-                </div>
-              </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Ponto Registrado!</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Sua presença foi confirmada com sucesso via Didit.</p>
             </div>
             <button 
               onClick={() => setStep('INITIAL')}
-              className="w-full py-4 sm:py-5 bg-slate-900 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-black transition-all shadow-xl active:scale-95"
+              className="w-full py-4 sm:py-5 bg-slate-900 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-800 transition-all shadow-xl active:scale-95"
             >
-              Concluir
+              Voltar ao Início
             </button>
           </div>
         )}
