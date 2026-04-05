@@ -4432,7 +4432,9 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                 Selecionar Parceiro
               </h3>
               <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {clients.map(cli => (
+                {clients
+                  .filter(cli => units.some(u => u.clientId === cli.id))
+                  .map(cli => (
                   <button 
                     key={cli.id}
                     onClick={() => setSelectedClientId(cli.id)}
@@ -5083,8 +5085,11 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     await deleteDocument('companies', id);
   };
 
-  const handleDeleteUnit = async (id: string) => {
-    await deleteDocument('units', id);
+  const handleDeleteUnit = async (unit: Unit) => {
+    if (unit.clientId) {
+      await deleteDocument('clients', unit.clientId);
+    }
+    await deleteDocument('units', unit.id);
   };
 
   const handleUpdateCompanyStatus = async (id: string, status: 'ACTIVE' | 'PENDING' | 'BLOCKED') => {
@@ -5833,7 +5838,11 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       <ConfirmationModal 
         isOpen={!!showDeleteUnitConfirm}
         onClose={() => setShowDeleteUnitConfirm(null)}
-        onConfirm={() => showDeleteUnitConfirm && handleDeleteUnit(showDeleteUnitConfirm)}
+        onConfirm={() => {
+          const unit = units.find(u => u.id === showDeleteUnitConfirm);
+          if (unit) handleDeleteUnit(unit);
+          setShowDeleteUnitConfirm(null);
+        }}
         title="Excluir Unidade"
         message="Deseja realmente excluir esta unidade?"
       />
