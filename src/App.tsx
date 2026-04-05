@@ -7777,18 +7777,16 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (e) {
-          // If not JSON, use the status text
           errorMessage = response.statusText || errorMessage;
         }
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      if (data.sessionId) {
+      if (data.sessionUrl) {
         setDiditSessionId(data.sessionId);
-        // Open verification URL
-        window.open(data.sessionUrl, '_blank');
-        setStep('VERIFYING');
+        // Redirect directly to the verification URL
+        window.location.href = data.sessionUrl;
       } else {
         throw new Error(data.error || 'Failed to create session');
       }
