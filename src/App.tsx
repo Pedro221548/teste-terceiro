@@ -4682,6 +4682,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       agencyId: targetAgencyId,
       employeeId: empId,
       clientId: selectedClientId,
+      unitId: units.find(u => u.clientId === selectedClientId)?.id,
       date: selectedDate,
       value: getScaleValue(emp.rating),
       status: 'SCHEDULED',
@@ -4703,6 +4704,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       assignmentId: assignmentId,
       link: 'employee_profile'
     });
+
+    // Notify Unit Manager
+    const unit = units.find(u => u.clientId === selectedClientId);
+    if (unit) {
+      await createDocument('notifications', {
+        userId: 'UNIT_' + unit.id,
+        agencyId: targetAgencyId,
+        title: 'Profissional Confirmado',
+        message: `O profissional ${emp.firstName} ${emp.lastName} foi escalado para a unidade ${unit.name} no dia ${formatDateBR(selectedDate)}.`,
+        type: 'INFO',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    }
     
     // WhatsApp Notification with confirmation link
     const appUrl = window.location.origin;

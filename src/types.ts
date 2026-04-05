@@ -150,6 +150,7 @@ export interface Assignment {
   agencyId: string;
   employeeId: string;
   clientId: string;
+  unitId?: string;
   date: string;
   value: number;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
