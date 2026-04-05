@@ -1574,6 +1574,7 @@ export default function App() {
                       clients={clients}
                       units={units}
                       companies={companies}
+                      agencies={agencies}
                     />
                   </div>
                 )}
@@ -3104,7 +3105,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[] }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
@@ -3300,7 +3301,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               const cli = clients.find(c => c.id === as.clientId);
               const unit = units.find(u => u.clientId === cli?.id);
               const company = companies.find(c => c.id === unit?.companyId);
-              const locationDisplay = cli?.location?.startsWith('http') ? 'Ver no Mapa' : (cli?.location || company?.name || 'Unidade Central');
+              const agency = agencies.find(a => a.id === as.agencyId);
               return (
                 <div key={as.id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
@@ -3311,13 +3312,29 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name}</h4>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Empresa: {company?.name || 'N/A'}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Unidade: {unit?.name || 'N/A'}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Responsável: {unit?.managerName || 'N/A'}</p>
+                      
+                      <div className="flex flex-wrap items-center gap-3 mt-4">
+                        {cli?.location?.startsWith('http') ? (
+                          <a href={cli.location} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+                            <MapPin size={12} /> Ver no Mapa
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                            <MapPin size={12} /> {cli?.location || 'Localização não definida'}
+                          </span>
+                        )}
+                        {agency?.phone && (
+                          <a href={`https://wa.me/${agency.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+                            <Phone size={12} /> Suporte
+                          </a>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 text-[9px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
                         <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={12} className="text-blue-600" /> {formatDateBR(as.date)}</span>
                         <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={12} className="text-blue-600" /> 08:00 - 17:00</span>
-                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm max-w-[120px] sm:max-w-none">
-                          <MapPin size={12} className="text-blue-600" /> 
-                          <span className="truncate">{locationDisplay}</span>
-                        </span>
                       </div>
                     </div>
                   </div>
