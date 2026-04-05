@@ -7702,7 +7702,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     );
   }
 
-  const API_KEY = "B1pjmJOODdN7OWa5CY9qgqZCLdgCqez4"; // Chave de Reconhecimento Facial
+  const API_KEY = "i7mnz8H5KviiNkyLMMicWRRrPj1A201ysktJ56ShgJw"; // Chave de Reconhecimento Facial
 
   const handleScan = (text: string) => {
     if (text) {
@@ -7773,7 +7773,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         console.log(`Iniciando reconhecimento facial real...`);
         
         try {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+          const ai = new GoogleGenAI({ apiKey: API_KEY || process.env.GEMINI_API_KEY || '' });
           const model = "gemini-3-flash-preview";
 
           // Preparar imagem de perfil
