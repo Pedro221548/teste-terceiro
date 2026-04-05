@@ -8421,7 +8421,20 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       const newUid = userCredential.user.uid;
 
       if (companyId && agencyId) {
-        // Create the Unit first
+        // Create User document first to establish role for security rules
+        await setDocument('users', newUid, { 
+          id: newUid,
+          role: 'COMPANY', 
+          companyId, 
+          agencyId,
+          email: formData.email,
+          fullName: formData.fullName,
+          status: 'PENDING',
+          password: formData.password,
+          createdAt: new Date().toISOString()
+        });
+
+        // Create the Unit
         const newUnit: Omit<Unit, 'id'> = {
           agencyId,
           companyId,
@@ -8455,19 +8468,6 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           email: formData.email,
           role: 'COMPANY',
           status: 'PENDING',
-          createdAt: new Date().toISOString()
-        });
-        
-        // Create User document
-        await setDocument('users', newUid, { 
-          id: newUid,
-          role: 'COMPANY', 
-          companyId, 
-          agencyId,
-          email: formData.email,
-          fullName: formData.fullName,
-          status: 'PENDING',
-          password: formData.password,
           createdAt: new Date().toISOString()
         });
       }
