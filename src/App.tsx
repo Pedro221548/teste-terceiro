@@ -668,9 +668,9 @@ export default function App() {
         if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId || !d.agencyId);
         return data;
       }
-      if (role === 'AGENCY') return data.filter(d => d.agencyId === currentAgencyId || !d.agencyId);
-      // For COMPANY and EMPLOYEE, they are already filtered by their specific constraints in subscribeToCollection if applicable, 
-      // but we should ensure they only see their agency's data if they are linked to one.
+      if (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') {
+        if (currentAgencyId) return data.filter(d => d.agencyId === currentAgencyId || !d.agencyId);
+      }
       return data;
     };
 
@@ -696,7 +696,7 @@ export default function App() {
       }
     }, assignmentConstraints);
     
-    const unsubFeedbacks = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Feedback>('feedbacks', (data) => setFeedbacks(filterByAgency(data))) : () => {};
+    const unsubFeedbacks = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Feedback>('feedbacks', (data) => setFeedbacks(filterByAgency(data))) : () => {};
     
     // Only agency/admin sees contacts
     const unsubContacts = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<ContactRequest>('contacts', (data) => setContacts(filterByAgency(data))) : () => {};
@@ -709,7 +709,7 @@ export default function App() {
       });
     }) : () => {};
     
-    const unsubAccessPoints = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<AccessPoint>('accessPoints', (data) => setAccessPoints(filterByAgency(data))) : () => {};
+    const unsubAccessPoints = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<AccessPoint>('accessPoints', (data) => setAccessPoints(filterByAgency(data))) : () => {};
     
     // Role-based check-ins subscription
     const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
@@ -725,7 +725,7 @@ export default function App() {
       }
     }, checkInConstraints);
 
-    const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<Company>('companies', (data) => setCompanies(filterByAgency(data))) : () => {};
+    const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN' || role === 'COMPANY') ? subscribeToCollection<Company>('companies', (data) => setCompanies(filterByAgency(data))) : () => {};
     const unsubUnits = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Unit>('units', (data) => setUnits(filterByAgency(data))) : () => {};
     const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
     const unsubCompanyRequests = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyRequest>('companyRequests', (data) => setCompanyRequests(filterByAgency(data))) : () => {};
@@ -3109,6 +3109,7 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
       await setDocument('users', newUid, { 
         role: 'EMPLOYEE', 
         email: employee.personalEmail,
+        agencyId: employee.agencyId,
         forcePasswordChange: true,
         createdAt: new Date().toISOString()
       });
@@ -6756,6 +6757,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns
 
     const newAP: Omit<AccessPoint, 'id'> = {
       agencyId: targetAgencyId,
+      clientId: unit.clientId,
       managerName: unit.managerName,
       location: unit.location,
       qrCodeValue: `unit-${unit.id}-${Date.now()}`,

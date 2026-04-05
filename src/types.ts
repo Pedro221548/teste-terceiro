@@ -165,6 +165,7 @@ export interface ContactRequest {
 export interface AccessPoint {
   id: string;
   agencyId: string;
+  clientId?: string;
   managerName: string;
   location: string;
   qrCodeValue: string;
