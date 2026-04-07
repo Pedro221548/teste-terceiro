@@ -55,14 +55,16 @@ import {
   XCircle,
   Edit2,
   ExternalLink,
-  Activity
+  Activity,
+  Play,
+  HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
 import { createNewUser } from './secondary-auth';
@@ -167,7 +169,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   const menuItems: MenuItem[] = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
-    { id: 'admin_services', label: 'Monitoramento', icon: Activity, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
@@ -205,7 +207,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
       </AnimatePresence>
 
       <aside className={`
-        fixed top-0 left-0 bottom-0 z-50 w-72 bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out lg:translate-x-0
+        fixed top-0 left-0 bottom-0 z-50 w-72 bg-slate-50 border-r border-slate-200 transition-transform duration-300 ease-in-out lg:translate-x-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
@@ -287,10 +289,11 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
   const getTitle = () => {
     switch (activeTab) {
       case 'admin_dashboard': return 'Dashboard Super Admin';
+      case 'admin_agencies': return 'Gestão de Agências';
+      case 'admin_plans': return 'Planos de Assinatura';
       case 'admin_companies': return 'Gestão de Empresas';
       case 'admin_users': return 'Gestão de Usuários';
       case 'admin_documents': return 'Controle de Documentos';
-      case 'admin_services': return 'Monitoramento de Serviços';
       case 'dashboard': return 'Dashboard Geral';
       case 'staffing': return 'Gestão de Diaristas';
       case 'companies': return 'Empresas Parceiras';
@@ -312,7 +315,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
+    <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -519,6 +522,7 @@ export default function App() {
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [currentAgencyId, setCurrentAgencyId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
@@ -571,7 +575,50 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (role === 'ADMIN' && plans.length === 0 && isAuthReady) {
+      const initializePlans = async () => {
+        const defaultPlans: Plan[] = [
+          {
+            id: 'STARTER',
+            name: 'Plano Starter',
+            price: 0,
+            maxEmployees: 10,
+            maxCompanies: 3,
+            features: ['Gestão de até 3 Empresas Parceiras', 'Dashboard Geral de Operações', 'Escala de Trabalho (Agenda)'],
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'PROFESSIONAL',
+            name: 'Plano Professional',
+            price: 0,
+            maxEmployees: 50,
+            maxCompanies: 9999,
+            features: ['Tudo do Starter', 'Empresas Parceiras ilimitadas', 'Controle de Acesso via QR Code (PONTO)', 'Gestão de Feedbacks e Avaliações', 'Configuração de Precificação customizada', 'Relatórios de Produtividade'],
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'ENTERPRISE',
+            name: 'Plano Enterprise',
+            price: 0,
+            maxEmployees: 9999,
+            maxCompanies: 9999,
+            features: ['Tudo do Professional', 'White-label parcial', 'Módulo de Faturamento Automático', 'Suporte Prioritário', 'Dashboard de Auditoria'],
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        
+        for (const plan of defaultPlans) {
+          await setDocument('plans', plan.id, plan);
+        }
+      };
+      initializePlans();
+    }
+  }, [role, plans.length, isAuthReady]);
+
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
 
@@ -754,9 +801,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthReady || !user) return;
+    if (!isAuthReady) return;
 
     const unsubs: (() => void)[] = [];
+
+    // Fetch plans publicly for login page and other views
+    unsubs.push(subscribeToCollection<Plan>('plans', setPlans));
+
+    if (!user) {
+      return () => {
+        unsubs.forEach(unsub => unsub());
+      };
+    }
 
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
@@ -1053,208 +1109,453 @@ export default function App() {
     return (
       <div className="min-h-screen flex bg-white overflow-hidden">
         {/* Left Side: Branding & Purpose */}
-        <div className="hidden lg:flex lg:w-1/2 bg-slate-950 p-20 flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-600/20 via-accent-violet/20 to-accent-rose/20 opacity-30" />
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/20 rounded-full -mr-80 -mt-80 blur-[140px]" />
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/20 rounded-full -ml-80 -mb-80 blur-[140px]" />
+        <div className="hidden lg:flex lg:w-[45%] bg-slate-950 p-16 flex-col justify-between relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.15),transparent_50%)]" />
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-500/10 rounded-full -mr-96 -mt-96 blur-[160px] animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-accent-violet/10 rounded-full -ml-96 -mb-96 blur-[160px] animate-pulse" style={{ animationDelay: '3s' }} />
           
           <div className="relative z-10">
-            <div className="flex items-center gap-4 mb-20">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-2xl transform -rotate-6">
-                <Building2 size={28} />
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-4 mb-24"
+            >
+              <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center text-slate-950 shadow-[0_20px_50px_rgba(255,255,255,0.1)] transform -rotate-6 hover:rotate-0 transition-all duration-500">
+                <Building2 size={32} />
               </div>
-              <h1 className="text-3xl font-black tracking-tighter text-white font-display">StaffLink</h1>
-            </div>
+              <div>
+                <h1 className="text-4xl font-black tracking-tighter text-white font-display">StaffLink</h1>
+                <p className="text-[10px] font-black text-brand-400 uppercase tracking-[0.3em] leading-none mt-1">Operational Excellence</p>
+              </div>
+            </motion.div>
             
-            <div className="space-y-8 max-w-xl">
-              <motion.h2 
-                initial={{ opacity: 0, y: 20 }}
+            <div className="space-y-10 max-w-xl">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-7xl font-black text-white leading-[0.95] tracking-tight font-display"
+                transition={{ delay: 0.2 }}
               >
-                Gestão de <br />
-                <span className="text-brand-400 italic">Diaristas</span> <br />
-                em tempo real.
-              </motion.h2>
+                <h2 className="text-8xl font-black text-white leading-[0.9] tracking-tight font-display mb-8">
+                  Gestão <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-violet italic">Inteligente</span> <br />
+                  de Diaristas.
+                </h2>
+                <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-8" />
+              </motion.div>
+
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-lg text-slate-400 font-medium leading-relaxed max-w-md"
+                transition={{ delay: 0.3 }}
+                className="text-xl text-slate-400 font-medium leading-relaxed max-w-md"
               >
-                O ecossistema definitivo para agências que buscam automação, controle e excelência operacional.
+                Automatize sua agência com a plataforma líder em controle operacional e satisfação do cliente.
               </motion.p>
               
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-                className="relative rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl mt-12 group"
+                transition={{ delay: 0.5, type: 'spring' }}
+                className="relative rounded-[3.5rem] overflow-hidden border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] mt-16 group"
               >
+                <div className="absolute inset-0 bg-gradient-to-tr from-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10" />
                 <img 
                   src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
                   alt="StaffLink Dashboard" 
-                  className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
+                  className="w-full h-auto object-cover opacity-90 group-hover:scale-105 transition-all duration-1000"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
+                
+                {/* Demo Button Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <button 
+                    onClick={() => setShowDemoModal(true)}
+                    className="flex items-center gap-3 px-8 py-4 bg-white text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-2xl hover:scale-110 active:scale-95 transition-all"
+                  >
+                    <div className="w-8 h-8 bg-brand-500 text-white rounded-full flex items-center justify-center">
+                      <Play size={16} fill="currentColor" />
+                    </div>
+                    Ver Demonstração
+                  </button>
+                </div>
               </motion.div>
             </div>
           </div>
 
-          <div className="relative z-10 flex items-center gap-8 text-slate-500 text-sm font-medium">
-            <span>© 2026 StaffLink Inc.</span>
-            <div className="flex gap-4">
+          <div className="relative z-10 flex items-center gap-8 text-slate-500 text-[10px] font-black uppercase tracking-widest">
+            <span>© 2026 StaffLink Platform</span>
+            <div className="flex gap-6">
               <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-              <a href="#" className="hover:text-white transition-colors">Termos</a>
+              <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-white via-slate-50 to-brand-50/30">
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="w-full max-w-md space-y-10 bg-white p-8 sm:p-12 rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.08)] border border-slate-100 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full -mr-16 -mt-16" />
-            <div className="lg:hidden flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white">
-                <Building2 size={24} />
-              </div>
-              <h1 className="text-2xl font-black tracking-tighter font-display">StaffLink</h1>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-3xl font-black text-slate-900 font-display">Bem-vindo de volta.</h3>
-              <p className="text-slate-500 font-medium">Acesse sua conta para gerenciar suas diarias.</p>
-            </div>
-
-            {isForgotPassword ? (
-              <form onSubmit={handleResetPassword} className="space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-slate-900 font-display">Esqueceu a senha?</h3>
-                  <p className="text-slate-500 font-medium text-sm">Insira seu e-mail para receber um link de redefinição.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Cadastro</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="email" 
-                      placeholder="seu-email@exemplo.com"
-                      className="input-modern pl-12"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {resetStatus === 'SUCCESS' && (
-                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 text-sm font-medium">
-                    E-mail enviado com sucesso! Verifique sua caixa de entrada.
-                  </div>
-                )}
-
-                {resetStatus === 'ERROR' && (
-                  <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
-                    {resetErrorMessage || 'Erro ao enviar e-mail. Verifique se o endereço está correto.'}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <button 
-                    type="submit" 
-                    disabled={resetStatus === 'LOADING'}
-                    className="btn-modern-primary w-full h-14 text-lg disabled:opacity-50"
-                  >
-                    {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link de Redefinição'}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setIsForgotPassword(false)}
-                    className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
-                  >
-                    Voltar para o Login
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <form onSubmit={handleEmailLogin} className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="email" 
-                        placeholder="exemplo@stafflink.com"
-                        className="input-modern pl-12"
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        required
-                      />
-                    </div>
+        {/* Right Side: Plans & Login */}
+        <div className="w-full lg:w-[55%] flex flex-col bg-slate-100 overflow-y-auto relative selection:bg-brand-100 selection:text-brand-900">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+          
+          <div className="flex-1 flex flex-col items-center py-20 px-8 relative z-10">
+            {/* Login Section */}
+            <div className="w-full max-w-xl mb-40">
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-white p-16 rounded-[4rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 rounded-full -mr-24 -mt-24" />
+                
+                <div className="relative z-10 space-y-12">
+                  <div className="space-y-4">
+                    <h3 className="text-5xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
+                    <p className="text-slate-500 text-lg font-medium">Insira suas credenciais para continuar na plataforma.</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between ml-1">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                  {isForgotPassword ? (
+                    <form onSubmit={handleResetPassword} className="space-y-10">
+                      <div className="space-y-4">
+                        <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Recuperação</label>
+                        <div className="relative">
+                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <input 
+                            type="email" 
+                            placeholder="seu@email.com"
+                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {resetStatus === 'SUCCESS' && (
+                        <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-3xl text-emerald-600 text-sm font-bold flex items-center gap-4">
+                          <CheckCircle2 size={20} />
+                          E-mail enviado! Verifique sua caixa de entrada.
+                        </div>
+                      )}
+
+                      <div className="space-y-5">
+                        <button 
+                          type="submit" 
+                          disabled={resetStatus === 'LOADING'}
+                          className="w-full py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 disabled:opacity-50"
+                        >
+                          {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link de Recuperação'}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setIsForgotPassword(false)}
+                          className="w-full py-2 text-slate-400 font-black uppercase tracking-widest text-xs hover:text-slate-600 transition-all"
+                        >
+                          Voltar ao Login
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleEmailLogin} className="space-y-8">
+                      <div className="space-y-4">
+                        <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                        <div className="relative">
+                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <input 
+                            type="email" 
+                            placeholder="admin@stafflink.com"
+                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            value={emailInput}
+                            onChange={(e) => setEmailInput(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                          <button 
+                            type="button"
+                            onClick={() => setIsForgotPassword(true)}
+                            className="text-[11px] font-black text-brand-600 uppercase tracking-widest hover:text-brand-700 transition-colors"
+                          >
+                            Esqueceu sua senha?
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <input 
+                            type="password" 
+                            placeholder="••••••••"
+                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {loginError && (
+                        <div className="p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-red-600 text-sm font-bold">
+                          <AlertCircle size={20} />
+                          {loginError}
+                        </div>
+                      )}
+
                       <button 
-                        type="button"
-                        onClick={() => setIsForgotPassword(true)}
-                        className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"
+                        type="submit" 
+                        className="w-full py-7 bg-slate-950 text-white rounded-[2.5rem] font-black uppercase tracking-[0.25em] text-sm hover:bg-slate-800 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center gap-4"
                       >
-                        Esqueceu a senha?
+                        Entrar na Plataforma
+                        <ArrowRight size={22} />
                       </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="password" 
-                        placeholder="••••••••"
-                        className="input-modern pl-12"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {loginError && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium"
-                    >
-                      <AlertCircle size={18} />
-                      {loginError}
-                    </motion.div>
+                    </form>
                   )}
+                </div>
+              </motion.div>
+            </div>
 
-                  <button type="submit" className="btn-modern-primary w-full h-14 text-lg">
-                    Entrar na Plataforma
-                    <ChevronRight size={20} />
-                  </button>
-                </form>
-              </>
-            )}
+            {/* Plans Section */}
+            <div className="w-full max-w-5xl mb-32">
+              <div className="text-center mb-16">
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] shadow-sm mb-6 inline-block"
+                >
+                  Planos & Preços
+                </motion.span>
+                <h2 className="text-5xl font-black text-slate-950 tracking-tight font-display">A escala que você precisa.</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {plans.sort((a, b) => a.price - b.price).map((plan, index) => {
+                  const isPopular = plan.id === 'PROFESSIONAL';
+                  const isEnterprise = plan.id === 'ENTERPRISE';
+                  
+                  return (
+                    <motion.div 
+                      key={plan.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 + 0.5 }}
+                      className={`relative flex flex-col bg-white p-10 rounded-[3rem] border transition-all duration-500 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] group ${
+                        isPopular ? 'border-brand-500 shadow-xl shadow-brand-500/5 scale-105 z-20' : 'border-slate-200 z-10'
+                      }`}
+                    >
+                      {isPopular && (
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl shadow-brand-500/20">
+                          Recomendado
+                        </div>
+                      )}
+                      
+                      <div className="mb-10">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 transition-all duration-500 group-hover:scale-110 ${
+                          isEnterprise ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' :
+                          isPopular ? 'bg-brand-500 text-white shadow-lg shadow-brand-200' :
+                          'bg-slate-950 text-white shadow-lg shadow-slate-200'
+                        }`}>
+                          {isEnterprise ? <ShieldCheck size={28} /> : isPopular ? <Activity size={28} /> : <Briefcase size={28} />}
+                        </div>
+                        <h4 className="font-black text-slate-950 uppercase tracking-tight text-xl mb-2">{plan.name}</h4>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl font-black text-slate-950 tracking-tighter">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">/mês</span>
+                        </div>
+                      </div>
 
-          </motion.div>
+                      <ul className="space-y-5 mb-10 flex-1">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm text-slate-600 font-medium leading-snug">
+                            <div className={`mt-1 p-0.5 rounded-full ${isPopular ? 'text-brand-500' : 'text-slate-400'}`}>
+                              <CheckCircle2 size={16} />
+                            </div>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="pt-8 border-t border-slate-50 space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
+                          <span className="text-sm font-black text-slate-950">{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
+                          <span className="text-sm font-black text-slate-950">{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* How it Works Section */}
+            <div className="w-full max-w-5xl mb-24">
+              <div className="text-center mb-12">
+                <h3 className="text-3xl font-black text-slate-950 tracking-tight font-display">Como Funciona</h3>
+                <p className="text-slate-500 font-medium mt-2">Três passos simples para transformar sua agência</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                {[
+                  { step: '01', title: 'Cadastre sua Agência', desc: 'Crie sua conta em minutos e configure seu perfil operacional.', icon: Building2 },
+                  { step: '02', title: 'Aloque Diaristas', desc: 'Gerencie escalas e atribua profissionais às demandas dos clientes.', icon: Users },
+                  { step: '03', title: 'Monitore em Tempo Real', desc: 'Acompanhe o status das diárias e receba feedbacks instantâneos.', icon: Activity }
+                ].map((item, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 + (i * 0.1) }}
+                    className="text-center space-y-6 group"
+                  >
+                    <div className="relative inline-block">
+                      <div className="w-20 h-20 bg-white rounded-[2rem] border border-slate-200 flex items-center justify-center text-brand-500 shadow-sm group-hover:shadow-xl group-hover:-translate-y-2 transition-all duration-500">
+                        <item.icon size={32} />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-950 text-white rounded-full flex items-center justify-center text-[10px] font-black border-4 border-slate-100">
+                        {item.step}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-black text-slate-950 uppercase tracking-tight">{item.title}</h4>
+                      <p className="text-sm text-slate-500 font-medium leading-relaxed px-4">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* FAQ Section */}
+            <div className="w-full max-w-3xl mb-24">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-200/50 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
+                  <HelpCircle size={12} />
+                  Dúvidas Frequentes
+                </div>
+                <h3 className="text-3xl font-black text-slate-950 tracking-tight font-display">FAQ Rápido</h3>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { q: 'Posso trocar de plano depois?', a: 'Sim! Você pode fazer o upgrade ou downgrade do seu plano a qualquer momento diretamente pelo painel administrativo.' },
+                  { q: 'Como funciona o suporte técnico?', a: 'Oferecemos suporte via chat em tempo real e WhatsApp para todos os planos, com prioridade para os planos Professional e Enterprise.' },
+                  { q: 'Existe período de fidelidade?', a: 'Não. Nossos planos são mensais e você pode cancelar a qualquer momento sem multas ou taxas escondidas.' }
+                ].map((faq, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2 + (i * 0.1) }}
+                    className="bg-white rounded-3xl border border-slate-200 overflow-hidden"
+                  >
+                    <button 
+                      onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
+                      className="w-full p-6 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{faq.q}</span>
+                      <ChevronDown 
+                        size={20} 
+                        className={`text-slate-400 transition-transform duration-300 ${openFaqIndex === i ? 'rotate-180' : ''}`} 
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {openFaqIndex === i && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="px-6 pb-6"
+                        >
+                          <p className="text-sm text-slate-500 font-medium leading-relaxed border-t border-slate-50 pt-4">
+                            {faq.a}
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* WhatsApp Button */}
-        <a 
+        <motion.a 
+          initial={{ scale: 0, rotate: -45 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', delay: 1.5 }}
           href="https://wa.me/5511999999999?text=Olá,%20quero%20conhecer%20a%20plataforma"
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white px-5 py-3 rounded-full font-bold text-sm shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+          className="fixed bottom-8 right-8 z-50 bg-[#25D366] text-white p-5 rounded-full shadow-[0_20px_50px_rgba(37,211,102,0.3)] hover:scale-110 active:scale-90 transition-all group"
         >
-          💬 Fale conosco
-        </a>
+          <Phone size={24} className="group-hover:rotate-12 transition-transform" />
+          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-white text-slate-900 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-100">
+            Fale Conosco
+          </div>
+        </motion.a>
+
+        {/* Demo Modal */}
+        <AnimatePresence>
+          {showDemoModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-slate-950/90 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="w-full max-w-5xl aspect-video bg-slate-900 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl relative"
+              >
+                <button 
+                  onClick={() => setShowDemoModal(false)}
+                  className="absolute top-6 right-6 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md transition-all"
+                >
+                  <X size={24} />
+                </button>
+                
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-12">
+                  <div className="w-24 h-24 bg-brand-500 rounded-full flex items-center justify-center text-white mb-8 animate-pulse">
+                    <Play size={48} fill="currentColor" />
+                  </div>
+                  <h3 className="text-4xl font-black text-white tracking-tight font-display mb-4">Tour Interativo StaffLink</h3>
+                  <p className="text-slate-400 text-lg max-w-md mx-auto">
+                    Assista como automatizamos a gestão de diaristas em tempo real.
+                  </p>
+                  <div className="mt-12 flex gap-4">
+                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
+                      Dashboard
+                    </div>
+                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
+                      Escalas
+                    </div>
+                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
+                      QR Code
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Simulated Video Progress */}
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                    className="h-full bg-brand-500"
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -1309,7 +1610,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <div className="min-h-screen flex bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
         <Sidebar 
           role={role} 
           activeTab={activeTab} 
@@ -1427,6 +1728,7 @@ export default function App() {
                       onSelectAgency={(id: string) => setSelectedAgencyId(id)}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
+                      plans={plans}
                     />
                   </div>
                 )}
@@ -1437,6 +1739,7 @@ export default function App() {
                       companies={companies}
                       employees={employees}
                       usersList={usersList}
+                      plans={plans}
                       onManageAgency={(id) => {
                         setSelectedAgencyId(id);
                         setActiveTab('admin_dashboard');
@@ -1444,17 +1747,12 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'ADMIN' && activeTab === 'admin_services' && (
-                  <div key="admin-services">
-                    <ServiceMonitoring 
-                      assignments={assignments}
-                      companies={companies}
-                      units={units}
-                      employees={employees}
-                      clients={clients}
-                    />
+                {role === 'ADMIN' && activeTab === 'admin_plans' && (
+                  <div key="admin-plans">
+                    <SuperAdminPlans plans={plans} />
                   </div>
                 )}
+                
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'user_management' && (
                   <div key="agency-user-management">
                     <UserManagement 
@@ -1496,6 +1794,7 @@ export default function App() {
                       onSelectAgency={() => {}}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
+                      plans={plans}
                     />
                   </div>
                 )}
@@ -1804,7 +2103,7 @@ function SidebarItem({ icon, label, active, onClick, color }: SidebarItemProps) 
   );
 }
 
-function SuperAdminAgencies({ agencies, companies, employees, usersList, onManageAgency }: { agencies: Agency[], companies: Company[], employees: Employee[], usersList: any[], onManageAgency: (id: string) => void }) {
+function SuperAdminAgencies({ agencies, companies, employees, usersList, onManageAgency, plans }: { agencies: Agency[], companies: Company[], employees: Employee[], usersList: any[], onManageAgency: (id: string) => void, plans: Plan[] }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
@@ -1842,6 +2141,8 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
         ...newAgency,
         id,
         status: 'ACTIVE',
+        plan: 'STARTER',
+        subscriptionStatus: 'TRIAL',
         createdAt: new Date().toISOString(),
         address: {
           zipCode: '',
@@ -1966,6 +2267,91 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contato</p>
                     <p className="text-sm font-bold text-slate-950">{selectedAgency.phone}</p>
                     <p className="text-xs text-slate-500 font-medium">{selectedAgency.email}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Plano de Assinatura */}
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <CreditCard size={14} className="text-cyan-500" />
+                  Plano de Assinatura
+                </h3>
+                <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Plano Atual</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          selectedAgency.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
+                          selectedAgency.plan === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-600' :
+                          'bg-slate-200 text-slate-600'
+                        }`}>
+                          {selectedAgency.plan || 'STARTER'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">
+                          {selectedAgency.subscriptionStatus === 'ACTIVE' ? 'Ativo' : 
+                           selectedAgency.subscriptionStatus === 'TRIAL' ? 'Período de Teste' :
+                           selectedAgency.subscriptionStatus === 'EXPIRED' ? 'Expirado' : 'Pendente'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Mensal</p>
+                      <p className="text-lg font-black text-slate-950">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plans.find(p => p.id === (selectedAgency.plan || 'STARTER'))?.price || 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alterar Plano</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {plans.map(plan => (
+                        <button
+                          key={plan.id}
+                          onClick={async () => {
+                            await updateDocument('agencies', selectedAgency.id, { 
+                              plan: plan.id,
+                              maxEmployees: plan.maxEmployees,
+                              maxCompanies: plan.maxCompanies
+                            });
+                            setSelectedAgency({ ...selectedAgency, plan: plan.id });
+                          }}
+                          className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                            selectedAgency.plan === plan.id
+                            ? 'bg-slate-950 text-white border-slate-950 shadow-lg shadow-slate-200'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                          }`}
+                        >
+                          {plan.name.replace('Plano ', '')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status da Assinatura</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {['ACTIVE', 'PAID', 'TRIAL', 'EXPIRED'].map(status => (
+                        <button
+                          key={status}
+                          onClick={async () => {
+                            await updateDocument('agencies', selectedAgency.id, { subscriptionStatus: status });
+                            setSelectedAgency({ ...selectedAgency, subscriptionStatus: status as any });
+                          }}
+                          className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${
+                            selectedAgency.subscriptionStatus === status
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-100'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                          }`}
+                        >
+                          {status === 'ACTIVE' ? 'Ativo' : 
+                           status === 'PAID' ? 'Pago' :
+                           status === 'TRIAL' ? 'Teste' : 'Expirado'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -2138,7 +2524,16 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
                   <ShieldCheck size={28} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-950 tracking-tight">{agency.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-black text-slate-950 tracking-tight">{agency.name}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                      agency.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
+                      agency.plan === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-600' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {agency.plan || 'STARTER'}
+                    </span>
+                  </div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{agency.responsibleName}</p>
                 </div>
               </div>
@@ -2302,7 +2697,177 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[] }) {
+function SuperAdminPlans({ plans }: { plans: Plan[] }) {
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+
+  const handleUpdatePrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    try {
+      await updateDocument('plans', editingPlan.id, { 
+        price: editingPlan.price,
+        maxEmployees: editingPlan.maxEmployees,
+        maxCompanies: editingPlan.maxCompanies,
+        updatedAt: new Date().toISOString()
+      });
+      setEditingPlan(null);
+      alert('Plano atualizado com sucesso!');
+    } catch (error) {
+      console.error('Error updating plan:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-black text-slate-950 tracking-tighter font-display">Planos de Assinatura</h1>
+        <p className="text-slate-500 font-medium">Configure os valores e limites dos planos da plataforma</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {plans.map(plan => (
+          <motion.div
+            key={plan.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col ${
+              plan.id === 'PROFESSIONAL' ? 'ring-2 ring-blue-500 ring-offset-4' : ''
+            }`}
+          >
+            {plan.id === 'PROFESSIONAL' && (
+              <div className="absolute top-0 right-0 bg-blue-500 text-white px-6 py-2 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest">
+                Mais Popular
+              </div>
+            )}
+
+            <div className="mb-8">
+              <h3 className="text-2xl font-black text-slate-950 tracking-tighter mb-2">{plan.name}</h3>
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-black text-slate-950 tracking-tighter">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+                </span>
+                <span className="text-slate-400 font-bold text-sm uppercase tracking-widest">/mês</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-8 flex-1">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Limites</p>
+                <div className="flex justify-between text-sm font-bold text-slate-950">
+                  <span>Diaristas:</span>
+                  <span>{plan.maxEmployees > 5000 ? 'Ilimitado' : plan.maxEmployees}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-slate-950">
+                  <span>Empresas:</span>
+                  <span>{plan.maxCompanies > 5000 ? 'Ilimitado' : plan.maxCompanies}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Recursos</p>
+                {plan.features.map((feature, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="mt-1 p-0.5 bg-emerald-100 text-emerald-600 rounded-full">
+                      <CheckCircle2 size={12} />
+                    </div>
+                    <span className="text-xs font-medium text-slate-600 leading-relaxed">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setEditingPlan(plan)}
+              className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Edit2 size={16} />
+              Editar Plano
+            </button>
+          </motion.div>
+        ))}
+      </div>
+
+      {editingPlan && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl"
+          >
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-950 tracking-tighter">Editar {editingPlan.name}</h2>
+                <p className="text-slate-500 text-sm font-medium">Ajuste os valores e limites</p>
+              </div>
+              <button onClick={() => setEditingPlan(null)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePrice} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Preço Mensal (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    value={editingPlan.price}
+                    onChange={e => setEditingPlan({ ...editingPlan, price: parseFloat(e.target.value) })}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Max. Diaristas</label>
+                    <input
+                      required
+                      type="number"
+                      value={editingPlan.maxEmployees}
+                      onChange={e => setEditingPlan({ ...editingPlan, maxEmployees: parseInt(e.target.value) })}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Max. Empresas</label>
+                    <input
+                      required
+                      type="number"
+                      value={editingPlan.maxCompanies}
+                      onChange={e => setEditingPlan({ ...editingPlan, maxCompanies: parseInt(e.target.value) })}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium italic px-1">
+                  * Use valores altos (ex: 9999) para representar acesso ilimitado.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingPlan(null)}
+                  className="flex-1 py-4 text-slate-500 font-black uppercase tracking-widest text-xs hover:bg-slate-50 rounded-2xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -2630,6 +3195,58 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {role === 'AGENCY' && (
+          <div className="lg:col-span-3 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Plano {agencies.find(a => a.id === agencyId)?.plan}</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                    agencies.find(a => a.id === agencyId)?.subscriptionStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {agencies.find(a => a.id === agencyId)?.subscriptionStatus === 'TRIAL' ? 'Período de Teste' : 'Ativo'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Seu plano atual e limites</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-8">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all" 
+                      style={{ width: `${Math.min(100, (totalEmployees / (agencies.find(a => a.id === agencyId)?.maxEmployees || 9999)) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{totalEmployees} / {agencies.find(a => a.id === agencyId)?.maxEmployees || '∞'}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-violet-500 transition-all" 
+                      style={{ width: `${Math.min(100, (totalCompanies / (agencies.find(a => a.id === agencyId)?.maxCompanies || 9999)) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{totalCompanies} / {agencies.find(a => a.id === agencyId)?.maxCompanies || '∞'}</span>
+                </div>
+              </div>
+
+              <button className="px-4 py-2 bg-slate-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95">
+                Upgrade
+              </button>
+            </div>
+          </div>
+        )}
         {role === 'ADMIN' && (
           <StatCard 
             icon={<ShieldCheck size={24} />} 
@@ -9874,6 +10491,8 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           addressProof: formData.addressProof
         },
         status: 'PENDING',
+        plan: 'STARTER',
+        subscriptionStatus: 'TRIAL',
         createdAt: new Date().toISOString()
       };
 

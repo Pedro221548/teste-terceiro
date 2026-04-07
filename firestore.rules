@@ -112,7 +112,10 @@ service cloud.firestore {
       return isAuthenticated() &&
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN') ||
-         (request.auth.token.email == "pedroass.11577@gmail.com" || request.auth.token.email == "pedroassfenandes.25@gmail.com" || request.auth.token.email == "pedroass.11577@b11.com"));
+         (request.auth.token.email == "pedroass.11577@gmail.com" || 
+          request.auth.token.email == "pedroassfenandes.25@gmail.com" || 
+          request.auth.token.email == "pedroass.11577@b11.com" ||
+          request.auth.token.email == "george.ciqueira@b11.com"));
     }
 
     function isAgency() {
@@ -221,8 +224,15 @@ service cloud.firestore {
       allow get: if true;
       allow list: if isSuperAdmin() || isAgency();
       allow create: if isSuperAdmin() || isAuthenticated();
-      allow update: if isSuperAdmin() || (isAgency() && agencyId == getAgencyId());
+      allow update: if isSuperAdmin() || 
+                    (isAgency() && agencyId == getAgencyId() && 
+                     (!('plan' in request.resource.data) || request.resource.data.plan == resource.data.plan));
       allow delete: if isSuperAdmin();
+    }
+
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
 
     match /employees/{employeeId} {
@@ -336,6 +346,27 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isSuperAdmin() || isAgencyOwner(resource.data) || resource.data.userId == request.auth.uid);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isSuperAdmin() || isAgency() || isCompanyOwner(resource.data);
+      allow create: if isSuperAdmin() || isAgency();
+      allow update: if isSuperAdmin() || isAgency();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isSuperAdmin() || resource.data.senderId == request.auth.uid);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /bulletins/{bulletinId} {
+      allow read: if isAuthenticated();
+      allow create: if isSuperAdmin() || isAgency();
+      allow update: if isSuperAdmin() || isAgency();
+      allow delete: if isSuperAdmin() || isAgency();
     }
 
     match /settings/{document=**} {

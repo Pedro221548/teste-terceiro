@@ -1,5 +1,7 @@
 export type UserRole = 'ADMIN' | 'AGENCY' | 'COMPANY' | 'EMPLOYEE' | 'REGISTRATION' | 'COMPANY_REGISTRATION' | 'AGENCY_REGISTRATION';
 
+export type PlanType = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+
 export interface Agency {
   id: string;
   name: string; // Razão Social
@@ -50,7 +52,9 @@ export interface Agency {
   pricing?: PricingConfig;
   ratingLabel?: string;
   
-  // Limits
+  // Subscription & Limits
+  plan: PlanType;
+  subscriptionStatus: 'ACTIVE' | 'PAID' | 'TRIAL' | 'EXPIRED';
   maxEmployees?: number;
   maxCompanies?: number;
   
@@ -64,6 +68,16 @@ export interface Agency {
   billingMethod?: 'HOURLY' | 'DAILY' | 'CONTRACT';
   averageValue?: number;
   acceptsUrgency?: boolean;
+}
+
+export interface Plan {
+  id: PlanType;
+  name: string;
+  price: number;
+  maxEmployees: number;
+  maxCompanies: number;
+  features: string[];
+  updatedAt: string;
 }
 
 export interface Employee {

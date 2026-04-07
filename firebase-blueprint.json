@@ -140,6 +140,39 @@
         "createdAt": { "type": "string" }
       },
       "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "Agency": {
+      "title": "Agency",
+      "description": "An agency registered on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tradeName": { "type": "string" },
+        "cnpj": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ACTIVE", "BLOCKED"] },
+        "plan": { "type": "string", "enum": ["STARTER", "PROFESSIONAL", "ENTERPRISE"] },
+        "subscriptionStatus": { "type": "string", "enum": ["ACTIVE", "PAID", "TRIAL", "EXPIRED"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "cnpj", "email", "phone", "status", "plan", "subscriptionStatus", "createdAt"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "A subscription plan configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "maxEmployees": { "type": "number" },
+        "maxCompanies": { "type": "number" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "maxEmployees", "maxCompanies", "features", "updatedAt"]
     }
   },
   "firestore": {
@@ -151,6 +184,8 @@
     "/messages": { "schema": "Message", "description": "Collection of chat messages." },
     "/bulletins": { "schema": "Bulletin", "description": "Collection of announcements." },
     "/invoices": { "schema": "Invoice", "description": "Collection of billing records." },
-    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." }
+    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
+    "/agencies": { "schema": "Agency", "description": "Collection of agencies." },
+    "/plans": { "schema": "Plan", "description": "Collection of subscription plans." }
   }
 }
