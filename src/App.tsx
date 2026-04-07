@@ -146,6 +146,13 @@ class ErrorBoundary extends Component<any, any> {
   }
 }
 
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: any;
+  color: string;
+}
+
 function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout }: { 
   role: string, 
   activeTab: string, 
@@ -157,30 +164,30 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   userPhoto: string | null,
   handleLogout: () => void
 }) {
-  const menuItems = role === 'ADMIN' ? [
-    { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck },
-    { id: 'admin_services', label: 'Monitoramento', icon: Activity },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
+  const menuItems: MenuItem[] = role === 'ADMIN' ? [
+    { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
+    { id: 'admin_services', label: 'Monitoramento', icon: Activity, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'staffing', label: 'Diaristas', icon: Users },
-    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
-    { id: 'registrations', label: 'Cadastros', icon: UserPlus },
-    { id: 'companies', label: 'Empresas', icon: Building2 },
-    { id: 'access_control', label: 'Controle de Acesso', icon: QrCode },
-    { id: 'pricing', label: 'Precificação', icon: CreditCard },
-    { id: 'user_management', label: 'Gestão de Logins', icon: Lock },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'staffing', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'access_control', label: 'Controle de Acesso', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
+    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
+    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
-    { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard },
-    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star },
-    { id: 'company_diaristas', label: 'Diaristas', icon: Users },
-    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon },
+    { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
+    { id: 'company_diaristas', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
-    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon },
-    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar },
-    { id: 'employee_ponto', label: 'PONTO', icon: Scan },
+    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'employee_ponto', label: 'PONTO', icon: Scan, color: 'text-accent-rose bg-rose-50' },
   ];
 
   return (
@@ -202,14 +209,17 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
-          <div className="p-8 border-b border-slate-50">
+          <div className="p-8 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white shadow-xl shadow-slate-950/20 transform -rotate-3 group-hover:rotate-0 transition-transform">
                 <Building2 size={24} />
               </div>
               <div>
                 <h2 className="text-xl font-black tracking-tighter text-slate-950 font-display">StaffLink</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Enterprise</p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Enterprise</p>
+                </div>
               </div>
             </div>
           </div>
@@ -222,6 +232,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                 icon={<item.icon size={18} />}
                 label={item.label}
                 active={activeTab === item.id}
+                color={item.color}
                 onClick={() => {
                   setActiveTab(item.id);
                   setIsMobileMenuOpen(false);
@@ -1043,8 +1054,9 @@ export default function App() {
       <div className="min-h-screen flex bg-white overflow-hidden">
         {/* Left Side: Branding & Purpose */}
         <div className="hidden lg:flex lg:w-1/2 bg-slate-950 p-20 flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full -mr-80 -mt-80 blur-[140px]" />
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full -ml-80 -mb-80 blur-[140px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-600/20 via-accent-violet/20 to-accent-rose/20 opacity-30" />
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/20 rounded-full -mr-80 -mt-80 blur-[140px]" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/20 rounded-full -ml-80 -mb-80 blur-[140px]" />
           
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-20">
@@ -1061,7 +1073,7 @@ export default function App() {
                 className="text-7xl font-black text-white leading-[0.95] tracking-tight font-display"
               >
                 Gestão de <br />
-                <span className="text-slate-400 italic">Diaristas</span> <br />
+                <span className="text-brand-400 italic">Diaristas</span> <br />
                 em tempo real.
               </motion.h2>
               <motion.p 
@@ -1100,12 +1112,13 @@ export default function App() {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-white to-slate-50">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-white via-slate-50 to-brand-50/30">
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-full max-w-md space-y-10 bg-white p-8 sm:p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100"
+            className="w-full max-w-md space-y-10 bg-white p-8 sm:p-12 rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.08)] border border-slate-100 relative overflow-hidden"
           >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full -mr-16 -mt-16" />
             <div className="lg:hidden flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white">
                 <Building2 size={24} />
@@ -1750,7 +1763,16 @@ export default function App() {
 }
 
 
-function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void, key?: string }) {
+interface SidebarItemProps {
+  key?: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  color?: string;
+}
+
+function SidebarItem({ icon, label, active, onClick, color }: SidebarItemProps) {
   return (
     <button 
       onClick={onClick}
@@ -1760,7 +1782,12 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
       }`}
     >
-      <div className={`transition-all duration-300 ${active ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-slate-950 group-hover:scale-110'}`}>
+      <div className={`
+        w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500
+        ${active ? 'bg-white/10' : color ? color.split(' ')[1] : 'bg-slate-100'}
+        ${active ? 'text-white' : color ? color.split(' ')[0] : 'text-slate-500'}
+        group-hover:scale-110 group-hover:rotate-3
+      `}>
         {icon}
       </div>
       <span className={`text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
@@ -2399,7 +2426,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             label="Total de Agências" 
             value={agencies.length.toString()} 
             trend="Cadastradas"
-            color="slate"
+            color="violet"
             onClick={() => setActiveTab('admin_agencies')}
           />
           <StatCard 
@@ -2421,7 +2448,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             label="Empresas Pendentes" 
             value={pendingCompanies.toString()} 
             trend="Limpo"
-            color="orange"
+            color="amber"
           />
           <StatCard 
             icon={<Users size={24} />} 
@@ -2609,7 +2636,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             label="Total de Agências" 
             value={agencies.length.toString()} 
             trend="Na Plataforma"
-            color="slate"
+            color="violet"
             onClick={() => setActiveTab('admin_agencies')}
           />
         )}
@@ -2633,7 +2660,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           value={pendingCompanies.toString()} 
           trend={pendingCompanies > 0 ? "Aguardando" : "Limpo"}
           alert={pendingCompanies > 0}
-          color="orange"
+          color="amber"
           onClick={() => setActiveTab('admin_companies')}
         />
         <StatCard 
@@ -2642,7 +2669,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           value={pendingManagers.toString()} 
           trend={pendingManagers > 0 ? "Aguardando" : "Limpo"}
           alert={pendingManagers > 0}
-          color="orange"
+          color="amber"
           onClick={() => setActiveTab('admin_companies')}
         />
         <StatCard 
@@ -3139,7 +3166,7 @@ function ConfirmationModal({
   );
 }
 
-function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'slate', onClick?: () => void }) {
+function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'slate' | 'violet' | 'amber' | 'cyan', onClick?: () => void }) {
   const colorClasses: any = {
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
@@ -3147,30 +3174,48 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
     orange: 'bg-orange-50 text-orange-600 border-orange-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100',
     rose: 'bg-rose-50 text-rose-600 border-rose-100',
-    slate: 'bg-slate-50 text-slate-900 border-slate-100'
+    slate: 'bg-slate-50 text-slate-900 border-slate-100',
+    violet: 'bg-violet-50 text-accent-violet border-violet-100',
+    amber: 'bg-amber-50 text-accent-amber border-amber-100',
+    cyan: 'bg-cyan-50 text-accent-cyan border-cyan-100'
+  };
+
+  const iconColors: any = {
+    blue: 'bg-blue-600 text-white shadow-blue-500/20',
+    indigo: 'bg-indigo-600 text-white shadow-indigo-500/20',
+    emerald: 'bg-emerald-600 text-white shadow-emerald-500/20',
+    orange: 'bg-orange-600 text-white shadow-orange-500/20',
+    purple: 'bg-purple-600 text-white shadow-purple-500/20',
+    rose: 'bg-rose-600 text-white shadow-rose-500/20',
+    slate: 'bg-slate-600 text-white shadow-slate-500/20',
+    violet: 'bg-accent-violet text-white shadow-violet-500/20',
+    amber: 'bg-accent-amber text-white shadow-amber-500/20',
+    cyan: 'bg-accent-cyan text-white shadow-cyan-500/20'
   };
 
   return (
     <div 
       onClick={onClick}
-      className={`bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/20 transition-all group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+      className={`p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all duration-500 group relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-2xl ${colorClasses[color]} border transition-transform group-hover:scale-110 duration-500`}>
+      <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150 ${iconColors[color]?.split(' ')[0] || 'bg-blue-600'}`} />
+      
+      <div className="flex items-center justify-between mb-6 relative z-10">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 ${iconColors[color] || 'bg-blue-600 text-white'}`}>
           {icon}
         </div>
         {trend && (
-          <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${colorClasses[color]} border`}>
+          <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider ${colorClasses[color]} border shadow-sm`}>
             {trend}
           </span>
         )}
       </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
+      <div className="relative z-10">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
+        <h3 className="text-3xl font-black text-slate-950 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
       </div>
       {alert && (
-        <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+        <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
       )}
     </div>
   );
@@ -3388,7 +3433,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               icon={<Star size={24} />} 
               label="Nível Atual" 
               value={employee.level || 'BRONZE'} 
-              color="orange" 
+              color="amber" 
             />
             <StatCard 
               icon={<CheckCircle size={24} />} 
@@ -8867,19 +8912,19 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
               <StatCard 
-                icon={<Users size={24} className="text-blue-600" />} 
+                icon={<Users size={24} />} 
                 label="Equipe Hoje" 
                 value={todayStaff.length.toString()} 
-                color="blue"
+                color="violet"
               />
               <StatCard 
-                icon={<Calendar size={24} className="text-indigo-600" />} 
+                icon={<Calendar size={24} />} 
                 label="Total de Diarias" 
                 value={myAssignments.length.toString()} 
                 color="indigo"
               />
               <StatCard 
-                icon={<Clock size={24} className="text-emerald-600" />} 
+                icon={<Clock size={24} />} 
                 label="Próxima Diaria" 
                 value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
                 color="emerald"
