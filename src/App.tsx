@@ -54,14 +54,15 @@ import {
   Key,
   XCircle,
   Edit2,
-  ExternalLink
+  ExternalLink,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
 import { createNewUser } from './secondary-auth';
@@ -86,6 +87,21 @@ function formatDateBR(dateString: string) {
     return `${day}/${month}/${year}`;
   }
   return new Date(dateString).toLocaleDateString('pt-BR');
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in meters
 }
 
 function formatTime(dateString: string) {
@@ -144,6 +160,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   const menuItems = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck },
+    { id: 'admin_services', label: 'Monitoramento', icon: Activity },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon },
   ] : role === 'AGENCY' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -494,8 +511,13 @@ export default function App() {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [currentAgencyId, setCurrentAgencyId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
+  const [currentUnitId, setCurrentUnitId] = useState<string | null>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
@@ -678,6 +700,7 @@ export default function App() {
             }
           }
           if (userDoc.companyId) setCurrentCompanyId(userDoc.companyId);
+          if ((userDoc as any).unitId) setCurrentUnitId((userDoc as any).unitId);
           if (userDoc.forcePasswordChange) {
             setNeedsPasswordChange(true);
           }
@@ -709,6 +732,7 @@ export default function App() {
         setUser(prev => (prev as any)?.isCustom ? prev : null);
         setCurrentAgencyId(null);
         setCurrentCompanyId(null);
+        setCurrentUnitId(null);
         setIsPending(false);
         setRole('EMPLOYEE');
       }
@@ -742,18 +766,26 @@ export default function App() {
         if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId || !d.agencyId);
         return data;
       }
-      if (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') {
+      if (role === 'AGENCY' || role === 'COMPANY') {
         if (currentAgencyId) return data.filter(d => d.agencyId === currentAgencyId || !d.agencyId);
+      }
+      if (role === 'EMPLOYEE') {
+        // Employees should see all clients/units/companies to avoid N/A in their schedule
+        // Their assignments are already filtered by employeeId in the query
+        return data;
       }
       return data;
     };
 
-    const unsubEmployees = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE' || role === 'ADMIN') ? subscribeToCollection<Employee>('employees', (data) => setEmployees(filterByAgency(data))) : () => {};
-    const unsubClients = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Client>('clients', (data) => setClients(filterByAgency(data))) : () => {};
+    const unsubEmployees = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE' || role === 'ADMIN') ? subscribeToCollection<Employee>('employees', (data) => setEmployees(filterByAgency(data)), (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
+    const unsubClients = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Client>('clients', (data) => {
+      setClients(filterByAgency(data));
+    }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     
     // Role-based assignments subscription
     const assignmentConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : 
-                                 role === 'COMPANY' ? [where('clientId', '==', (user as any).clientId || user.uid)] : [];
+                                  (role === 'AGENCY' || role === 'COMPANY') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] :
+                                  [];
     const unsubAssignments = subscribeToCollection<Assignment>('assignments', (docs) => {
       const filtered = filterByAgency(docs);
       if (role === 'AGENCY' || role === 'ADMIN') {
@@ -799,8 +831,12 @@ export default function App() {
       }
     }, checkInConstraints);
 
-    const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN' || role === 'COMPANY') ? subscribeToCollection<Company>('companies', (data) => setCompanies(filterByAgency(data))) : () => {};
-    const unsubUnits = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<Unit>('units', (data) => setUnits(filterByAgency(data))) : () => {};
+    const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN' || role === 'COMPANY' || role === 'EMPLOYEE') ? subscribeToCollection<Company>('companies', (data) => {
+      setCompanies(filterByAgency(data));
+    }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
+    const unsubUnits = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Unit>('units', (data) => {
+      setUnits(filterByAgency(data));
+    }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
     const unsubCompanyRequests = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyRequest>('companyRequests', (data) => setCompanyRequests(filterByAgency(data))) : () => {};
 
@@ -821,6 +857,18 @@ export default function App() {
       setNotifications(data);
     }, notificationConstraints);
 
+    const unsubMessages = subscribeToCollection<Message>('messages', (data) => {
+      setMessages(data);
+    });
+
+    const unsubBulletins = subscribeToCollection<Bulletin>('bulletins', (data) => {
+      setBulletins(data);
+    }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []);
+
+    const unsubInvoices = (role === 'AGENCY' || role === 'COMPANY') ? subscribeToCollection<Invoice>('invoices', (data) => {
+      setInvoices(data);
+    }, (role === 'AGENCY' || role === 'COMPANY') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
+
     return () => {
       unsubEmployees();
       unsubClients();
@@ -835,6 +883,9 @@ export default function App() {
       unsubCompanyUsers();
       unsubCompanyRequests();
       unsubNotifications();
+      unsubMessages();
+      unsubBulletins();
+      unsubInvoices();
       unsubs.forEach(unsub => unsub());
     };
   }, [isAuthReady, user, role, currentAgencyId]);
@@ -1380,6 +1431,17 @@ export default function App() {
                     />
                   </div>
                 )}
+                {role === 'ADMIN' && activeTab === 'admin_services' && (
+                  <div key="admin-services">
+                    <ServiceMonitoring 
+                      assignments={assignments}
+                      companies={companies}
+                      units={units}
+                      employees={employees}
+                      clients={clients}
+                    />
+                  </div>
+                )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'user_management' && (
                   <div key="agency-user-management">
                     <UserManagement 
@@ -1508,15 +1570,18 @@ export default function App() {
                 
                 {role === 'COMPANY' && activeTab === 'manager_dashboard' && (
                   <div key="company-dashboard">
-                    {console.log('CompanyDashboard props:', { currentCompanyId, companyUsers, user, assignments, units })}
+                    {console.log('CompanyDashboard props:', { currentCompanyId, currentUnitId, companyUsers, user, assignments, units })}
                     <CompanyDashboard 
                       companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''} 
+                      unitId={currentUnitId || companyUsers.find(cu => cu.email === user?.email)?.unitId}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
                       feedbacks={feedbacks}
                       units={units}
                       companies={companies}
+                      invoices={invoices}
+                      bulletins={bulletins}
                     />
                   </div>
                 )}
@@ -1524,6 +1589,7 @@ export default function App() {
                   <div key="company-feedback">
                     <CompanyFeedbackForm 
                       companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      unitId={currentUnitId || companyUsers.find(cu => cu.email === user?.email)?.unitId}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1535,6 +1601,7 @@ export default function App() {
                   <div key="company-diaristas">
                     <CompanyDiaristas 
                       companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      unitId={currentUnitId || companyUsers.find(cu => cu.email === user?.email)?.unitId}
                       clients={clients}
                       employees={employees}
                       assignments={assignments}
@@ -1547,6 +1614,7 @@ export default function App() {
                   <div key="company-evaluate">
                     <CompanyEvaluateTeam 
                       companyId={currentCompanyId || companyUsers.find(cu => cu.email === user?.email)?.companyId || ''}
+                      unitId={currentUnitId || companyUsers.find(cu => cu.email === user?.email)?.unitId}
                       clients={clients}
                       assignments={assignments}
                       employees={employees}
@@ -1575,6 +1643,8 @@ export default function App() {
                       units={units}
                       companies={companies}
                       agencies={agencies}
+                      bulletins={bulletins}
+                      invoices={invoices}
                     />
                   </div>
                 )}
@@ -1598,6 +1668,7 @@ export default function App() {
                       accessPoints={accessPoints}
                       checkIns={checkIns}
                       assignments={assignments}
+                      units={units}
                     />
                   </div>
                 )}
@@ -3105,13 +3176,19 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[] }) {
-  const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY'>('SCHEDULE');
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[] }) {
+  const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const employee = employees.find(e => e.id === employeeId);
-  const myAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED');
+  const myAssignments = assignments.filter(a => a.employeeId === employeeId);
+  const scheduledAssignments = myAssignments.filter(a => a.status === 'SCHEDULED');
+  const completedAssignments = myAssignments.filter(a => a.status === 'COMPLETED');
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
+  const myBulletins = bulletins.filter(b => b.targetRoles.includes('EMPLOYEE'));
+
+  const totalEarnings = completedAssignments.reduce((acc, curr) => acc + curr.value, 0);
+  const pendingEarnings = myAssignments.filter(a => a.status === 'COMPLETED' && a.paymentStatus === 'PENDING').reduce((acc, curr) => acc + curr.value, 0);
 
   const handleConfirm = async (assignmentId: string) => {
     await updateDocument('assignments', assignmentId, { confirmed: true });
@@ -3271,16 +3348,28 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
       )}
 
-      <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
+      <div className="flex flex-wrap gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
-          Minhas Diarias
+          Agenda
+        </button>
+        <button 
+          onClick={() => setActiveTab('FINANCE')}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'FINANCE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+        >
+          Financeiro
+        </button>
+        <button 
+          onClick={() => setActiveTab('MURAL')}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+        >
+          Mural
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Indisponibilidade
         </button>
@@ -3288,7 +3377,28 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
 
       {activeTab === 'SCHEDULE' ? (
         <div className="grid grid-cols-1 gap-6 px-4 sm:px-0">
-          {myAssignments.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-4">
+            <StatCard 
+              icon={<TrendingUp size={24} />} 
+              label="Taxa de Presença" 
+              value={`${employee.attendanceRate || 100}%`} 
+              color="blue" 
+            />
+            <StatCard 
+              icon={<Star size={24} />} 
+              label="Nível Atual" 
+              value={employee.level || 'BRONZE'} 
+              color="orange" 
+            />
+            <StatCard 
+              icon={<CheckCircle size={24} />} 
+              label="Diárias Realizadas" 
+              value={completedAssignments.length.toString()} 
+              color="emerald" 
+            />
+          </div>
+
+          {scheduledAssignments.length === 0 ? (
             <div className="bg-white p-12 sm:p-24 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
               <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
                 <Calendar size={40} className="sm:hidden" />
@@ -3297,11 +3407,17 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               <p className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em]">Você não tem diarias agendadas no momento.</p>
             </div>
           ) : (
-            myAssignments.map(as => {
+            scheduledAssignments.map(as => {
               const cli = clients.find(c => c.id === as.clientId);
-              const unit = as.unitId ? units.find(u => u.id === as.unitId) : units.find(u => u.clientId === cli?.id);
-              const company = companies.find(c => c.id === unit?.companyId);
+              const unit = as.unitId ? units.find(u => u.id === as.unitId) : units.find(u => u.clientId === as.clientId);
+              const company = as.companyId ? companies.find(c => c.id === as.companyId) : (unit ? companies.find(c => c.id === unit.companyId) : companies.find(c => c.id === as.clientId));
               const agency = agencies.find(a => a.id === as.agencyId);
+              
+              // Fallback for responsible name if unit is missing but client has managerName
+              const responsibleName = unit?.managerName || cli?.managerName || 'Responsável não definido';
+              const unitName = unit?.name || 'Matriz';
+              const companyName = company?.name || cli?.name || 'Empresa não identificada';
+
               return (
                 <div key={as.id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
@@ -3311,10 +3427,10 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                       <Building2 size={36} className="hidden sm:block" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name}</h4>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Empresa: {company?.name || 'N/A'}</p>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Unidade: {unit?.name || 'N/A'}</p>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Responsável: {unit?.managerName || 'N/A'}</p>
+                      <h4 className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Empresa: {companyName}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Unidade: {unitName}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Responsável: {responsibleName}</p>
                       
                       <div className="flex flex-wrap items-center gap-3 mt-4">
                         {cli?.location?.startsWith('http') ? (
@@ -3348,6 +3464,117 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                 </div>
               );
             })
+          )}
+        </div>
+      ) : activeTab === 'FINANCE' ? (
+        <div className="space-y-8 px-4 sm:px-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-slate-950 p-10 rounded-[3rem] text-white relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
+                    <CreditCard size={32} className="text-blue-400" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Saldo Disponível</span>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium text-sm mb-1">Total a Receber</p>
+                  <h3 className="text-5xl font-black tracking-tight">R$ {pendingEarnings.toFixed(2)}</h3>
+                </div>
+                <button className="w-full py-4 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95">
+                  Solicitar Adiantamento
+                </button>
+              </div>
+            </div>
+            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="p-4 bg-emerald-50 rounded-2xl">
+                  <TrendingUp size={32} className="text-emerald-600" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Ganhos Totais</span>
+              </div>
+              <div>
+                <p className="text-slate-400 font-medium text-sm mb-1">Acumulado na Plataforma</p>
+                <h3 className="text-5xl font-black text-slate-950 tracking-tight">R$ {totalEarnings.toFixed(2)}</h3>
+              </div>
+              <div className="pt-4 border-t border-slate-50">
+                <p className="text-slate-400 text-xs font-medium leading-relaxed">Seu nível atual é <span className="text-amber-600 font-black">{employee.level || 'BRONZE'}</span>. Continue realizando diárias para aumentar seus ganhos!</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+              <h3 className="text-xl font-black text-slate-950 tracking-tight uppercase">Histórico de Pagamentos</h3>
+              <button className="p-3 text-slate-400 hover:text-slate-950 transition-colors">
+                <Filter size={20} />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50">
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Local</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {completedAssignments.map(as => {
+                    const cli = clients.find(c => c.id === as.clientId);
+                    return (
+                      <tr key={as.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="p-6 font-medium text-slate-600">{formatDateBR(as.date)}</td>
+                        <td className="p-6 font-black text-slate-950">{cli?.name || 'Unidade não identificada'}</td>
+                        <td className="p-6 font-black text-slate-950">R$ {as.value.toFixed(2)}</td>
+                        <td className="p-6">
+                          <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${as.paymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                            {as.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'MURAL' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 sm:px-0">
+          {myBulletins.length === 0 ? (
+            <div className="col-span-full bg-white p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+              <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                <FileText size={48} />
+              </div>
+              <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhum aviso no mural no momento.</p>
+            </div>
+          ) : (
+            myBulletins.map(bulletin => (
+              <div key={bulletin.id} className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                <div className={`absolute top-0 left-0 w-2 h-full ${bulletin.type === 'URGENT' ? 'bg-rose-500' : bulletin.type === 'TRAINING' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${bulletin.type === 'URGENT' ? 'bg-rose-50 text-rose-600' : bulletin.type === 'TRAINING' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                      {bulletin.type}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formatDateBR(bulletin.createdAt)}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-2xl font-black text-slate-950 tracking-tight uppercase group-hover:text-blue-600 transition-colors">{bulletin.title}</h4>
+                    <p className="text-slate-500 font-medium leading-relaxed">{bulletin.content}</p>
+                  </div>
+                  {bulletin.attachmentUrl && (
+                    <button className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:gap-4 transition-all">
+                      <Download size={16} />
+                      Baixar Material de Apoio
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
           )}
         </div>
       ) : (
@@ -4609,9 +4836,29 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     return acc;
   }, {} as Record<string, { assignments: Assignment[], units: Record<string, Assignment[]> }>);
 
+  const getMatchScore = (emp: Employee, unit?: Unit) => {
+    let score = emp.rating * 20; // 0-100
+    score += emp.attendanceRate * 0.5; // 0-50
+    if (emp.level === 'DIAMANTE') score += 20;
+    else if (emp.level === 'OURO') score += 15;
+    else if (emp.level === 'PRATA') score += 10;
+    
+    if (unit?.coordinates && emp.address?.coordinates) {
+      const dist = calculateDistance(unit.coordinates.lat, unit.coordinates.lng, emp.address.coordinates.lat, emp.address.coordinates.lng);
+      if (dist < 5000) score += 20; // < 5km
+      else if (dist < 15000) score += 10; // < 15km
+    }
+    return score;
+  };
+
   const sortedEmployees = [...employees]
     .filter(e => (e.firstName + ' ' + e.lastName).toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
+      const unit = units.find(u => u.clientId === selectedClientId);
+      const scoreA = getMatchScore(a, unit);
+      const scoreB = getMatchScore(b, unit);
+      
+      if (selectedClientId) return scoreB - scoreA;
       if (filterType === 'RATING') return b.rating - a.rating;
       return a.complaints - b.complaints;
     });
@@ -4678,15 +4925,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) return;
 
+    const unit = units.find(u => u.clientId === selectedClientId);
+    const companyId = unit?.companyId;
+
     const newAs: Omit<Assignment, 'id'> = {
       agencyId: targetAgencyId,
+      companyId: companyId || '',
       employeeId: empId,
       clientId: selectedClientId,
-      unitId: units.find(u => u.clientId === selectedClientId)?.id,
+      unitId: unit?.id,
       date: selectedDate,
       value: getScaleValue(emp.rating),
       status: 'SCHEDULED',
-      confirmed: false
+      confirmed: false,
+      paymentStatus: 'PENDING'
     };
 
     const assignmentId = await createDocument('assignments', newAs);
@@ -4706,7 +4958,6 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     });
 
     // Notify Unit Manager
-    const unit = units.find(u => u.clientId === selectedClientId);
     if (unit) {
       await createDocument('notifications', {
         userId: 'UNIT_' + unit.id,
@@ -5018,7 +5269,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                         <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 text-base sm:text-lg leading-tight">{emp.firstName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-black text-slate-900 text-base sm:text-lg leading-tight">{emp.firstName}</p>
+                          {selectedClientId && getMatchScore(emp, units.find(u => u.clientId === selectedClientId)) > 80 && (
+                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg animate-pulse shrink-0">Smart Match</span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 mt-1">
                           <div className="flex gap-0.5">
                             {[...Array(5)].map((_, i) => (
@@ -6731,16 +6987,16 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
   );
 }
 
-function CompanyDiaristas({ companyId, clients, employees, assignments, companies, units }: { companyId: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
+function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, companies, units }: { companyId: string, unitId?: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
-  const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [selectedUnitId, setSelectedUnitId] = useState(unitId || '');
   const [minRating, setMinRating] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const clientUnits = units.filter(u => u.companyId === companyId);
+  const clientUnits = units.filter(u => u.companyId === companyId && (!unitId || u.id === unitId));
   
   useEffect(() => {
     if (clientUnits.length > 0 && !selectedUnitId) {
@@ -7037,8 +7293,8 @@ function CompanyDiaristas({ companyId, clients, employees, assignments, companie
   );
 }
 
-function CompanyEvaluateTeam({ companyId, clients, assignments, employees, feedbacks, units }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[] }) {
-  const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
+function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employees, feedbacks, units }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[] }) {
+  const companyUnitClientIds = units.filter(u => u.companyId === companyId && (!unitId || u.id === unitId)).map(u => u.clientId).filter(Boolean);
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
@@ -8167,7 +8423,7 @@ function PrivacyListItem({ title, description }: { title: string, description: s
   );
 }
 
-function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[] }) {
+function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
   const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -8246,6 +8502,17 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           });
           const { latitude, longitude } = position.coords;
           console.log(`Localização atual: ${latitude}, ${longitude}`);
+
+          const unit = units.find(u => u.clientId === scannedPoint!.clientId);
+          if (unit?.coordinates) {
+            const distance = calculateDistance(latitude, longitude, unit.coordinates.lat, unit.coordinates.lng);
+            console.log(`Distância da unidade: ${distance.toFixed(2)}m`);
+            if (distance > 500) { // 500 meters threshold
+              alert(`Você está muito longe da unidade (${distance.toFixed(0)}m). Por favor, aproxime-se para bater o ponto.`);
+              setStep('PHOTO');
+              return;
+            }
+          }
         } catch (err) {
           console.error("Erro ao obter localização:", err);
           alert("Não foi possível obter sua localização. Por favor, permita o acesso.");
@@ -8504,17 +8771,26 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
   );
 }
 
-function CompanyDashboard({ companyId, clients, assignments, employees, feedbacks, units, companies }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[] }) {
+function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[] }) {
   if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
+  const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL'>('STAFF');
   const company = companies.find(c => c.id === companyId);
   const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
-  console.log('CompanyDashboard:', { companyId, companyUnitClientIds, assignments, units });
+  const myInvoices = invoices.filter(i => i.companyId === companyId);
+  const myUnits = units.filter(u => u.companyId === companyId);
+  const favoriteEmployees = employees.filter(e => myUnits.some(u => u.favoriteEmployees?.includes(e.id)));
+
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
 
-  const myAssignments = assignments.filter(a => units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId));
+  const myAssignments = assignments.filter(a => {
+    if (unitId) {
+      return a.unitId === unitId || (!a.unitId && units.find(u => u.id === unitId)?.clientId === a.clientId);
+    }
+    return units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId);
+  });
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
@@ -8560,178 +8836,348 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
           <p className="text-slate-500 font-medium text-xs sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          <StatCard 
-            icon={<Users size={24} className="text-blue-600" />} 
-            label="Equipe Hoje" 
-            value={todayStaff.length.toString()} 
-            color="blue"
-          />
-          <StatCard 
-            icon={<Calendar size={24} className="text-indigo-600" />} 
-            label="Total de Diarias" 
-            value={myAssignments.length.toString()} 
-            color="indigo"
-          />
-          <StatCard 
-            icon={<Clock size={24} className="text-emerald-600" />} 
-            label="Próxima Diaria" 
-            value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
-            color="emerald"
-          />
+        <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
+          <button 
+            onClick={() => setActiveTab('STAFF')}
+            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'STAFF' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          >
+            Equipe
+          </button>
+          <button 
+            onClick={() => setActiveTab('BILLING')}
+            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'BILLING' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          >
+            Faturamento
+          </button>
+          <button 
+            onClick={() => setActiveTab('FAVORITES')}
+            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          >
+            Favoritos
+          </button>
+          <button 
+            onClick={() => setActiveTab('MURAL')}
+            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          >
+            Mural
+          </button>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
-          <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
-            <h3 className="text-[10px] font-black text-slate-950 tracking-[0.2em] uppercase">Histórico de Diarias</h3>
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 self-start sm:self-auto shadow-sm">
-              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-              <span>Atualizado em tempo real</span>
+        {activeTab === 'STAFF' ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              <StatCard 
+                icon={<Users size={24} className="text-blue-600" />} 
+                label="Equipe Hoje" 
+                value={todayStaff.length.toString()} 
+                color="blue"
+              />
+              <StatCard 
+                icon={<Calendar size={24} className="text-indigo-600" />} 
+                label="Total de Diarias" 
+                value={myAssignments.length.toString()} 
+                color="indigo"
+              />
+              <StatCard 
+                icon={<Clock size={24} className="text-emerald-600" />} 
+                label="Próxima Diaria" 
+                value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
+                color="emerald"
+              />
             </div>
-          </div>
-          
-          <div className="overflow-x-auto custom-scrollbar hidden md:block">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead>
-                <tr className="bg-white">
-                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
-                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unidade</th>
-                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
-                  <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
+
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
+              <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
+                <h3 className="text-[10px] font-black text-slate-950 tracking-[0.2em] uppercase">Histórico de Diarias</h3>
+                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 self-start sm:self-auto shadow-sm">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                  <span>Atualizado em tempo real</span>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto custom-scrollbar hidden md:block">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-white">
+                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
+                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unidade</th>
+                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
+                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
+                      const emp = employees.find(e => e.id === as.employeeId);
+                      const unit = units.find(u => u.id === as.unitId);
+                      const isToday = as.date === today;
+                      return (
+                        <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
+                          <td className="p-8">
+                            <div className="flex items-center gap-5">
+                              <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
+                                {emp?.photoUrl ? (
+                                  <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                                    <UserIcon size={24} />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp ? `${emp.firstName} ${emp.lastName}` : 'Funcionário não encontrado'}</p>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro • ★ {emp?.rating || 0}</p>
+                                <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">{emp?.phone || 'Telefone não disponível'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-8">
+                            <p className="font-black text-slate-950 tracking-tight text-sm">{unit?.name || 'Matriz'}</p>
+                          </td>
+                          <td className="p-8">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
+                                <Calendar size={14} className="text-blue-600" />
+                                {formatDateBR(as.date)}
+                              </div>
+                              <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
+                                <Clock size={12} className="text-slate-300" />
+                                08:00 - 17:00
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-8 text-right">
+                            <div className="flex items-center justify-end gap-4">
+                              <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
+                                as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
+                                as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
+                                'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
+                              }`}>
+                                {as.status === 'COMPLETED' ? 'Finalizado' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                              </span>
+                              {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                                <button 
+                                  onClick={() => setEvaluatingEmployee(emp || null)}
+                                  className="p-3 bg-slate-100 text-slate-950 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
+                                >
+                                  <Star size={18} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="md:hidden divide-y divide-slate-100">
                 {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
                   const emp = employees.find(e => e.id === as.employeeId);
-                  const unit = units.find(u => u.id === as.unitId);
                   const isToday = as.date === today;
                   return (
-                    <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
-                      <td className="p-8">
-                        <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
+                    <div key={as.id} className={`p-5 sm:p-6 space-y-4 sm:space-y-5 transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm border border-slate-100 shadow-sm overflow-hidden shrink-0">
                             <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
-                          <div>
-                            <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp?.firstName} {emp?.lastName}</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro • ★ {emp?.rating}</p>
-                            <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">{emp?.phone}</p>
+                          <div className="min-w-0">
+                            <p className="font-black text-slate-950 text-xs sm:text-sm tracking-tight truncate">{emp?.firstName} {emp?.lastName}</p>
+                            <p className="text-[8px] sm:text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Profissional Parceiro</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="p-8">
-                        <p className="font-black text-slate-950 tracking-tight text-sm">{unit?.name || 'N/A'}</p>
-                      </td>
-                      <td className="p-8">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
-                            <Calendar size={14} className="text-blue-600" />
-                            {formatDateBR(as.date)}
-                          </div>
-                          <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
-                            <Clock size={12} className="text-slate-300" />
-                            08:00 - 17:00
-                          </div>
+                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[9px] border ${
+                          as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                          as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          'bg-slate-50 text-slate-400 border-slate-200'
+                        }`}>
+                          {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 text-slate-950 font-black text-[9px] sm:text-[10px] uppercase tracking-widest bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
+                          <Calendar size={10} className="text-blue-600" />
+                          {formatDateBR(as.date)}
                         </div>
-                      </td>
-                      <td className="p-8 text-right">
-                        <div className="flex items-center justify-end gap-4">
-                          <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
-                            as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
-                            as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
-                            'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
-                          }`}>
-                            {as.status === 'COMPLETED' ? 'Concluído' : 
-                             as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
-                          </span>
+                        <div className="flex items-center gap-3">
                           {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
                             <button 
                               onClick={() => setEvaluatingEmployee(emp || null)}
-                              className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
-                              title="Avaliar Profissional"
+                              className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-lg border border-amber-100 text-[8px] font-black uppercase tracking-widest"
                             >
-                              <Star size={18} />
+                              <Star size={10} />
+                              Avaliar
                             </button>
                           )}
                           {isToday && (
-                            <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
+                            <span className="flex items-center gap-1.5 text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
                               <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
                               Hoje
                             </span>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
 
-          {/* Mobile View */}
-          <div className="md:hidden divide-y divide-slate-100">
-            {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
-              const emp = employees.find(e => e.id === as.employeeId);
-              const isToday = as.date === today;
-              return (
-                <div key={as.id} className={`p-5 sm:p-6 space-y-4 sm:space-y-5 transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm border border-slate-100 shadow-sm overflow-hidden shrink-0">
-                        <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-black text-slate-950 text-xs sm:text-sm tracking-tight truncate">{emp?.firstName} {emp?.lastName}</p>
-                        <p className="text-[8px] sm:text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Profissional Parceiro</p>
-                      </div>
+              {myAssignments.length === 0 && (
+                <div className="p-12 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100">
+                      <Calendar size={40} />
                     </div>
-                    <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[9px] border ${
-                      as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                      as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                      'bg-slate-50 text-slate-400 border-slate-200'
-                    }`}>
-                      {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-slate-950 font-black text-[9px] sm:text-[10px] uppercase tracking-widest bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
-                      <Calendar size={10} className="text-blue-600" />
-                      {formatDateBR(as.date)}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
-                        <button 
-                          onClick={() => setEvaluatingEmployee(emp || null)}
-                          className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-lg border border-amber-100 text-[8px] font-black uppercase tracking-widest"
-                        >
-                          <Star size={10} />
-                          Avaliar
-                        </button>
-                      )}
-                      {isToday && (
-                        <span className="flex items-center gap-1.5 text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-                          Hoje
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
-          {myAssignments.length === 0 && (
-            <div className="p-12 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100">
-                  <Calendar size={40} />
+              )}
+            </div>
+          </>
+        ) : activeTab === 'BILLING' ? (
+          <div className="space-y-8 px-4 sm:px-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-4 bg-blue-50 rounded-2xl">
+                    <CreditCard size={32} className="text-blue-600" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Fatura Atual</span>
                 </div>
-                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
+                <div>
+                  <p className="text-slate-400 font-medium text-sm mb-1">Total do Mês</p>
+                  <h3 className="text-5xl font-black text-slate-950 tracking-tight">R$ {myAssignments.filter(a => a.status === 'COMPLETED').reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</h3>
+                </div>
+              </div>
+              <div className="bg-slate-950 p-10 rounded-[3rem] text-white relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
+                <div className="relative z-10 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
+                      <TrendingUp size={32} className="text-emerald-400" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Status</span>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium text-sm mb-1">Próximo Vencimento</p>
+                    <h3 className="text-5xl font-black tracking-tight">15/04</h3>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-950 tracking-tight uppercase">Histórico de Faturas</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mês</th>
+                      <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
+                      <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                      <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {myInvoices.map(invoice => (
+                      <tr key={invoice.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="p-6 font-medium text-slate-600">{invoice.month}</td>
+                        <td className="p-6 font-black text-slate-950">R$ {invoice.amount.toFixed(2)}</td>
+                        <td className="p-6">
+                          <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${invoice.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                            {invoice.status}
+                          </span>
+                        </td>
+                        <td className="p-6">
+                          <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                            <Download size={20} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'MURAL' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 sm:px-0">
+            {bulletins.filter(b => b.targetRoles.includes('COMPANY')).length === 0 ? (
+              <div className="col-span-full bg-white p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+                <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                  <FileText size={48} />
+                </div>
+                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhum aviso no mural no momento.</p>
+              </div>
+            ) : (
+              bulletins.filter(b => b.targetRoles.includes('COMPANY')).map(bulletin => (
+                <div key={bulletin.id} className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                  <div className={`absolute top-0 left-0 w-2 h-full ${bulletin.type === 'URGENT' ? 'bg-rose-500' : bulletin.type === 'TRAINING' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${bulletin.type === 'URGENT' ? 'bg-rose-50 text-rose-600' : bulletin.type === 'TRAINING' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        {bulletin.type}
+                      </span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formatDateBR(bulletin.createdAt)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-2xl font-black text-slate-950 tracking-tight uppercase group-hover:text-blue-600 transition-colors">{bulletin.title}</h4>
+                      <p className="text-slate-500 font-medium leading-relaxed">{bulletin.content}</p>
+                    </div>
+                    {bulletin.attachmentUrl && (
+                      <button className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:gap-4 transition-all">
+                        <Download size={16} />
+                        Baixar Material de Apoio
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4 sm:px-0">
+            {favoriteEmployees.length === 0 ? (
+              <div className="col-span-full bg-white p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
+                <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                  <Star size={48} />
+                </div>
+                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Você ainda não favoritou nenhum funcionário.</p>
+              </div>
+            ) : (
+              favoriteEmployees.map(emp => (
+                <div key={emp.id} className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-24 h-24 rounded-[2rem] bg-slate-50 border border-slate-100 overflow-hidden shadow-xl group-hover:scale-110 transition-transform duration-500">
+                      {emp.photoUrl ? (
+                        <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-200">
+                          <UserIcon size={40} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-950 tracking-tight uppercase">{emp.firstName} {emp.lastName}</h4>
+                      <div className="flex items-center justify-center gap-1 text-amber-500 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={14} fill={i < Math.round(emp.rating) ? "currentColor" : "none"} />
+                        ))}
+                      </div>
+                    </div>
+                    <button className="w-full py-3 bg-slate-50 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
+                      Solicitar Preferencial
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </motion.div>
 
       <AnimatePresence>
@@ -8805,8 +9251,8 @@ function CompanyDashboard({ companyId, clients, assignments, employees, feedback
   );
 }
 
-function CompanyFeedbackForm({ companyId, clients, assignments, employees, units }: { companyId: string, clients: Client[], assignments: Assignment[], employees: Employee[], units: Unit[] }) {
-  const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
+function CompanyFeedbackForm({ companyId, unitId, clients, assignments, employees, units }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], units: Unit[] }) {
+  const companyUnitClientIds = units.filter(u => u.companyId === companyId && (!unitId || u.id === unitId)).map(u => u.clientId).filter(Boolean);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -11179,7 +11625,7 @@ function DocumentControl({ companies }: { companies: Company[] }) {
   );
 }
 
-function ServiceMonitoring({ assignments, companies, units, employees }: { assignments: Assignment[], companies: Company[], units: Unit[], employees: Employee[] }) {
+function ServiceMonitoring({ assignments, companies, units, employees, clients }: { assignments: Assignment[], companies: Company[], units: Unit[], employees: Employee[], clients: Client[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'>('ALL');
 
@@ -11188,17 +11634,13 @@ function ServiceMonitoring({ assignments, companies, units, employees }: { assig
     let companyName = 'N/A';
     let unitName = 'N/A';
 
-    // Try to find if it's a unit
-    const unit = units.find(u => u.clientId === assignment.clientId);
-    if (unit) {
-      unitName = unit.name;
-      const company = companies.find(c => c.id === unit.companyId);
-      if (company) companyName = company.name;
-    } else {
-      // It might be a direct company client
-      const company = companies.find(c => c.id === assignment.clientId);
-      if (company) companyName = company.name;
-    }
+    // Try to find by explicit IDs first
+    const unit = assignment.unitId ? units.find(u => u.id === assignment.unitId) : units.find(u => u.clientId === assignment.clientId);
+    const company = assignment.companyId ? companies.find(c => c.id === assignment.companyId) : (unit ? companies.find(c => c.id === unit.companyId) : companies.find(c => c.id === assignment.clientId));
+    const client = clients.find(c => c.id === assignment.clientId);
+
+    companyName = company?.name || client?.name || 'Empresa não identificada';
+    unitName = unit?.name || 'Matriz';
 
     return {
       ...assignment,

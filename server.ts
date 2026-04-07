@@ -49,34 +49,6 @@ async function startServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
-  // Import Vercel handlers for local development
-  const sessionHandler = (await import("./api/didit/session.js")).default;
-  const webhookHandler = (await import("./api/didit/webhook.js")).default;
-  const createUserHandler = (await import("./api/create-user.js")).default;
-  const deleteUserHandler = (await import("./api/delete-user.js")).default;
-
-  app.post("/api/create-user", async (req, res) => {
-    await createUserHandler(req, res);
-  });
-
-  app.post("/api/delete-user", async (req, res) => {
-    await deleteUserHandler(req, res);
-  });
-
-  app.post("/api/didit/session", async (req, res) => {
-    // Vercel handlers expect (req, res)
-    await sessionHandler(req, res);
-  });
-
-  app.post("/api/didit/webhook", async (req: any, res) => {
-    // Vercel handlers expect (req, res)
-    // Note: sessionHandler and webhookHandler are standard (req, res) handlers
-    // But webhookHandler in Vercel disables bodyParser to get rawBody
-    // In Express, we already have req.rawBody from middleware
-    // So we can pass it along
-    await webhookHandler(req, res);
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

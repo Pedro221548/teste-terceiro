@@ -17,7 +17,10 @@
         "status": { "type": "string", "enum": ["PENDING", "ACTIVE", "INACTIVE"] },
         "complaints": { "type": "number" },
         "lastAssignmentDate": { "type": "string" },
-        "unavailableDates": { "type": "array", "items": { "type": "string" } }
+        "unavailableDates": { "type": "array", "items": { "type": "string" } },
+        "level": { "type": "string", "enum": ["BRONZE", "PRATA", "OURO", "DIAMANTE"] },
+        "attendanceRate": { "type": "number" },
+        "totalEarnings": { "type": "number" }
       },
       "required": ["firstName", "lastName", "cpf", "phone", "rating", "status"]
     },
@@ -60,23 +63,10 @@
         "name": { "type": "string" },
         "managerName": { "type": "string" },
         "location": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "favoriteEmployees": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["companyId", "name", "managerName", "location", "createdAt"]
-    },
-    "CompanyUser": {
-      "title": "CompanyUser",
-      "description": "A user associated with a company.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "fullName": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["COMPANY"] },
-        "createdAt": { "type": "string" }
-      },
-      "required": ["companyId", "fullName", "email", "role", "createdAt"]
     },
     "Assignment": {
       "title": "Assignment",
@@ -88,107 +78,53 @@
         "clientId": { "type": "string" },
         "date": { "type": "string" },
         "value": { "type": "number" },
-        "status": { "type": "string", "enum": ["SCHEDULED", "COMPLETED", "CANCELLED"] }
+        "status": { "type": "string", "enum": ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "PAID", "PROCESSING"] }
       },
       "required": ["employeeId", "clientId", "date", "value", "status"]
     },
-    "Feedback": {
-      "title": "Feedback",
-      "description": "Rating and comment left by a manager for an employee.",
+    "Message": {
+      "title": "Message",
+      "description": "A chat message.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "assignmentId": { "type": "string" },
-        "employeeId": { "type": "string" },
-        "managerId": { "type": "string" },
-        "rating": { "type": "number" },
-        "comment": { "type": "string" },
-        "date": { "type": "string" }
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "read": { "type": "boolean" }
       },
-      "required": ["assignmentId", "employeeId", "managerId", "rating", "date"]
+      "required": ["chatId", "senderId", "text", "createdAt", "read"]
     },
-    "ContactRequest": {
-      "title": "ContactRequest",
-      "description": "A request for contact from a potential partner or employee.",
+    "Bulletin": {
+      "title": "Bulletin",
+      "description": "A public announcement or training material.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string" },
-        "phone": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "CONTACTED"] },
-        "date": { "type": "string" }
-      },
-      "required": ["name", "phone", "status", "date"]
-    },
-    "AccessPoint": {
-      "title": "AccessPoint",
-      "description": "A physical location with a QR code for clock-ins.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "managerName": { "type": "string" },
-        "location": { "type": "string" },
-        "qrCodeValue": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["TRAINING", "ANNOUNCEMENT", "URGENT"] },
         "createdAt": { "type": "string" }
       },
-      "required": ["managerName", "location", "qrCodeValue", "createdAt"]
+      "required": ["agencyId", "title", "content", "type", "createdAt"]
     },
-    "CheckIn": {
-      "title": "CheckIn",
-      "description": "A record of an employee clocking in or out at an access point.",
+    "Invoice": {
+      "title": "Invoice",
+      "description": "A monthly billing record for a company.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "employeeId": { "type": "string" },
-        "accessPointId": { "type": "string" },
-        "location": { "type": "string" },
-        "timestamp": { "type": "string" },
-        "photoUrl": { "type": "string" },
-        "type": { "type": "string", "enum": ["IN", "OUT"] }
-      },
-      "required": ["employeeId", "accessPointId", "location", "timestamp", "photoUrl", "type"]
-    },
-    "Setting": {
-      "title": "Setting",
-      "description": "Global application settings.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "value": { "type": "any" },
-        "values": { "type": "object" }
-      }
-    },
-    "CompanyRequest": {
-      "title": "CompanyRequest",
-      "description": "A request for employees from a company.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "clientId": { "type": "string" },
-        "employeeIds": { "type": "array", "items": { "type": "string" } },
-        "quantity": { "type": "number" },
-        "date": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED", "REJECTED"] },
-        "createdAt": { "type": "string" }
-      },
-      "required": ["companyId", "clientId", "employeeIds", "quantity", "date", "status", "createdAt"]
-    },
-    "User": {
-      "title": "User",
-      "description": "A user profile with role and security flags.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["AGENCY", "COMPANY", "EMPLOYEE", "REGISTRATION", "COMPANY_REGISTRATION"] },
         "agencyId": { "type": "string" },
         "companyId": { "type": "string" },
-        "status": { "type": "string", "enum": ["ACTIVE", "PENDING", "BLOCKED"] },
-        "forcePasswordChange": { "type": "boolean" },
+        "month": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["OPEN", "PAID", "OVERDUE"] },
         "createdAt": { "type": "string" }
       },
-      "required": ["email", "role", "createdAt"]
+      "required": ["agencyId", "companyId", "month", "amount", "status", "createdAt"]
     },
     "Notification": {
       "title": "Notification",
@@ -199,27 +135,11 @@
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "message": { "type": "string" },
-        "type": { "type": "string", "enum": ["ASSIGNMENT", "INFO"] },
+        "type": { "type": "string", "enum": ["ASSIGNMENT", "INFO", "TRAINING", "URGENT"] },
         "read": { "type": "boolean" },
-        "createdAt": { "type": "string" },
-        "link": { "type": "string" },
-        "assignmentId": { "type": "string" }
+        "createdAt": { "type": "string" }
       },
       "required": ["userId", "title", "message", "type", "read", "createdAt"]
-    },
-    "DiditSession": {
-      "title": "DiditSession",
-      "description": "A session for Didit face verification.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "employeeId": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "COMPLETED", "FAILED"] },
-        "result": { "type": "object" },
-        "createdAt": { "type": "string" },
-        "updatedAt": { "type": "string" }
-      },
-      "required": ["employeeId", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -227,16 +147,10 @@
     "/clients": { "schema": "Client", "description": "Collection of partner companies." },
     "/companies": { "schema": "Company", "description": "Collection of client companies." },
     "/units": { "schema": "Unit", "description": "Collection of company units." },
-    "/companyUsers": { "schema": "CompanyUser", "description": "Collection of users for companies." },
     "/assignments": { "schema": "Assignment", "description": "Collection of scheduled assignments." },
-    "/feedbacks": { "schema": "Feedback", "description": "Collection of employee feedbacks." },
-    "/contacts": { "schema": "ContactRequest", "description": "Collection of contact requests." },
-    "/accessPoints": { "schema": "AccessPoint", "description": "Collection of QR code access points." },
-    "/checkIns": { "schema": "CheckIn", "description": "Collection of employee check-ins." },
-    "/settings": { "schema": "Setting", "description": "Collection of global settings." },
-    "/companyRequests": { "schema": "CompanyRequest", "description": "Collection of company requests for employees." },
-    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
-    "/users": { "schema": "User", "description": "Collection of user profiles." },
-    "/diditSessions": { "schema": "DiditSession", "description": "Collection of Didit verification sessions." }
+    "/messages": { "schema": "Message", "description": "Collection of chat messages." },
+    "/bulletins": { "schema": "Bulletin", "description": "Collection of announcements." },
+    "/invoices": { "schema": "Invoice", "description": "Collection of billing records." },
+    "/notifications": { "schema": "Notification", "description": "Collection of user notifications." }
   }
 }

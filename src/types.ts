@@ -87,6 +87,26 @@ export interface Employee {
   lastAssignmentDate?: string;
   unavailableDates?: string[];
   role?: string;
+  
+  // New Features
+  level: 'BRONZE' | 'PRATA' | 'OURO' | 'DIAMANTE';
+  attendanceRate: number; // 0 to 100
+  totalEarnings: number;
+  documentExpirations?: {
+    aso?: string;
+    criminalRecord?: string;
+    training?: string;
+  };
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
 }
 
 export interface Client {
@@ -129,6 +149,13 @@ export interface Unit {
   login?: string;
   password?: string;
   createdAt: string;
+  
+  // New Features
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  favoriteEmployees?: string[]; // Array of employee IDs
 }
 
 export interface CompanyUser {
@@ -148,6 +175,7 @@ export interface CompanyUser {
 export interface Assignment {
   id: string;
   agencyId: string;
+  companyId?: string;
   employeeId: string;
   clientId: string;
   unitId?: string;
@@ -155,6 +183,15 @@ export interface Assignment {
   value: number;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   confirmed?: boolean;
+  
+  // New Features
+  paymentStatus: 'PENDING' | 'PAID' | 'PROCESSING';
+  checkInLocation?: {
+    lat: number;
+    lng: number;
+    accuracy: number;
+  };
+  checkInPhotoUrl?: string;
 }
 
 export interface Feedback {
@@ -239,9 +276,40 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'ASSIGNMENT' | 'INFO';
+  type: 'ASSIGNMENT' | 'INFO' | 'TRAINING' | 'URGENT';
   read: boolean;
   createdAt: string;
   link?: string;
   assignmentId?: string;
+}
+
+export interface Message {
+  id: string;
+  chatId: string; // agencyId_employeeId or agencyId_companyId
+  senderId: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface Bulletin {
+  id: string;
+  agencyId: string;
+  title: string;
+  content: string;
+  type: 'TRAINING' | 'ANNOUNCEMENT' | 'URGENT';
+  targetRoles: UserRole[];
+  createdAt: string;
+  attachmentUrl?: string;
+}
+
+export interface Invoice {
+  id: string;
+  agencyId: string;
+  companyId: string;
+  month: string; // YYYY-MM
+  amount: number;
+  status: 'OPEN' | 'PAID' | 'OVERDUE';
+  assignmentIds: string[];
+  createdAt: string;
 }
