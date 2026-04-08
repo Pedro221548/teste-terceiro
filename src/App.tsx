@@ -1137,7 +1137,7 @@ export default function App() {
               >
                 <h2 className="text-8xl font-black text-white leading-[0.9] tracking-tight font-display mb-8">
                   Gestão <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-violet italic">Inteligente</span> <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-violet italic pr-4">Inteligente</span> <br />
                   de Diaristas.
                 </h2>
                 <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-8" />
@@ -1328,7 +1328,7 @@ export default function App() {
                 <h2 className="text-5xl font-black text-slate-950 tracking-tight font-display">A escala que você precisa.</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {plans.sort((a, b) => a.price - b.price).map((plan, index) => {
                   const isPopular = plan.id === 'PROFESSIONAL';
                   const isEnterprise = plan.id === 'ENTERPRISE';
@@ -1339,52 +1339,52 @@ export default function App() {
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 + 0.5 }}
-                      className={`relative flex flex-col bg-white p-10 rounded-[3rem] border transition-all duration-500 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] group ${
+                      className={`relative flex flex-col bg-white p-8 rounded-[2rem] border transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] group ${
                         isPopular ? 'border-brand-500 shadow-xl shadow-brand-500/5 scale-105 z-20' : 'border-slate-200 z-10'
                       }`}
                     >
                       {isPopular && (
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl shadow-brand-500/20">
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl shadow-brand-500/20">
                           Recomendado
                         </div>
                       )}
                       
-                      <div className="mb-10">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 transition-all duration-500 group-hover:scale-110 ${
+                      <div className="mb-6">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 ${
                           isEnterprise ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' :
                           isPopular ? 'bg-brand-500 text-white shadow-lg shadow-brand-200' :
                           'bg-slate-950 text-white shadow-lg shadow-slate-200'
                         }`}>
-                          {isEnterprise ? <ShieldCheck size={28} /> : isPopular ? <Activity size={28} /> : <Briefcase size={28} />}
+                          {isEnterprise ? <ShieldCheck size={24} /> : isPopular ? <Activity size={24} /> : <Briefcase size={24} />}
                         </div>
-                        <h4 className="font-black text-slate-950 uppercase tracking-tight text-xl mb-2">{plan.name}</h4>
+                        <h4 className="font-black text-slate-950 uppercase tracking-tight text-lg mb-1">{plan.name}</h4>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-slate-950 tracking-tighter">
+                          <span className="text-3xl font-black text-slate-950 tracking-tighter">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
                           </span>
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">/mês</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">/mês</span>
                         </div>
                       </div>
 
-                      <ul className="space-y-5 mb-10 flex-1">
+                      <ul className="space-y-3 mb-8 flex-1">
                         {plan.features.map((feature, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm text-slate-600 font-medium leading-snug">
-                            <div className={`mt-1 p-0.5 rounded-full ${isPopular ? 'text-brand-500' : 'text-slate-400'}`}>
-                              <CheckCircle2 size={16} />
+                          <li key={i} className="flex items-start gap-2 text-xs text-slate-600 font-medium leading-snug">
+                            <div className={`mt-0.5 p-0.5 rounded-full ${isPopular ? 'text-brand-500' : 'text-slate-400'}`}>
+                              <CheckCircle2 size={14} />
                             </div>
                             {feature}
                           </li>
                         ))}
                       </ul>
 
-                      <div className="pt-8 border-t border-slate-50 space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
-                          <span className="text-sm font-black text-slate-950">{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
+                      <div className="pt-6 border-t border-slate-50 space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
+                          <span className="text-xs font-black text-slate-950">{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
                         </div>
-                        <div className="flex items-center justify-between px-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
-                          <span className="text-sm font-black text-slate-950">{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
+                          <span className="text-xs font-black text-slate-950">{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
                         </div>
                       </div>
                     </motion.div>
