@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Component } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { 
   Users, 
   User as UserIcon,
@@ -4631,6 +4632,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
         lgpdAuthorized: registration.lgpdAuthorized,
         photoUrl: registration.photoUrl,
         docUrl: registration.docUrl,
+        faceReferenceUrl: registration.faceReferenceUrl || registration.photoUrl,
         username,
         status: 'ACTIVE',
         rating: 5,
@@ -9582,14 +9584,15 @@ function PrivacyListItem({ title, description }: { title: string, description: s
 }
 
 function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
-  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS' | 'REDIRECTING'>('INITIAL');
+  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'FACE_VERIFY' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
-  const [pendingCheckIn, setPendingCheckIn] = useState<CheckIn | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
-  // Determine punch type and monitor pending check-ins
+  // Determine punch type
   useEffect(() => {
     const myCheckIns = checkIns
       .filter(c => c.employeeId === employeeId)
@@ -9601,25 +9604,10 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       } else {
         setPunchType('IN');
       }
-
-      // Check for recent pending check-in
-      const last = myCheckIns[0];
-      const isRecent = (new Date().getTime() - new Date(last.timestamp).getTime()) < 5 * 60 * 1000; // 5 mins
-      if (last.status === 'PENDING' && isRecent) {
-        setPendingCheckIn(last);
-        setStep('VERIFYING');
-      } else if (last.status === 'APPROVED' && isRecent && step === 'VERIFYING') {
-        setStep('SUCCESS');
-        setPendingCheckIn(null);
-      } else if (last.status === 'REJECTED' && isRecent && step === 'VERIFYING') {
-        alert(`Verificação falhou: ${last.rejectionReason || 'Tente novamente'}`);
-        setStep('INITIAL');
-        setPendingCheckIn(null);
-      }
     } else {
       setPunchType('IN');
     }
-  }, [checkIns, employeeId, step]);
+  }, [checkIns, employeeId]);
   const employee = employees.find(e => e.id === employeeId);
 
   if (!employee) {
@@ -9640,59 +9628,135 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
-        setStep('REDIRECTING');
-        
-        try {
-          // Get current location for metadata
-          let locationStr = "N/A";
-          try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-            });
-            locationStr = `${position.coords.latitude}, ${position.coords.longitude}`;
-          } catch (e) {
-            console.warn("Could not get location for check-in metadata");
-          }
-
-          const emp = employees.find(e => e.id === employeeId);
-          const agencyId = (emp as any)?.agencyId || "default";
-
-          const response = await fetch("/api/didit/create-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              employeeId,
-              agencyId,
-              type: punchType,
-              location: locationStr,
-              accessPointId: point.id
-            })
-          });
-
-          let data;
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            data = await response.json();
-          } else {
-            const text = await response.text();
-            console.error("Non-JSON response received:", text);
-            throw new Error(`Resposta do servidor não é JSON: ${text.substring(0, 100)}...`);
-          }
-          
-          if (!response.ok) {
-            throw new Error(data.error || "Failed to create verification session");
-          }
-          
-          // Redirect to Didit
-          window.location.href = data.url;
-        } catch (error: any) {
-          console.error("Error starting Didit session:", error);
-          alert(`Erro ao iniciar verificação facial: ${error.message}`);
-          setStep('INITIAL');
-        }
+        setStep('FACE_VERIFY');
+        startCamera();
       } else {
         alert('QR Code inválido para esta unidade.');
       }
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Não foi possível acessar a câmera para verificação facial.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const verifyFace = async () => {
+    if (!videoRef.current || !canvasRef.current || !employee) return;
+    
+    setIsVerifying(true);
+    try {
+      const context = canvasRef.current.getContext('2d');
+      if (!context) return;
+
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0);
+      const livePhoto = canvasRef.current.toDataURL('image/jpeg');
+      setCapturedPhoto(livePhoto);
+      stopCamera();
+
+      const referencePhotoUrl = employee.faceReferenceUrl || employee.photoUrl;
+      if (!referencePhotoUrl) {
+        throw new Error("Foto de referência não encontrada no seu perfil.");
+      }
+
+      // Initialize Gemini
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      // Convert base64 to parts
+      const livePhotoBase64 = livePhoto.split(',')[1];
+      
+      // Fetch reference photo and convert to base64 if it's a URL
+      let referencePhotoBase64 = "";
+      if (referencePhotoUrl.startsWith('data:')) {
+        referencePhotoBase64 = referencePhotoUrl.split(',')[1];
+      } else {
+        const refResp = await fetch(referencePhotoUrl);
+        const refBlob = await refResp.blob();
+        referencePhotoBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(refBlob);
+        });
+      }
+
+      const prompt = `Analise estas duas imagens. A primeira é uma foto de referência do funcionário e a segunda é uma foto capturada agora no registro de ponto. 
+      Responda APENAS em formato JSON com os seguintes campos:
+      - match: boolean (true se for a mesma pessoa, false caso contrário)
+      - confidence: number (0 a 1)
+      - reason: string (breve explicação em português)`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: {
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: "image/jpeg", data: referencePhotoBase64 } },
+            { inlineData: { mimeType: "image/jpeg", data: livePhotoBase64 } }
+          ]
+        },
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const result = JSON.parse(response.text);
+      console.log("Gemini Verification Result:", result);
+
+      if (result.match && result.confidence > 0.7) {
+        // Record check-in
+        let locationStr = "N/A";
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          });
+          locationStr = `${position.coords.latitude}, ${position.coords.longitude}`;
+        } catch (e) {
+          console.warn("Could not get location");
+        }
+
+        const checkInResponse = await fetch("/api/check-in-verified", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId,
+            agencyId: employee.agencyId,
+            type: punchType,
+            location: locationStr,
+            accessPointId: scannedPoint?.id,
+            photoUrl: livePhoto,
+            verificationResult: result
+          })
+        });
+
+        if (!checkInResponse.ok) throw new Error("Falha ao registrar ponto no servidor.");
+        
+        setStep('SUCCESS');
+      } else {
+        alert(`Verificação facial falhou: ${result.reason || 'Rosto não reconhecido'}`);
+        setStep('INITIAL');
+      }
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      alert(`Erro na verificação: ${error.message}`);
+      setStep('INITIAL');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -9736,23 +9800,50 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           </div>
         )}
 
-        {step === 'REDIRECTING' && (
-          <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
-              <div className="absolute inset-0 border-4 sm:border-8 border-slate-100 rounded-full" />
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
-              />
-              <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                <ExternalLink size={32} className="sm:hidden" />
-                <ExternalLink size={40} className="hidden sm:block" />
-              </div>
-            </div>
+        {step === 'FACE_VERIFY' && (
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <div className="text-center space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Iniciando Verificação</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Redirecionando para o Didit Facial Recognition...</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Posicione seu rosto no centro da câmera.</p>
+            </div>
+
+            <div className="relative w-full aspect-square max-w-[280px] bg-slate-100 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl">
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <div className="absolute inset-0 border-[16px] border-blue-600/20 pointer-events-none rounded-[2.5rem]"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-dashed border-white/50 rounded-full"></div>
+              
+              {isVerifying && (
+                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-12 h-12 border-4 border-white border-t-transparent rounded-full"
+                  />
+                  <p className="text-xs font-black uppercase tracking-widest">Analisando Rosto...</p>
+                </div>
+              )}
+            </div>
+
+            <canvas ref={canvasRef} className="hidden" />
+
+            <div className="flex gap-4 w-full">
+              <button 
+                onClick={() => {
+                  stopCamera();
+                  setStep('INITIAL');
+                }}
+                disabled={isVerifying}
+                className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={verifyFace}
+                disabled={isVerifying}
+                className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50"
+              >
+                Verificar Agora
+              </button>
             </div>
           </div>
         )}
@@ -9784,30 +9875,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
             >
               Cancelar Operação
             </button>
-          </div>
-        )}
-
-        {step === 'VERIFYING' && (
-          <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
-              <div className="absolute inset-0 border-4 sm:border-8 border-slate-100 rounded-full" />
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
-              />
-              <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                <ShieldCheck size={32} className="sm:hidden" />
-                <ShieldCheck size={40} className="hidden sm:block" />
-              </div>
-            </div>
-            <div className="text-center space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Aguardando Aprovação</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Sua verificação facial está sendo processada pelo Didit...</p>
-              <div className="mt-4 sm:mt-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 rounded-xl inline-block border border-slate-100">
-                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">Sessão: {pendingCheckIn?.diditSessionId?.substring(0, 8) || '...'}</p>
-              </div>
-            </div>
           </div>
         )}
 
@@ -11297,6 +11364,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
 }
 
 function RegistrationForm({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState<'INFO' | 'PHOTO' | 'DOCUMENT' | 'FACE_REG'>('INFO');
   const [formData, setFormData] = useState({
     fullName: '',
     cpf: '',
@@ -11306,6 +11374,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
+    faceReference: null as string | null,
     category: 'DIARISTA' as 'DIARISTA' | 'CONTRATADO',
   });
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -11334,7 +11403,11 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
         const photoData = canvasRef.current.toDataURL('image/jpeg');
-        setFormData({ ...formData, photo: photoData });
+        if (step === 'PHOTO') {
+          setFormData({ ...formData, photo: photoData });
+        } else if (step === 'FACE_REG') {
+          setFormData({ ...formData, faceReference: photoData });
+        }
         stopCamera();
       }
     }
@@ -11374,6 +11447,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       lgpdAuthorized: formData.lgpdAuthorized,
       photoUrl: formData.photo || undefined,
       docUrl: formData.document ? formData.document.name : undefined,
+      faceReferenceUrl: formData.faceReference || undefined,
       status: 'PENDING',
       agencyId: agencyId || undefined,
       category: urlCategory || formData.category,

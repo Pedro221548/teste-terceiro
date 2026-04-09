@@ -51,6 +51,69 @@ export async function createServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
+  // AI Facial Recognition Endpoints
+  app.post("/api/check-in-verified", async (req, res) => {
+    try {
+      const { employeeId, agencyId, type, location, accessPointId, photoUrl, verificationResult } = req.body;
+
+      if (!employeeId || !agencyId || !type) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const db = admin.firestore();
+      const checkInRef = db.collection("checkIns").doc();
+      const checkInId = checkInRef.id;
+
+      await checkInRef.set({
+        id: checkInId,
+        employeeId,
+        agencyId,
+        type,
+        location: location || "N/A",
+        accessPointId: accessPointId || "N/A",
+        timestamp: new Date().toISOString(),
+        status: "APPROVED",
+        photoUrl: photoUrl || null,
+        verificationResult: verificationResult || null,
+        method: "AI_FACIAL_RECOGNITION",
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Update employee lastAssignmentDate if it's an IN punch
+      if (type === 'IN') {
+        const employeeRef = db.collection("employees").doc(employeeId);
+        await employeeRef.update({
+          lastAssignmentDate: new Date().toISOString()
+        });
+      }
+
+      // Update Assignment status if it's an OUT punch
+      if (type === 'OUT') {
+        const today = new Date().toISOString().split('T')[0];
+        const assignmentsRef = db.collection("assignments");
+        const q = assignmentsRef
+          .where('employeeId', '==', employeeId)
+          .where('date', '==', today)
+          .where('status', '==', 'SCHEDULED');
+        
+        const snapshot = await q.get();
+        if (!snapshot.empty) {
+          const batch = db.batch();
+          snapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { status: 'COMPLETED' });
+          });
+          await batch.commit();
+          console.log(`Assignments updated to COMPLETED for employee ${employeeId}`);
+        }
+      }
+
+      res.json({ success: true, checkInId });
+    } catch (error: any) {
+      console.error("Error recording verified check-in:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Didit API Endpoints
   app.post("/api/didit/create-session", async (req, res) => {
     try {

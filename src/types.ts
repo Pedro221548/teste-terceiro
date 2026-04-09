@@ -95,6 +95,7 @@ export interface Employee {
   username?: string;
   photoUrl?: string;
   docUrl?: string;
+  faceReferenceUrl?: string;
   rating: number; // 1 to 5
   status: 'PENDING' | 'ACTIVE' | 'INACTIVE';
   complaints: number;
@@ -286,6 +287,7 @@ export interface EmployeeRegistration {
   lgpdAuthorized: boolean;
   photoUrl?: string;
   docUrl?: string;
+  faceReferenceUrl?: string;
   status: 'PENDING' | 'PROCESSED';
   createdAt: string;
   category?: 'DIARISTA' | 'CONTRATADO';

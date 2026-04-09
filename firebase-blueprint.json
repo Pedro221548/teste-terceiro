@@ -20,7 +20,8 @@
         "unavailableDates": { "type": "array", "items": { "type": "string" } },
         "level": { "type": "string", "enum": ["BRONZE", "PRATA", "OURO", "DIAMANTE"] },
         "attendanceRate": { "type": "number" },
-        "totalEarnings": { "type": "number" }
+        "totalEarnings": { "type": "number" },
+        "faceReferenceUrl": { "type": "string" }
       },
       "required": ["firstName", "lastName", "cpf", "phone", "rating", "status"]
     },
