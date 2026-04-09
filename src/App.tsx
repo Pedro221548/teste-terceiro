@@ -9669,12 +9669,19 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
             })
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to create verification session");
+          let data;
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+          } else {
+            const text = await response.text();
+            console.error("Non-JSON response received:", text);
+            throw new Error(`Resposta do servidor não é JSON: ${text.substring(0, 100)}...`);
           }
           
-          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to create verification session");
+          }
           
           // Redirect to Didit
           window.location.href = data.url;

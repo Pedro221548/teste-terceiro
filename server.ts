@@ -8,27 +8,26 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-async function startServer() {
+export async function createServer() {
   const app = express();
-  const PORT = 3000;
 
-  // Initialize Firebase Admin SDK inside startServer
+  // Initialize Firebase Admin SDK
   try {
     if (admin.apps.length === 0) {
       const fs = await import("fs");
-      const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
-      
-      console.log("Initializing Firebase Admin with project ID:", config.projectId);
-      
-      // Explicitly set the project ID in the environment to help the SDK
-      process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
-      
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        projectId: config.projectId,
-      });
-      
-      console.log("Firebase Admin initialized successfully.");
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        console.log("Initializing Firebase Admin with project ID:", config.projectId);
+        process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+          projectId: config.projectId,
+        });
+        console.log("Firebase Admin initialized successfully.");
+      } else {
+        console.warn("firebase-applet-config.json not found. Firebase Admin might not work correctly.");
+      }
     }
   } catch (error) {
     console.error("Error initializing Firebase Admin:", error);
@@ -183,6 +182,11 @@ async function startServer() {
     }
   });
 
+  // 404 handler for API routes (must be before Vite middleware)
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -198,15 +202,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-
   // Global error handler
   app.use((err: any, req: any, res: any, next: any) => {
     console.error("Global error handler caught:", err);
     res.status(500).json({ error: err.message || "Internal Server Error" });
   });
+
+  return app;
 }
 
-startServer();
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  const PORT = 3000;
+  createServer().then(app => {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }).catch(err => {
+    console.error("Failed to start server:", err);
+  });
+}
