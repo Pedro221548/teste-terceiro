@@ -310,7 +310,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
+    <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -319,6 +319,9 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
           >
             <Menu size={20} />
           </button>
+          <div className="lg:hidden flex items-center">
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
+          </div>
           <div className="hidden sm:block">
             <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display truncate max-w-[180px] sm:max-w-none">{getTitle()}</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ProStaff Brasil Platform</p>
@@ -1189,21 +1192,24 @@ export default function App() {
         <div className="w-full lg:w-[55%] flex flex-col bg-slate-100 overflow-y-auto relative selection:bg-brand-100 selection:text-brand-900">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
           
-          <div className="flex-1 flex flex-col items-center py-12 px-8 relative z-10">
+          <div className="flex-1 flex flex-col items-center py-6 px-4 sm:py-12 sm:px-8 relative z-10">
             {/* Login Section */}
             <div className="w-full max-w-xl mb-16">
               <motion.div 
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white p-12 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
+                className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 rounded-full -mr-24 -mt-24" />
                 
                 <div className="relative z-10 space-y-8">
-                  <div className="space-y-3">
-                    <h3 className="text-4xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
-                    <p className="text-slate-500 text-base font-medium">Insira suas credenciais para continuar na plataforma.</p>
+                  <div className="flex justify-center lg:hidden">
+                    <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-20 sm:h-28 w-auto" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
+                    <p className="text-slate-500 text-sm sm:text-base font-medium">Insira suas credenciais para continuar na plataforma.</p>
                   </div>
 
                   {isForgotPassword ? (
@@ -1211,11 +1217,11 @@ export default function App() {
                       <div className="space-y-4">
                         <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Recuperação</label>
                         <div className="relative">
-                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <Mail className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                           <input 
                             type="email" 
                             placeholder="seu@email.com"
-                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
                             value={resetEmail}
                             onChange={(e) => setResetEmail(e.target.value)}
                             required
@@ -1234,7 +1240,7 @@ export default function App() {
                         <button 
                           type="submit" 
                           disabled={resetStatus === 'LOADING'}
-                          className="w-full py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 disabled:opacity-50"
+                          className="w-full py-4 sm:py-6 bg-slate-950 text-white rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 disabled:opacity-50"
                         >
                           {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link de Recuperação'}
                         </button>
@@ -1252,11 +1258,11 @@ export default function App() {
                       <div className="space-y-4">
                         <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
                         <div className="relative">
-                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <Mail className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                           <input 
                             type="email" 
                             placeholder="admin@stafflink.com"
-                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
                             value={emailInput}
                             onChange={(e) => setEmailInput(e.target.value)}
                             required
@@ -1276,11 +1282,11 @@ export default function App() {
                           </button>
                         </div>
                         <div className="relative">
-                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+                          <Lock className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                           <input 
                             type="password" 
                             placeholder="••••••••"
-                            className="w-full pl-16 pr-8 py-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
+                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
                             value={passwordInput}
                             onChange={(e) => setPasswordInput(e.target.value)}
                             required
@@ -1297,10 +1303,10 @@ export default function App() {
 
                       <button 
                         type="submit" 
-                        className="w-full py-7 bg-slate-950 text-white rounded-[2.5rem] font-black uppercase tracking-[0.25em] text-sm hover:bg-slate-800 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center gap-4"
+                        className="w-full py-5 sm:py-7 bg-slate-950 text-white rounded-[1.5rem] sm:rounded-[2.5rem] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center gap-4"
                       >
                         Entrar na Plataforma
-                        <ArrowRight size={22} />
+                        <ArrowRight size={20} className="sm:w-[22px] sm:h-[22px]" />
                       </button>
                     </form>
                   )}
@@ -5374,7 +5380,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
           {filteredEmployees.map(emp => (
             <div 
               key={emp.id} 
-              className="p-6 space-y-4 active:bg-slate-50 transition-colors"
+              className="p-4 space-y-4 active:bg-slate-50 transition-colors"
               onClick={() => setSelectedEmployee(emp)}
             >
               <div className="flex items-center justify-between">
@@ -5881,27 +5887,27 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
         </motion.div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Diaria Inteligente</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Distribua sua equipe com base em performance e disponibilidade.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Diaria Inteligente</h2>
+          <p className="text-slate-500 font-medium text-[10px] sm:text-base">Distribua sua equipe com base em performance e disponibilidade.</p>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-2xl sm:rounded-[1.5rem] border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
+        <div className="flex bg-slate-100 p-1 rounded-xl sm:rounded-[1.5rem] border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
           <button 
             onClick={() => setActiveSubTab('STAFFING')}
-            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'STAFFING' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Agendar
           </button>
           <button 
             onClick={() => setActiveSubTab('CONFIRMED')}
-            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'CONFIRMED' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'CONFIRMED' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Confirmados
           </button>
           <button 
             onClick={() => setActiveSubTab('REQUESTS')}
-            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Solicitações
           </button>
@@ -6097,8 +6103,8 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
         <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
             <div className="flex flex-col gap-1">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Profissionais Confirmados</h3>
-              <p className="text-slate-400 text-xs sm:text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
+              <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Profissionais Confirmados</h3>
+              <p className="text-slate-400 text-[10px] sm:text-sm font-medium">Equipe que já confirmou presença para o dia selecionado.</p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100 w-fit">
@@ -6126,69 +6132,76 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
                 return (
                   <div key={companyId} className="space-y-6">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={() => toggleCompany(companyId)}
-                      className="w-full flex items-center gap-4 px-2 group/header"
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCompany(companyId); }}
+                      className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-4 px-2 py-4 sm:py-0 group/header cursor-pointer outline-none"
                     >
-                      <div className={`w-10 h-10 rounded-xl ${isExpanded ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center border border-emerald-100 transition-all`}>
-                        <Building2 size={20} />
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className={`w-10 h-10 rounded-xl ${isExpanded ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center border border-emerald-100 transition-all shrink-0`}>
+                          <Building2 size={20} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase truncate max-w-[150px] sm:max-w-none">{companyName}</h4>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{companyData.assignments.length} Profissionais</p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase">{companyName}</h4>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{companyData.assignments.length} Profissionais Confirmados</p>
-                      </div>
-                      <div className="flex-1 h-px bg-slate-100 mx-4"></div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const text = companyData.assignments
-                              .map(a => {
+                      <div className="hidden sm:block flex-1 h-px bg-slate-100 mx-4"></div>
+                      <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const text = companyData.assignments
+                                .map(a => {
+                                  const emp = employees.find(e => e.id === a.employeeId);
+                                  return emp ? `${emp.firstName} ${emp.lastName} - CPF: ${emp.cpf || 'N/A'}` : '';
+                                })
+                                .join('\n');
+                              navigator.clipboard.writeText(text);
+                              alert('Lista copiada!');
+                            }}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-black uppercase tracking-widest text-[9px] hover:bg-blue-100 transition-all whitespace-nowrap"
+                          >
+                            Copiar
+                          </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const JSZip = (await import('jszip')).default;
+                              const { saveAs } = await import('file-saver');
+                              const zip = new JSZip();
+                              
+                              const promises = companyData.assignments.map(async (a) => {
                                 const emp = employees.find(e => e.id === a.employeeId);
-                                return emp ? `${emp.firstName} ${emp.lastName} - CPF: ${emp.cpf || 'N/A'}` : '';
-                              })
-                              .join('\n');
-                            navigator.clipboard.writeText(text);
-                            alert('Lista copiada!');
-                          }}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-black uppercase tracking-widest text-[9px] hover:bg-blue-100 transition-all"
-                        >
-                          Copiar Lista
-                        </button>
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const JSZip = (await import('jszip')).default;
-                            const { saveAs } = await import('file-saver');
-                            const zip = new JSZip();
-                            
-                            const promises = companyData.assignments.map(async (a) => {
-                              const emp = employees.find(e => e.id === a.employeeId);
-                              if (emp && emp.photoUrl) {
-                                try {
-                                  const response = await fetch(emp.photoUrl);
-                                  const blob = await response.blob();
-                                  const fileName = `${emp.firstName}_${emp.lastName}_${emp.cpf || 'N_A'}.jpg`;
-                                  zip.file(fileName, blob);
-                                } catch (e) {
-                                  console.error('Error fetching photo:', e);
+                                if (emp && emp.photoUrl) {
+                                  try {
+                                    const response = await fetch(emp.photoUrl);
+                                    const blob = await response.blob();
+                                    const fileName = `${emp.firstName}_${emp.lastName}_${emp.cpf || 'N_A'}.jpg`;
+                                    zip.file(fileName, blob);
+                                  } catch (e) {
+                                    console.error('Error fetching photo:', e);
+                                  }
                                 }
-                              }
-                            });
-                            
-                            await Promise.all(promises);
-                            const content = await zip.generateAsync({ type: 'blob' });
-                            saveAs(content, `fotos_diaristas_${companyName.replace(/\s+/g, '_')}.zip`);
-                          }}
-                          className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-100 font-black uppercase tracking-widest text-[9px] hover:bg-slate-100 transition-all"
-                        >
-                          Baixar Fotos
-                        </button>
+                              });
+                              
+                              await Promise.all(promises);
+                              const content = await zip.generateAsync({ type: 'blob' });
+                              saveAs(content, `fotos_diaristas_${companyName.replace(/\s+/g, '_')}.zip`);
+                            }}
+                            className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-100 font-black uppercase tracking-widest text-[9px] hover:bg-slate-100 transition-all whitespace-nowrap"
+                          >
+                            Fotos
+                          </button>
+                        </div>
+                        <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
+                          <ChevronDown size={16} />
+                        </div>
                       </div>
-                      <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover/header:bg-blue-50 group-hover/header:text-blue-600 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
-                        <ChevronDown size={16} />
-                      </div>
-                    </button>
+                    </div>
 
                     <AnimatePresence>
                       {isExpanded && (
