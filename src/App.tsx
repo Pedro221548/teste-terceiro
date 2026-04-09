@@ -213,16 +213,12 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
         <div className="flex flex-col h-full">
           <div className="p-8 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-white shadow-xl shadow-slate-950/20 transform -rotate-3 group-hover:rotate-0 transition-transform">
-                <Building2 size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-black tracking-tighter text-slate-950 font-display">StaffLink</h2>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Enterprise</p>
-                </div>
-              </div>
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="ProStaff Brasil" 
+                className="h-16 w-auto object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
           </div>
 
@@ -326,7 +322,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
           </button>
           <div className="hidden sm:block">
             <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display truncate max-w-[180px] sm:max-w-none">{getTitle()}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">StaffLink Platform</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ProStaff Brasil Platform</p>
           </div>
         </div>
 
@@ -1118,18 +1114,17 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-4 mb-24"
+              className="mb-12 -ml-16 px-16 py-8 bg-white shadow-2xl shadow-white/10 rounded-r-[4rem] inline-block"
             >
-              <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center text-slate-950 shadow-[0_20px_50px_rgba(255,255,255,0.1)] transform -rotate-6 hover:rotate-0 transition-all duration-500">
-                <Building2 size={32} />
-              </div>
-              <div>
-                <h1 className="text-4xl font-black tracking-tighter text-white font-display">StaffLink</h1>
-                <p className="text-[10px] font-black text-brand-400 uppercase tracking-[0.3em] leading-none mt-1">Operational Excellence</p>
-              </div>
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="ProStaff Brasil" 
+                className="h-40 w-auto object-contain"
+                referrerPolicy="no-referrer"
+              />
             </motion.div>
             
-            <div className="space-y-10 max-w-xl">
+            <div className="space-y-6 max-w-xl">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1140,14 +1135,14 @@ export default function App() {
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-violet italic pr-4">Inteligente</span> <br />
                   de Diaristas.
                 </h2>
-                <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-8" />
+                <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-6" />
               </motion.div>
 
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-xl text-slate-400 font-medium leading-relaxed max-w-md"
+                className="text-lg text-slate-400 font-medium leading-relaxed max-w-md"
               >
                 Automatize sua agência com a plataforma líder em controle operacional e satisfação do cliente.
               </motion.p>
@@ -1156,12 +1151,12 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5, type: 'spring' }}
-                className="relative rounded-[3.5rem] overflow-hidden border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] mt-16 group"
+                className="relative rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] mt-8 group"
               >
                 <div className="absolute inset-0 bg-gradient-to-tr from-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10" />
                 <img 
                   src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
-                  alt="StaffLink Dashboard" 
+                  alt="ProStaff Brasil Dashboard" 
                   className="w-full h-auto object-cover opacity-90 group-hover:scale-105 transition-all duration-1000"
                   referrerPolicy="no-referrer"
                 />
@@ -1184,7 +1179,7 @@ export default function App() {
           </div>
 
           <div className="relative z-10 flex items-center gap-8 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-            <span>© 2026 StaffLink Platform</span>
+            <span>© 2026 ProStaff Brasil Platform</span>
             <div className="flex gap-6">
               <a href="#" className="hover:text-white transition-colors">Privacidade</a>
               <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
@@ -1196,21 +1191,21 @@ export default function App() {
         <div className="w-full lg:w-[55%] flex flex-col bg-slate-100 overflow-y-auto relative selection:bg-brand-100 selection:text-brand-900">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
           
-          <div className="flex-1 flex flex-col items-center py-20 px-8 relative z-10">
+          <div className="flex-1 flex flex-col items-center py-12 px-8 relative z-10">
             {/* Login Section */}
-            <div className="w-full max-w-xl mb-40">
+            <div className="w-full max-w-xl mb-16">
               <motion.div 
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white p-16 rounded-[4rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
+                className="bg-white p-12 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 rounded-full -mr-24 -mt-24" />
                 
-                <div className="relative z-10 space-y-12">
-                  <div className="space-y-4">
-                    <h3 className="text-5xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
-                    <p className="text-slate-500 text-lg font-medium">Insira suas credenciais para continuar na plataforma.</p>
+                <div className="relative z-10 space-y-8">
+                  <div className="space-y-3">
+                    <h3 className="text-4xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
+                    <p className="text-slate-500 text-base font-medium">Insira suas credenciais para continuar na plataforma.</p>
                   </div>
 
                   {isForgotPassword ? (
@@ -1316,16 +1311,16 @@ export default function App() {
             </div>
 
             {/* Plans Section */}
-            <div className="w-full max-w-5xl mb-32">
-              <div className="text-center mb-16">
+            <div className="w-full max-w-5xl mb-20">
+              <div className="text-center mb-10">
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] shadow-sm mb-6 inline-block"
+                  className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] shadow-sm mb-4 inline-block"
                 >
                   Planos & Preços
                 </motion.span>
-                <h2 className="text-5xl font-black text-slate-950 tracking-tight font-display">A escala que você precisa.</h2>
+                <h2 className="text-4xl font-black text-slate-950 tracking-tight font-display">A escala que você precisa.</h2>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1526,7 +1521,7 @@ export default function App() {
                   <div className="w-24 h-24 bg-brand-500 rounded-full flex items-center justify-center text-white mb-8 animate-pulse">
                     <Play size={48} fill="currentColor" />
                   </div>
-                  <h3 className="text-4xl font-black text-white tracking-tight font-display mb-4">Tour Interativo StaffLink</h3>
+                  <h3 className="text-4xl font-black text-white tracking-tight font-display mb-4">Tour Interativo ProStaff Brasil</h3>
                   <p className="text-slate-400 text-lg max-w-md mx-auto">
                     Assista como automatizamos a gestão de diaristas em tempo real.
                   </p>
@@ -6548,7 +6543,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
   const handleSendRegistrationLink = (company: Company) => {
     const link = `${window.location.origin}?role=COMPANY_REGISTRATION&companyId=${company.id}`;
-    const message = `Olá ${company.responsibleName}! Aqui está o link para completar o cadastro da sua empresa no portal StaffLink: ${link}`;
+    const message = `Olá ${company.responsibleName}! Aqui está o link para completar o cadastro da sua empresa no portal ProStaff Brasil: ${link}`;
     const cleanPhone = company.phone.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -6780,7 +6775,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       createdAt: new Date().toISOString()
     });
     
-    const message = `Olá ${userData.fullName}! Seu acesso ao portal StaffLink foi criado.\n\n📧 Login: ${login}\n🔑 Senha: ${userData.password}\n\nAcesse agora: ${window.location.origin}`;
+    const message = `Olá ${userData.fullName}! Seu acesso ao portal ProStaff Brasil foi criado.\n\n📧 Login: ${login}\n🔑 Senha: ${userData.password}\n\nAcesse agora: ${window.location.origin}`;
     const whatsappUrl = `https://wa.me/55${company.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
 
@@ -8339,7 +8334,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns
       // Agency Name
       ctx.font = 'bold 32px Arial';
       ctx.fillStyle = '#2563eb';
-      ctx.fillText('StaffLink', width / 2, 900);
+      ctx.fillText('ProStaff Brasil', width / 2, 900);
 
       const pngUrl = boxCanvas.toDataURL("image/png");
       let downloadLink = document.createElement("a");
@@ -8745,7 +8740,7 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div className="prose prose-slate max-w-none">
             <p className="text-slate-600 leading-relaxed font-medium text-sm">
-              Como gestor, você tem acesso a informações sensíveis de diarias e funcionários. O StaffLink garante que todos os dados sejam tratados com o mais alto nível de segurança e em conformidade com a <strong>LGPD</strong>.
+              Como gestor, você tem acesso a informações sensíveis de diarias e funcionários. O ProStaff Brasil garante que todos os dados sejam tratados com o mais alto nível de segurança e em conformidade com a <strong>LGPD</strong>.
             </p>
             <p className="text-[10px] text-slate-400 italic mt-6 font-medium">
               * O acesso é pessoal e intransferível. Todas as ações realizadas no portal são auditadas para sua segurança.
@@ -10277,8 +10272,13 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         className="max-w-xl w-full bg-white rounded-[40px] border border-slate-200 shadow-2xl overflow-hidden"
       >
         <div className="p-10 bg-slate-900 text-white text-center space-y-2">
-          <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
-            <Building2 size={32} />
+          <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-200/50 overflow-hidden">
+            <img 
+              src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+              alt="ProStaff Brasil" 
+              className="w-full h-auto object-contain p-2"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <h2 className="text-3xl font-black tracking-tight">Cadastro de Unidade</h2>
           <p className="text-slate-400 font-medium">Complete os dados para acessar o portal.</p>
@@ -10763,8 +10763,13 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
               <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Etapa {step} de 6</p>
               <h2 className="text-3xl font-black text-slate-900 tracking-tight">{stepTitles[step-1]}</h2>
             </div>
-            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-950">
-              <ShieldCheck size={32} />
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200/50 overflow-hidden">
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="ProStaff Brasil" 
+                className="w-full h-auto object-contain p-2"
+                referrerPolicy="no-referrer"
+              />
             </div>
           </div>
 
@@ -10914,8 +10919,13 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
           
           <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 mx-auto mb-4">
-              <UserPlus size={40} />
+            <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-slate-200/50 overflow-hidden">
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="ProStaff Brasil" 
+                className="w-full h-auto object-contain p-2"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">Faça seu Cadastro</h2>
             <p className="text-slate-500 mt-2 font-medium">Junte-se à maior rede de staff do Brasil.</p>
