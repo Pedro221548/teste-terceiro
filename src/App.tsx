@@ -770,7 +770,7 @@ export default function App() {
           setActiveTab(defaultTab);
         } else {
           // Default role based on email or URL param
-          let defaultRole: UserRole = (firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') ? 'ADMIN' : 'EMPLOYEE';
+          let defaultRole: UserRole = (firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') ? 'ADMIN' : 'REGISTRATION';
           if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION' || urlRole === 'AGENCY_REGISTRATION') {
             defaultRole = urlRole;
           }
@@ -1622,15 +1622,18 @@ export default function App() {
           setIsMobileMenuOpen={setIsMobileMenuOpen}
           userEmail={user.email}
           userName={
-            role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
-            role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+            role === 'EMPLOYEE' ? (() => {
+              const emp = employees.find(e => e.id === user?.uid || e.loginEmail === user?.email);
+              return emp ? `${emp.firstName} ${emp.lastName}`.trim() : user.displayName;
+            })() :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.fullName || user.displayName :
             role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
             role === 'ADMIN' ? orgInfo?.name || user.displayName :
             user.displayName
           }
           userPhoto={
-            role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
-            role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+            role === 'EMPLOYEE' ? employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.photoUrl || user.photoURL :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.photoUrl || user.photoURL :
             role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
             role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
             user.photoURL
@@ -1647,15 +1650,18 @@ export default function App() {
             audioEnabled={audioEnabled}
             setAudioEnabled={setAudioEnabled}
             userName={
-              role === 'EMPLOYEE' ? `${employees.find(e => e.loginEmail === user?.email)?.firstName || ''} ${employees.find(e => e.loginEmail === user?.email)?.lastName || ''}`.trim() || user.displayName :
-              role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.fullName || user.displayName :
+              role === 'EMPLOYEE' ? (() => {
+                const emp = employees.find(e => e.id === user?.uid || e.loginEmail === user?.email);
+                return emp ? `${emp.firstName} ${emp.lastName}`.trim() : user.displayName;
+              })() :
+              role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.fullName || user.displayName :
               role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
               role === 'ADMIN' ? orgInfo?.name || user.displayName :
               user.displayName
             }
             userPhoto={
-              role === 'EMPLOYEE' ? employees.find(e => e.loginEmail === user?.email)?.photoUrl || user.photoURL :
-              role === 'COMPANY' ? companyUsers.find(cu => cu.email === user?.email)?.photoUrl || user.photoURL :
+              role === 'EMPLOYEE' ? employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.photoUrl || user.photoURL :
+              role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.photoUrl || user.photoURL :
               role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
               role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
               user.photoURL
@@ -1973,7 +1979,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_schedule' && (
                   <div key="employee-schedule">
                     <EmployeeSchedule 
-                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''} 
+                      employeeId={employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.id || ''} 
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
@@ -1989,7 +1995,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_profile' && (
                   <div key="employee-profile">
                     <EmployeeProfile 
-                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''}
+                      employeeId={employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.id || ''}
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
@@ -2001,7 +2007,7 @@ export default function App() {
                 {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
                   <div key="employee-ponto">
                     <EmployeePonto 
-                      employeeId={employees.find(e => e.loginEmail === user?.email)?.id || ''}
+                      employeeId={employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.id || ''}
                       employees={employees}
                       accessPoints={accessPoints}
                       checkIns={checkIns}
@@ -3962,7 +3968,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
         <div className="space-y-2">
           <h3 className="text-2xl font-black text-slate-950 tracking-tight uppercase">Perfil não encontrado</h3>
-          <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium leading-relaxed">Selecione um funcionário cadastrado no seletor de teste acima para visualizar a agenda.</p>
+          <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium leading-relaxed">Não encontramos uma agenda vinculada a este e-mail. Entre em contato com sua agência.</p>
         </div>
       </div>
     );
@@ -9282,8 +9288,8 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
         <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
           <UserIcon size={40} />
         </div>
-        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para ver o perfil.</p>
+        <h3 className="text-xl font-black text-slate-900">Perfil não Encontrado</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Não encontramos um registro de funcionário vinculado a este e-mail. Entre em contato com sua agência para completar seu cadastro.</p>
       </div>
     );
   }
@@ -9622,8 +9628,8 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
           <Scan size={40} />
         </div>
-        <h3 className="text-xl font-black text-slate-900">Acesso Negado</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Selecione um funcionário cadastrado no seletor de teste acima para bater o ponto.</p>
+        <h3 className="text-xl font-black text-slate-900">Ponto Indisponível</h3>
+        <p className="text-slate-500 max-w-xs mx-auto">Não encontramos um registro de funcionário vinculado a este e-mail. Entre em contato com sua agência para habilitar o registro de ponto.</p>
       </div>
     );
   }
