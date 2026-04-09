@@ -4632,6 +4632,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [employeeToCreateUserFor, setEmployeeToCreateUserFor] = useState<Employee | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'DIARISTA' | 'CONTRATADO'>('ALL');
+  const [linkCategory, setLinkCategory] = useState<'DIARISTA' | 'CONTRATADO'>('DIARISTA');
 
   const pendingManagers = companyUsers.filter(cu => cu.status === 'PENDING');
 
@@ -4659,6 +4661,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     lgpdAuthorized: false,
     photoUrl: '',
     docUrl: '',
+    category: 'DIARISTA' as 'DIARISTA' | 'CONTRATADO',
   });
 
   const handleEdit = (emp: Employee) => {
@@ -4672,6 +4675,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       lgpdAuthorized: emp.lgpdAuthorized || false,
       photoUrl: emp.photoUrl || '',
       docUrl: emp.docUrl || '',
+      category: emp.category || 'DIARISTA',
     });
     setIsEditing(true);
     setShowForm(true);
@@ -4699,11 +4703,13 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
 
   const highComplaintEmployees = employees.filter(emp => emp.complaints >= 3);
 
-  const filteredEmployees = employees.filter(emp => 
-    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.cpf.includes(searchTerm) ||
-    emp.phone.includes(searchTerm)
-  );
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.cpf.includes(searchTerm) ||
+      emp.phone.includes(searchTerm);
+    const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const handleDeleteEmployee = (emp: Employee) => {
     setDeleteEmployee(emp);
@@ -4790,8 +4796,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   const handleSendLink = (e: React.FormEvent) => {
     e.preventDefault();
     const targetAgencyId = selectedAgencyId || agencyId;
-    const link = `${window.location.origin}?role=REGISTRATION${targetAgencyId ? `&agencyId=${targetAgencyId}` : ''}`;
-    const message = `Olá! Aqui está o link para o seu cadastro na agência: ${link}`;
+    const link = `${window.location.origin}?role=REGISTRATION${targetAgencyId ? `&agencyId=${targetAgencyId}` : ''}&category=${linkCategory}`;
+    const message = `Olá! Aqui está o link para o seu cadastro na agência (${linkCategory === 'DIARISTA' ? 'Diarista' : 'Contratado CLT'}): ${link}`;
     const cleanPhone = linkPhone.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
     
@@ -4850,7 +4856,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     setShowForm(false);
     setIsEditing(false);
     setSelectedEmployee(null);
-    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '' });
+    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', category: 'DIARISTA' });
   };
 
   return (
@@ -4877,7 +4883,26 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-lg sm:text-4xl font-black text-slate-900 tracking-tight">Gestão de Funcionários</h2>
-          <p className="text-slate-500 font-medium text-[9px] sm:text-base">Cadastre novos talentos ou gerencie os atuais.</p>
+          <div className="flex items-center gap-2 mt-2">
+            <button 
+              onClick={() => setCategoryFilter('ALL')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+            >
+              Todos
+            </button>
+            <button 
+              onClick={() => setCategoryFilter('DIARISTA')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'DIARISTA' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+            >
+              Diaristas
+            </button>
+            <button 
+              onClick={() => setCategoryFilter('CONTRATADO')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'CONTRATADO' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+            >
+              Contratados
+            </button>
+          </div>
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto">
           <button 
@@ -4927,6 +4952,25 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                       onChange={e => setLinkPhone(e.target.value)}
                       placeholder="Ex: 11999999999"
                     />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Categoria do Cadastro</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setLinkCategory('DIARISTA')}
+                        className={`p-4 rounded-2xl border-2 font-bold transition-all ${linkCategory === 'DIARISTA' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                      >
+                        Diarista
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLinkCategory('CONTRATADO')}
+                        className={`p-4 rounded-2xl border-2 font-bold transition-all ${linkCategory === 'CONTRATADO' ? 'border-emerald-600 bg-emerald-50 text-emerald-600' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                      >
+                        Contratado CLT
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-3 active:scale-95">
@@ -4988,6 +5032,18 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                     onChange={e => setFormData({...formData, lastName: e.target.value})}
                   />
                 </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Categoria</label>
+                <select 
+                  required
+                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                  value={formData.category}
+                  onChange={e => setFormData({...formData, category: e.target.value as 'DIARISTA' | 'CONTRATADO'})}
+                >
+                  <option value="DIARISTA">Diarista</option>
+                  <option value="CONTRATADO">Contratado CLT</option>
+                </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -5217,7 +5273,12 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 text-[10px] sm:text-xs group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
+                          <span className={`text-[7px] px-1 rounded bg-slate-100 text-slate-500 font-black uppercase tracking-widest ${emp.category === 'CONTRATADO' ? 'text-emerald-600 bg-emerald-50' : 'text-blue-600 bg-blue-50'}`}>
+                            {emp.category === 'CONTRATADO' ? 'CLT' : 'Diarista'}
+                          </span>
+                        </div>
                         {emp.personalEmail && <p className="text-[8px] sm:text-[9px] text-blue-500 font-bold tracking-tight hidden sm:block">{emp.personalEmail}</p>}
                       </div>
                     </div>
@@ -5360,6 +5421,9 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                   <div className="pb-1 sm:pb-2 text-center sm:text-left">
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
                     <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
+                      <span className={`text-[8px] sm:text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest ${selectedEmployee.category === 'CONTRATADO' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                        {selectedEmployee.category === 'CONTRATADO' ? 'Contratado CLT' : 'Diarista'}
+                      </span>
                       <div className="flex gap-0.5 bg-slate-50 px-1.5 py-0.5 rounded-lg">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} size={10} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
@@ -10830,6 +10894,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
+    category: 'DIARISTA' as 'DIARISTA' | 'CONTRATADO',
   });
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -10885,6 +10950,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
 
     const params = new URLSearchParams(window.location.search);
     const agencyId = params.get('agencyId');
+    const urlCategory = params.get('category') as 'DIARISTA' | 'CONTRATADO' | null;
 
     const newEmployeeRegistration = {
       firstName,
@@ -10898,6 +10964,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       docUrl: formData.document ? formData.document.name : undefined,
       status: 'PENDING',
       agencyId: agencyId || undefined,
+      category: urlCategory || formData.category,
       createdAt: new Date().toISOString()
     };
 
@@ -10989,6 +11056,28 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 onChange={e => setFormData({...formData, personalEmail: e.target.value})}
               />
             </div>
+
+            {!new URLSearchParams(window.location.search).get('category') && (
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Categoria do Cadastro</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, category: 'DIARISTA'})}
+                    className={`p-4 rounded-2xl border-2 font-bold transition-all text-sm ${formData.category === 'DIARISTA' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                  >
+                    Diarista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, category: 'CONTRATADO'})}
+                    className={`p-4 rounded-2xl border-2 font-bold transition-all text-sm ${formData.category === 'CONTRATADO' ? 'border-emerald-600 bg-emerald-50 text-emerald-600' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                  >
+                    Contratado CLT
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

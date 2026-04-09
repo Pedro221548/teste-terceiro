@@ -121,6 +121,7 @@ export interface Employee {
       lng: number;
     };
   };
+  category?: 'DIARISTA' | 'CONTRATADO';
 }
 
 export interface Client {
@@ -282,6 +283,7 @@ export interface EmployeeRegistration {
   docUrl?: string;
   status: 'PENDING' | 'PROCESSED';
   createdAt: string;
+  category?: 'DIARISTA' | 'CONTRATADO';
 }
 
 export interface Notification {
