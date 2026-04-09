@@ -1634,7 +1634,7 @@ export default function App() {
           handleLogout={handleLogout}
         />
 
-        <div className="flex-1 lg:ml-72 flex flex-col min-h-screen">
+        <div className="flex-1 lg:ml-72 flex flex-col min-h-screen overflow-x-hidden">
           <Header 
             activeTab={activeTab} 
             setIsMobileMenuOpen={setIsMobileMenuOpen} 
@@ -2135,7 +2135,7 @@ function BottomNav({ role, activeTab, setActiveTab }: {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-2 py-2 z-40 pb-safe">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-2 py-1.5 z-40 pb-safe">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -2144,12 +2144,12 @@ function BottomNav({ role, activeTab, setActiveTab }: {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400'}`}
+              className={`flex flex-col items-center gap-0.5 p-1.5 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400'}`}
             >
-              <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
+                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
               </div>
-              <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+              <span className="text-[7px] font-black uppercase tracking-widest">{item.label}</span>
               {isActive && (
                 <motion.div 
                   layoutId="bottomNavDot"
@@ -3874,12 +3874,12 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   return (
     <div 
       onClick={onClick}
-      className={`p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all duration-500 group relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
+      className={`p-3.5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all duration-500 group relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
     >
       <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150 ${iconColors[color]?.split(' ')[0] || 'bg-blue-600'}`} />
       
-      <div className="flex items-center justify-between mb-6 relative z-10">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 ${iconColors[color] || 'bg-blue-600 text-white'}`}>
+      <div className="flex items-center justify-between mb-2 sm:mb-6 relative z-10">
+        <div className={`w-8 h-8 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 ${iconColors[color] || 'bg-blue-600 text-white'}`}>
           {icon}
         </div>
         {trend && (
@@ -3889,8 +3889,8 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
         )}
       </div>
       <div className="relative z-10">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
-        <h3 className="text-3xl font-black text-slate-950 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
+        <p className="text-[6px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0 sm:mb-1.5">{label}</p>
+        <h3 className="text-sm sm:text-3xl font-black text-slate-950 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
       </div>
       {alert && (
         <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
@@ -3986,7 +3986,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     <motion.div 
       initial={{ opacity: 0, y: 20 }} 
       animate={{ opacity: 1, y: 0 }} 
-      className="space-y-10 relative"
+      className="space-y-6 sm:space-y-10 relative overflow-x-hidden"
     >
       <AnimatePresence>
         {showSuccess && (
@@ -4002,9 +4002,9 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-2 px-4 sm:px-0">
-        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
-        <p className="text-slate-500 font-medium text-xs sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
+      <div className="flex flex-col gap-0.5 px-2 sm:px-0 mb-2 sm:mb-0 items-center text-center sm:items-start sm:text-left">
+        <h2 className="text-base sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
+        <p className="text-slate-500 font-medium text-[8px] sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
 
       {/* Notifications Section */}
@@ -4071,50 +4071,50 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
+      <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Agenda
         </button>
         <button 
           onClick={() => setActiveTab('FINANCE')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'FINANCE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FINANCE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Financeiro
         </button>
         <button 
           onClick={() => setActiveTab('MURAL')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Mural
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Indisponibilidade
         </button>
       </div>
 
       {activeTab === 'SCHEDULE' ? (
-        <div className="grid grid-cols-1 gap-6 px-4 sm:px-0">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-4">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 px-4 sm:px-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-6 mb-2 sm:mb-4">
             <StatCard 
-              icon={<TrendingUp size={24} />} 
+              icon={<TrendingUp size={20} className="sm:w-6 sm:h-6" />} 
               label="Taxa de Presença" 
               value={`${employee.attendanceRate || 100}%`} 
               color="blue" 
             />
             <StatCard 
-              icon={<Star size={24} />} 
+              icon={<Star size={20} className="sm:w-6 sm:h-6" />} 
               label="Nível Atual" 
               value={employee.level || 'BRONZE'} 
               color="amber" 
             />
             <StatCard 
-              icon={<CheckCircle size={24} />} 
+              icon={<CheckCircle size={20} className="sm:w-6 sm:h-6" />} 
               label="Diárias Realizadas" 
               value={completedAssignments.length.toString()} 
               color="emerald" 
@@ -4142,38 +4142,37 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               const companyName = company?.name || cli?.name || 'Empresa não identificada';
 
               return (
-                <div key={as.id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                <div key={as.id} className="bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
                   <div className="flex items-center gap-4 sm:gap-8 relative z-10">
-                    <div className="w-14 h-14 sm:w-20 sm:h-20 bg-slate-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner shrink-0">
-                      <Building2 size={24} className="sm:hidden" />
-                      <Building2 size={36} className="hidden sm:block" />
+                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-slate-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner shrink-0">
+                      <Building2 size={24} className="sm:w-9 sm:h-9" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Empresa: {companyName}</p>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Unidade: {unitName}</p>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Responsável: {responsibleName}</p>
+                      <h4 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Empresa: {companyName}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Unidade: {unitName}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Responsável: {responsibleName}</p>
                       
-                      <div className="flex flex-wrap items-center gap-3 mt-4">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4">
                         {cli?.location?.startsWith('http') ? (
-                          <a href={cli.location} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-                            <MapPin size={12} /> Ver no Mapa
+                          <a href={cli.location} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+                            <MapPin size={10} className="sm:w-3 sm:h-3" /> Ver no Mapa
                           </a>
                         ) : (
-                          <span className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                            <MapPin size={12} /> {cli?.location || 'Localização não definida'}
+                          <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest">
+                            <MapPin size={10} className="sm:w-3 sm:h-3" /> {cli?.location || 'Localização não definida'}
                           </span>
                         )}
                         {agency?.phone && (
-                          <a href={`https://wa.me/${agency.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
-                            <Phone size={12} /> Suporte
+                          <a href={`https://wa.me/${agency.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-emerald-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+                            <Phone size={10} className="sm:w-3 sm:h-3" /> Suporte
                           </a>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 text-[9px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
-                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={12} className="text-blue-600" /> {formatDateBR(as.date)}</span>
-                        <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={12} className="text-blue-600" /> 08:00 - 17:00</span>
+                      <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-6 gap-y-1.5 sm:gap-y-3 text-[8px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={10} className="text-blue-600 sm:w-3 sm:h-3" /> {formatDateBR(as.date)}</span>
+                        <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={10} className="text-blue-600 sm:w-3 sm:h-3" /> 08:00 - 17:00</span>
                       </div>
                     </div>
                   </div>
@@ -4190,39 +4189,39 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           )}
         </div>
       ) : activeTab === 'FINANCE' ? (
-        <div className="space-y-8 px-4 sm:px-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-slate-950 p-10 rounded-[3rem] text-white relative overflow-hidden group">
+        <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-slate-950 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] text-white relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-              <div className="relative z-10 space-y-6">
+              <div className="relative z-10 space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
-                    <CreditCard size={32} className="text-blue-400" />
+                  <div className="p-3 sm:p-4 bg-white/10 rounded-xl sm:rounded-2xl backdrop-blur-md">
+                    <CreditCard size={24} className="text-blue-400 sm:w-8 sm:h-8" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Saldo Disponível</span>
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Saldo Disponível</span>
                 </div>
                 <div>
-                  <p className="text-slate-400 font-medium text-sm mb-1">Total a Receber</p>
-                  <h3 className="text-5xl font-black tracking-tight">R$ {pendingEarnings.toFixed(2)}</h3>
+                  <p className="text-slate-400 font-medium text-xs sm:text-sm mb-1">Total a Receber</p>
+                  <h3 className="text-3xl sm:text-5xl font-black tracking-tight">R$ {pendingEarnings.toFixed(2)}</h3>
                 </div>
-                <button className="w-full py-4 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95">
+                <button className="w-full py-3 sm:py-4 bg-white text-slate-950 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95">
                   Solicitar Adiantamento
                 </button>
               </div>
             </div>
-            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm space-y-4 sm:space-y-6">
               <div className="flex items-center justify-between">
-                <div className="p-4 bg-emerald-50 rounded-2xl">
-                  <TrendingUp size={32} className="text-emerald-600" />
+                <div className="p-3 sm:p-4 bg-emerald-50 rounded-xl sm:rounded-2xl">
+                  <TrendingUp size={24} className="text-emerald-600 sm:w-8 sm:h-8" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Ganhos Totais</span>
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Ganhos Totais</span>
               </div>
               <div>
-                <p className="text-slate-400 font-medium text-sm mb-1">Acumulado na Plataforma</p>
-                <h3 className="text-5xl font-black text-slate-950 tracking-tight">R$ {totalEarnings.toFixed(2)}</h3>
+                <p className="text-slate-400 font-medium text-xs sm:text-sm mb-1">Acumulado na Plataforma</p>
+                <h3 className="text-3xl sm:text-5xl font-black text-slate-950 tracking-tight">R$ {totalEarnings.toFixed(2)}</h3>
               </div>
               <div className="pt-4 border-t border-slate-50">
-                <p className="text-slate-400 text-xs font-medium leading-relaxed">Seu nível atual é <span className="text-amber-600 font-black">{employee.level || 'BRONZE'}</span>. Continue realizando diárias para aumentar seus ganhos!</p>
+                <p className="text-slate-400 text-[10px] sm:text-xs font-medium leading-relaxed">Seu nível atual é <span className="text-amber-600 font-black">{employee.level || 'BRONZE'}</span>. Continue realizando diárias para aumentar seus ganhos!</p>
               </div>
             </div>
           </div>
