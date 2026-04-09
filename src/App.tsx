@@ -3941,9 +3941,168 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
+function FaceUpdateModal({ employee, onClose }: { employee: Employee, onClose: () => void }) {
+  const [step, setStep] = useState<'START' | 'CAPTURE' | 'SUCCESS'>('START');
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setStep('CAPTURE');
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Não foi possível acessar a câmera.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const capture = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const context = canvasRef.current.getContext('2d');
+    if (!context) return;
+
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    context.drawImage(videoRef.current, 0, 0);
+    const photo = canvasRef.current.toDataURL('image/jpeg');
+    setCapturedPhoto(photo);
+    stopCamera();
+  };
+
+  const handleSubmit = async () => {
+    if (!capturedPhoto) return;
+    setIsSubmitting(true);
+    try {
+      await updateDocument('employees', employee.id, { faceReferenceUrl: capturedPhoto });
+      setStep('SUCCESS');
+    } catch (error) {
+      console.error('Error updating face reference:', error);
+      alert('Erro ao atualizar cadastro facial.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl"
+      >
+        <div className="p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cadastro Facial</h3>
+            {step !== 'SUCCESS' && (
+              <button onClick={() => { stopCamera(); onClose(); }} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            )}
+          </div>
+
+          {step === 'START' && (
+            <div className="space-y-6 text-center py-4">
+              <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 mx-auto">
+                <Camera size={40} />
+              </div>
+              <div className="space-y-2">
+                <p className="text-slate-600 font-medium">Para garantir sua segurança e agilizar o ponto, precisamos atualizar sua foto de referência facial.</p>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Posicione-se em um local iluminado</p>
+              </div>
+              <button 
+                onClick={startCamera}
+                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
+              >
+                Começar Agora
+              </button>
+            </div>
+          )}
+
+          {step === 'CAPTURE' && (
+            <div className="space-y-6">
+              <div className="relative aspect-square rounded-[2rem] overflow-hidden bg-slate-100 border-4 border-slate-100 shadow-inner">
+                {!capturedPhoto ? (
+                  <>
+                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                    <div className="absolute inset-0 border-[3rem] border-slate-950/20 pointer-events-none">
+                      <div className="w-full h-full border-2 border-dashed border-white/50 rounded-full" />
+                    </div>
+                  </>
+                ) : (
+                  <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover scale-x-[-1]" />
+                )}
+              </div>
+              
+              <canvas ref={canvasRef} className="hidden" />
+
+              <div className="flex gap-3">
+                {!capturedPhoto ? (
+                  <button 
+                    onClick={capture}
+                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20"
+                  >
+                    Capturar Foto
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => { setCapturedPhoto(null); startCamera(); }}
+                      className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all"
+                    >
+                      Refazer
+                    </button>
+                    <button 
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Salvando...' : 'Confirmar'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 'SUCCESS' && (
+            <div className="space-y-6 text-center py-4">
+              <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600 mx-auto">
+                <CheckCircle size={40} />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Tudo Pronto!</h4>
+                <p className="text-slate-600 font-medium">Seu cadastro facial foi atualizado com sucesso. Agora você já pode bater o ponto usando reconhecimento facial.</p>
+              </div>
+              <button 
+                onClick={onClose}
+                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
@@ -4048,6 +4207,34 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         <h2 className="text-base sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
         <p className="text-slate-500 font-medium text-[8px] sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
+
+      {/* Facial Recognition Update Box */}
+      {!employee.faceReferenceUrl && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-blue-600 text-white p-6 sm:p-8 rounded-[2.5rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20 border border-blue-400/30 relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-md shadow-inner">
+              <Camera size={32} />
+            </div>
+            <div className="text-center sm:text-left space-y-1">
+              <h3 className="text-lg font-black uppercase tracking-tight">Atualize seu Reconhecimento Facial</h3>
+              <p className="text-xs font-medium text-blue-100 max-w-sm">Para bater o ponto com segurança, precisamos de uma foto de referência atualizada.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowFaceUpdate(true)}
+            className="w-full sm:w-auto px-8 py-4 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl active:scale-95 relative z-10"
+          >
+            Atualizar Agora
+          </button>
+        </motion.div>
+      )}
+
+      {showFaceUpdate && <FaceUpdateModal employee={employee} onClose={() => setShowFaceUpdate(false)} />}
 
       {/* Notifications Section */}
       {myNotifications.length > 0 && (
@@ -9259,6 +9446,7 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
 }
 
 function EmployeeProfile({ employeeId, employees, assignments, notifications, checkIns, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], checkIns: CheckIn[], pricing: PricingConfig }) {
+  const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
@@ -9491,7 +9679,44 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
             )}
           </div>
         </div>
+
+        {/* Facial Recognition Card */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6 md:col-span-2">
+          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ShieldCheck size={16} />
+            </div>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Reconhecimento Facial</h4>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-8">
+            <div className="w-32 h-32 rounded-3xl bg-slate-50 overflow-hidden border-2 border-slate-100 flex items-center justify-center shrink-0 shadow-inner">
+              {employee.faceReferenceUrl ? (
+                <img src={employee.faceReferenceUrl} alt="Face Reference" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <Camera size={40} className="text-slate-300" />
+              )}
+            </div>
+            <div className="flex-1 text-center sm:text-left space-y-3">
+              <p className="text-lg font-black text-slate-900 tracking-tight">
+                {employee.faceReferenceUrl ? 'Seu cadastro facial está ativo.' : 'Você ainda não possui um cadastro facial.'}
+              </p>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-2xl">
+                O reconhecimento facial garante que apenas você possa registrar seu ponto, trazendo mais segurança e agilidade para sua jornada diária. Mantenha sua foto sempre atualizada para evitar falhas na verificação.
+              </p>
+              <button 
+                onClick={() => setShowFaceUpdate(true)}
+                className="mt-2 px-8 py-4 bg-slate-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95 flex items-center gap-3 mx-auto sm:mx-0"
+              >
+                <Camera size={18} />
+                {employee.faceReferenceUrl ? 'Atualizar Biometria Facial' : 'Cadastrar Biometria Facial'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {showFaceUpdate && <FaceUpdateModal employee={employee} onClose={() => setShowFaceUpdate(false)} />}
 
       {/* Privacy & Data Card */}
       <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8">
