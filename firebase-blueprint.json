@@ -173,6 +173,24 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "name", "price", "maxEmployees", "maxCompanies", "features", "updatedAt"]
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "A record of an employee clocking in or out.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "accessPointId": { "type": "string" },
+        "location": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "type": { "type": "string", "enum": ["IN", "OUT"] },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "diditSessionId": { "type": "string" }
+      },
+      "required": ["agencyId", "employeeId", "timestamp", "type", "status"]
     }
   },
   "firestore": {
@@ -186,6 +204,7 @@
     "/invoices": { "schema": "Invoice", "description": "Collection of billing records." },
     "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
     "/agencies": { "schema": "Agency", "description": "Collection of agencies." },
-    "/plans": { "schema": "Plan", "description": "Collection of subscription plans." }
+    "/plans": { "schema": "Plan", "description": "Collection of subscription plans." },
+    "/checkIns": { "schema": "CheckIn", "description": "Collection of check-in records." }
   }
 }

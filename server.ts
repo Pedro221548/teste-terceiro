@@ -49,6 +49,128 @@ async function startServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
+  // Didit API Endpoints
+  app.post("/api/didit/create-session", async (req, res) => {
+    try {
+      const { employeeId, agencyId, type, location, accessPointId } = req.body;
+
+      if (!employeeId || !agencyId || !type) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const db = admin.firestore();
+      const checkInRef = db.collection("checkIns").doc();
+      const checkInId = checkInRef.id;
+
+      // Create pending check-in
+      await checkInRef.set({
+        id: checkInId,
+        employeeId,
+        agencyId,
+        type,
+        location: location || "N/A",
+        accessPointId: accessPointId || "N/A",
+        timestamp: new Date().toISOString(),
+        status: "PENDING",
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log(`Creating Didit session for check-in: ${checkInId}`);
+
+      const response = await axios.post("https://verification.didit.me/v3/session/", {
+        workflow_id: process.env.DIDIT_WORKFLOW_ID,
+        user_id: checkInId, // Use checkInId as user_id to link back in webhook
+        features: {
+          face_verification: true
+        }
+      }, {
+        headers: {
+          "Authorization": `Bearer ${process.env.DIDIT_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      const data = response.data;
+      
+      // Update check-in with session ID
+      await checkInRef.update({
+        diditSessionId: data.id
+      });
+
+      res.json({ url: data.url, checkInId });
+    } catch (error: any) {
+      console.error("Error creating Didit session:", error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to create verification session" });
+    }
+  });
+
+  app.post("/api/didit/webhook", async (req, res) => {
+    try {
+      const data = req.body;
+      console.log("Received Didit Webhook:", JSON.stringify(data, null, 2));
+
+      // The user_id we passed is the checkInId
+      const checkInId = data.user_id;
+      const status = data.status; // e.g., "approved", "rejected"
+
+      if (!checkInId) {
+        console.warn("Webhook received without user_id");
+        return res.status(200).end();
+      }
+
+      const db = admin.firestore();
+      const checkInRef = db.collection("checkIns").doc(checkInId);
+      const checkInDoc = await checkInRef.get();
+
+      if (!checkInDoc.exists) {
+        console.error(`Check-in document not found: ${checkInId}`);
+        return res.status(200).end();
+      }
+
+      if (status === "approved") {
+        await checkInRef.update({
+          status: "APPROVED",
+          photoUrl: data.face_verification?.image_url || "",
+          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Check-in ${checkInId} APPROVED`);
+
+        // Update Assignment status if it's an OUT punch
+        const checkInData = checkInDoc.data();
+        if (checkInData && checkInData.type === 'OUT') {
+          const today = new Date().toISOString().split('T')[0];
+          const assignmentsRef = db.collection("assignments");
+          const q = assignmentsRef
+            .where('employeeId', '==', checkInData.employeeId)
+            .where('date', '==', today)
+            .where('status', '==', 'SCHEDULED');
+          
+          const snapshot = await q.get();
+          if (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => {
+              batch.update(doc.ref, { status: 'COMPLETED' });
+            });
+            await batch.commit();
+            console.log(`Assignments updated to COMPLETED for employee ${checkInData.employeeId}`);
+          }
+        }
+      } else {
+        await checkInRef.update({
+          status: "REJECTED",
+          rejectionReason: data.rejection_reason || "Verification failed",
+          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Check-in ${checkInId} REJECTED`);
+      }
+
+      res.status(200).end();
+    } catch (error: any) {
+      console.error("Error processing Didit webhook:", error.message);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -64,6 +64,8 @@ import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -179,12 +181,14 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
     { id: 'access_control', label: 'Controle de Acesso', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
+    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
     { id: 'company_diaristas', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
@@ -1837,6 +1841,18 @@ export default function App() {
                     />
                   </div>
                 )}
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'reports' && (
+                  <div key="agency-reports">
+                    <AgencyReports 
+                      employees={employees}
+                      assignments={assignments}
+                      clients={clients}
+                      companies={companies}
+                      units={units}
+                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
+                    />
+                  </div>
+                )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'access_control' && (
                   <div key="agency-access-control">
                     <AgencyAccessControl 
@@ -1931,6 +1947,17 @@ export default function App() {
                       employees={employees}
                       feedbacks={feedbacks}
                       units={units}
+                    />
+                  </div>
+                )}
+                {role === 'COMPANY' && activeTab === 'company_reports' && (
+                  <div key="company-reports">
+                    <CompanyReports 
+                      employees={employees}
+                      assignments={assignments}
+                      clients={clients}
+                      units={units}
+                      companyId={(user as any).companyId}
                     />
                   </div>
                 )}
@@ -3559,13 +3586,17 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                                     const emp = employees.find(e => e.id === as.employeeId);
                                     return (
                                       <div key={as.id} className="flex items-center p-4 sm:p-6 rounded-[2rem] bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/item relative overflow-hidden gap-4">
-                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-4 border-white shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500 shrink-0">
-                                          <img 
-                                            src={emp?.photoUrl || `https://picsum.photos/seed/${emp?.id}/200`} 
-                                            alt="" 
-                                            className="w-full h-full object-cover"
-                                            referrerPolicy="no-referrer"
-                                          />
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-4 border-white shadow-xl group-hover/item:scale-110 group-hover/item:rotate-3 transition-all duration-500 shrink-0 flex items-center justify-center bg-white">
+                                          {emp?.photoUrl ? (
+                                            <img 
+                                              src={emp.photoUrl} 
+                                              alt="" 
+                                              className="w-full h-full object-cover"
+                                              referrerPolicy="no-referrer"
+                                            />
+                                          ) : (
+                                            <UserIcon size={24} className="text-slate-300" />
+                                          )}
                                         </div>
                                         
                                         <div className="flex-1 min-w-0">
@@ -3723,8 +3754,12 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 </div>
 
                 <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
-                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg flex items-center justify-center bg-white">
+                    {evaluatingEmployee.photoUrl ? (
+                      <img src={evaluatingEmployee.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon size={24} className="text-slate-300" />
+                    )}
                   </div>
                   <div>
                     <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>
@@ -4395,8 +4430,12 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
               <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full -mr-20 -mt-20 transition-transform group-hover:scale-150 duration-1000"></div>
               
               <div className="flex flex-col items-center sm:items-start gap-4 sm:gap-6 sm:min-w-[240px] relative z-10">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[2.5rem] bg-slate-50 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 group-hover:-rotate-3 transition-all duration-500">
-                  <img src={`https://picsum.photos/seed/${emp?.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[2.5rem] bg-slate-50 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 group-hover:-rotate-3 transition-all duration-500 flex items-center justify-center">
+                  {emp?.photoUrl ? (
+                    <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserIcon size={32} className="text-slate-300" />
+                  )}
                 </div>
                 <div className="text-center sm:text-left space-y-1 sm:space-y-2">
                   <p className="font-black text-slate-950 text-lg sm:text-xl tracking-tight uppercase">{emp?.firstName} {emp?.lastName}</p>
@@ -5482,8 +5521,12 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
               </div>
               <div className="px-5 sm:px-8 pb-6 sm:pb-8">
                 <div className="relative -mt-8 sm:-mt-12 mb-4 sm:mb-6 flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[1.25rem] sm:rounded-[1.5rem] border-4 border-white bg-slate-100 overflow-hidden shadow-xl shrink-0">
-                    <img src={selectedEmployee.photoUrl || `https://picsum.photos/seed/${selectedEmployee.id}/400`} alt="" className="w-full h-full object-cover" />
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[1.25rem] sm:rounded-[1.5rem] border-4 border-white bg-slate-100 overflow-hidden shadow-xl shrink-0 flex items-center justify-center">
+                    {selectedEmployee.photoUrl ? (
+                      <img src={selectedEmployee.photoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserIcon size={48} className="text-slate-300" />
+                    )}
                   </div>
                   <div className="pb-1 sm:pb-2 text-center sm:text-left">
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
@@ -5784,8 +5827,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
               {/* Modal Header */}
               <div className="p-6 sm:p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white shadow-md">
-                    <img src={selectedAssignmentEmployee.photoUrl || `https://picsum.photos/seed/${selectedAssignmentEmployee.id}/200`} alt="" className="w-full h-full object-cover" />
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white shadow-md flex items-center justify-center bg-white">
+                    {selectedAssignmentEmployee.photoUrl ? (
+                      <img src={selectedAssignmentEmployee.photoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserIcon size={24} className="text-slate-300" />
+                    )}
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-slate-900 tracking-tight">{selectedAssignmentEmployee.firstName} {selectedAssignmentEmployee.lastName}</h3>
@@ -6051,8 +6098,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                   )}
                   <div className="flex items-start justify-between mb-4 sm:mb-6">
                     <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-[1.25rem] bg-slate-100 overflow-hidden border-2 sm:border-4 border-white shadow-lg group-hover:scale-105 transition-transform">
-                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-[1.25rem] bg-slate-100 overflow-hidden border-2 sm:border-4 border-white shadow-lg group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                        {emp.photoUrl ? (
+                          <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <UserIcon size={24} className="text-slate-300" />
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -6236,8 +6287,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                                         className="w-full p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4 hover:border-emerald-200 hover:bg-white transition-all group text-left"
                                       >
                                         <div className="flex items-center gap-3 sm:gap-4">
-                                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
-                                            <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                                            {emp.photoUrl ? (
+                                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                            ) : (
+                                              <UserIcon size={20} className="text-slate-300" />
+                                            )}
                                           </div>
                                           <div>
                                             <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
@@ -6313,8 +6368,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                       {req.employeeIds.map(empId => {
                         const emp = employees.find(e => e.id === empId);
                         return (
-                          <div key={empId} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white overflow-hidden shadow-sm bg-slate-200" title={emp?.firstName}>
-                            <img src={emp?.photoUrl || `https://picsum.photos/seed/${empId}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div key={empId} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white overflow-hidden shadow-sm bg-slate-200 flex items-center justify-center" title={emp?.firstName}>
+                            {emp?.photoUrl ? (
+                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <UserIcon size={16} className="text-slate-400" />
+                            )}
                           </div>
                         );
                       })}
@@ -6645,6 +6704,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     phone: '',
     email: '',
     address: '',
+    paymentDay: '',
     password: '',
     confirmPassword: ''
   });
@@ -6774,7 +6834,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     }
 
     setShowAddModal(false);
-    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '', password: '', confirmPassword: '' });
+    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '', paymentDay: '', password: '', confirmPassword: '' });
   };
 
   const handleEditCompany = async (e: React.FormEvent) => {
@@ -6786,10 +6846,11 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       cnpj: formData.cnpj,
       phone: formData.phone,
       email: formData.email,
-      address: formData.address
+      address: formData.address,
+      paymentDay: formData.paymentDay
     });
     setShowEditCompanyModal(null);
-    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '' });
+    setFormData({ name: '', responsibleName: '', cnpj: '', phone: '', email: '', address: '', paymentDay: '' });
   };
 
   const handleAddUnit = async (e: React.FormEvent) => {
@@ -7059,7 +7120,8 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                       cnpj: company.cnpj,
                       phone: company.phone,
                       email: company.email,
-                      address: company.address || ''
+                      address: company.address || '',
+                      paymentDay: company.paymentDay || ''
                     });
                     setShowEditCompanyModal(company);
                   }}
@@ -7208,6 +7270,10 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Endereço (Opcional)</label>
                   <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Rua, Número, Bairro, Cidade - Estado" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Dia do Pagamento (Ex: Todo dia 05)</label>
+                  <input type="text" value={formData.paymentDay} onChange={e => setFormData({...formData, paymentDay: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ex: Todo dia 05" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
@@ -7543,6 +7609,16 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                       placeholder="Rua, Número, Bairro, Cidade"
                       value={formData.address}
                       onChange={e => setFormData({...formData, address: e.target.value})}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Dia do Pagamento (Ex: Todo dia 05)</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      placeholder="Ex: Todo dia 05"
+                      value={formData.paymentDay}
+                      onChange={e => setFormData({...formData, paymentDay: e.target.value})}
                     />
                   </div>
                   <div>
@@ -8029,13 +8105,17 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                   )}
                   
                   <div className="flex items-center gap-4 mb-6 relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform">
-                      <img 
-                        src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} 
-                        alt="" 
-                        className="w-full h-full object-cover" 
-                        referrerPolicy="no-referrer" 
-                      />
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                      {emp.photoUrl ? (
+                        <img 
+                          src={emp.photoUrl} 
+                          alt="" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" 
+                        />
+                      ) : (
+                        <UserIcon size={24} className="text-slate-300" />
+                      )}
                     </div>
                     <div>
                       <h4 className="font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h4>
@@ -8184,8 +8264,12 @@ function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employee
                   <div className={`absolute top-0 right-0 w-32 h-32 ${selectedDate === today ? 'bg-emerald-500/5' : 'bg-blue-500/5'} rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150`}></div>
                   <div className="flex flex-col items-center text-center space-y-6 relative z-10">
                     <div className="relative">
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
-                        <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                        {emp.photoUrl ? (
+                          <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <UserIcon size={32} className="text-slate-300" />
+                        )}
                       </div>
                       {assignment?.confirmed && (
                         <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-xl shadow-lg border-2 border-white">
@@ -8239,8 +8323,12 @@ function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employee
               
               <div className="flex flex-col items-center text-center space-y-6 relative z-10">
                 <div className="relative">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform">
-                    <img src={emp.photoUrl || `https://picsum.photos/seed/${emp.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[1.5rem] sm:rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                    {emp.photoUrl ? (
+                      <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon size={32} className="text-slate-300" />
+                    )}
                   </div>
                   <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-xl shadow-lg border border-slate-100">
                     <div className="flex items-center gap-1">
@@ -8324,8 +8412,12 @@ function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employee
                 </div>
 
                 <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
-                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg flex items-center justify-center bg-white">
+                    {evaluatingEmployee.photoUrl ? (
+                      <img src={evaluatingEmployee.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon size={24} className="text-slate-300" />
+                    )}
                   </div>
                   <div>
                     <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>
@@ -8373,6 +8465,269 @@ function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employee
           </div>
         )}
       </AnimatePresence>
+    </motion.div>
+  );
+}
+
+const exportToExcel = async (data: any[], columns: any[], filename: string) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Relatório');
+
+  worksheet.columns = columns.map(col => ({
+    header: col.header,
+    key: col.key,
+    width: col.width || 20
+  }));
+
+  data.forEach(item => {
+    worksheet.addRow(item);
+  });
+
+  // Styling
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell) => {
+      cell.font = { name: 'Arial', size: 10 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+    if (rowNumber === 1) {
+      row.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 10, bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        };
+      });
+    }
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `${filename}.xlsx`);
+};
+
+function AgencyReports({ employees, assignments, clients, companies, units, agencyId }: { 
+  employees: Employee[], 
+  assignments: Assignment[], 
+  clients: Client[], 
+  companies: Company[], 
+  units: Unit[],
+  agencyId: string | null 
+}) {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+
+  const handleExportEmployees = async () => {
+    const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
+    
+    const reportData = employees.map(emp => {
+      const empAssignments = monthAssignments.filter(a => a.employeeId === emp.id);
+      const daysWorked = empAssignments.length;
+      const totalValue = empAssignments.reduce((acc, curr) => acc + curr.value, 0);
+      
+      if (daysWorked === 0) return null;
+
+      return {
+        name: `${emp.firstName} ${emp.lastName}`,
+        cpf: emp.cpf || 'N/A',
+        phone: emp.phone || 'N/A',
+        days: daysWorked,
+        value: `R$ ${totalValue.toFixed(2)}`
+      };
+    }).filter(Boolean);
+
+    const columns = [
+      { header: 'Nome do Funcionário', key: 'name', width: 30 },
+      { header: 'CPF', key: 'cpf', width: 20 },
+      { header: 'Número', key: 'phone', width: 20 },
+      { header: 'Dias Trabalhados', key: 'days', width: 20 },
+      { header: 'Valor Total', key: 'value', width: 20 },
+    ];
+
+    await exportToExcel(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`);
+  };
+
+  const handleExportCompanies = async () => {
+    const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
+    
+    const reportData = companies.map(comp => {
+      const compUnits = units.filter(u => u.companyId === comp.id);
+      const compAssignments = monthAssignments.filter(a => compUnits.some(u => u.clientId === a.clientId));
+      
+      if (compAssignments.length === 0) return null;
+
+      const presentEmployees = Array.from(new Set(compAssignments.map(a => {
+        const emp = employees.find(e => e.id === a.employeeId);
+        return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
+      }))).join(', ');
+
+      const totalValue = compAssignments.reduce((acc, curr) => acc + curr.value, 0);
+
+      return {
+        name: comp.name,
+        employees: presentEmployees,
+        total: `R$ ${totalValue.toFixed(2)}`,
+        paymentDay: comp.paymentDay || 'N/A'
+      };
+    }).filter(Boolean);
+
+    const columns = [
+      { header: 'Nome da Empresa', key: 'name', width: 30 },
+      { header: 'Funcionários Presentes', key: 'employees', width: 50 },
+      { header: 'Total a Pagar', key: 'total', width: 20 },
+      { header: 'Dia do Pagamento', key: 'paymentDay', width: 20 },
+    ];
+
+    await exportToExcel(reportData, columns, `Relatorio_Empresas_${selectedMonth}`);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Relatórios de Exportação</h2>
+        <p className="text-slate-500 font-medium">Gere planilhas detalhadas dos processos mensais.</p>
+      </div>
+
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Mês de Referência</label>
+            <input 
+              type="month" 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full sm:w-64 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
+            <div className="w-12 h-12 bg-violet-100 text-violet-600 rounded-2xl flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Diaristas</h3>
+              <p className="text-sm text-slate-500 mt-1">Exporta nome, CPF, telefone, dias trabalhados e valor total.</p>
+            </div>
+            <button 
+              onClick={handleExportEmployees}
+              className="w-full py-4 bg-violet-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-violet-700 transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-3"
+            >
+              <Download size={18} />
+              Exportar Diaristas
+            </button>
+          </div>
+
+          <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
+            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+              <Building2 size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Empresas</h3>
+              <p className="text-sm text-slate-500 mt-1">Exporta nome da empresa, funcionários do mês, total a pagar e dia de pagamento.</p>
+            </div>
+            <button 
+              onClick={handleExportCompanies}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-3"
+            >
+              <Download size={18} />
+              Exportar Empresas
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CompanyReports({ employees, assignments, clients, units, companyId }: { 
+  employees: Employee[], 
+  assignments: Assignment[], 
+  clients: Client[], 
+  units: Unit[],
+  companyId: string 
+}) {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
+
+  const handleExportMyReport = async () => {
+    const compUnits = units.filter(u => u.companyId === companyId);
+    const monthAssignments = assignments.filter(a => 
+      a.date.startsWith(selectedMonth) && 
+      a.status === 'COMPLETED' && 
+      compUnits.some(u => u.clientId === a.clientId)
+    );
+
+    const reportData = monthAssignments.map(a => {
+      const emp = employees.find(e => e.id === a.employeeId);
+      const unit = units.find(u => u.clientId === a.clientId);
+      return {
+        date: formatDateBR(a.date),
+        employee: emp ? `${emp.firstName} ${emp.lastName}` : 'N/A',
+        unit: unit ? unit.name : 'N/A',
+        value: `R$ ${a.value.toFixed(2)}`
+      };
+    });
+
+    const columns = [
+      { header: 'Data', key: 'date', width: 15 },
+      { header: 'Profissional', key: 'employee', width: 30 },
+      { header: 'Unidade', key: 'unit', width: 25 },
+      { header: 'Valor da Diária', key: 'value', width: 20 },
+    ];
+
+    await exportToExcel(reportData, columns, `Relatorio_Mensal_${selectedMonth}`);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Relatórios Mensais</h2>
+        <p className="text-slate-500 font-medium">Exporte o detalhamento das diárias realizadas no mês.</p>
+      </div>
+
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Mês de Referência</label>
+            <input 
+              type="month" 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full sm:w-64 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+            />
+          </div>
+        </div>
+
+        <div className="p-8 bg-blue-50 rounded-[2rem] border border-blue-100 space-y-6">
+          <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+            <FileText size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Detalhamento de Diárias</h3>
+            <p className="text-sm text-slate-500 mt-1">Gera uma planilha com todas as diárias concluídas, profissionais e valores.</p>
+          </div>
+          <button 
+            onClick={handleExportMyReport}
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3"
+          >
+            <Download size={18} />
+            Exportar Planilha
+          </button>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -9005,13 +9360,17 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 z-0" />
         
         <div className="relative z-10 shrink-0">
-          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
-            <img 
-              src={employee.photoUrl || `https://picsum.photos/seed/${employee.id}/400`} 
-              alt="" 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
+          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl flex items-center justify-center bg-white">
+            {employee.photoUrl ? (
+              <img 
+                src={employee.photoUrl} 
+                alt="" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <UserIcon size={48} className="text-slate-300" />
+            )}
           </div>
           <div className={`absolute -bottom-1 -right-1 ${employee.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'} text-white p-2 rounded-xl shadow-lg border-2 border-white`}>
             {employee.status === 'ACTIVE' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -9217,10 +9576,44 @@ function PrivacyListItem({ title, description }: { title: string, description: s
 }
 
 function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
-  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
+  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'VERIFYING' | 'SUCCESS' | 'REDIRECTING'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
+  const [pendingCheckIn, setPendingCheckIn] = useState<CheckIn | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  // Determine punch type and monitor pending check-ins
+  useEffect(() => {
+    const myCheckIns = checkIns
+      .filter(c => c.employeeId === employeeId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    if (myCheckIns.length > 0) {
+      if (myCheckIns[0].type === 'IN') {
+        setPunchType('OUT');
+      } else {
+        setPunchType('IN');
+      }
+
+      // Check for recent pending check-in
+      const last = myCheckIns[0];
+      const isRecent = (new Date().getTime() - new Date(last.timestamp).getTime()) < 5 * 60 * 1000; // 5 mins
+      if (last.status === 'PENDING' && isRecent) {
+        setPendingCheckIn(last);
+        setStep('VERIFYING');
+      } else if (last.status === 'APPROVED' && isRecent && step === 'VERIFYING') {
+        setStep('SUCCESS');
+        setPendingCheckIn(null);
+      } else if (last.status === 'REJECTED' && isRecent && step === 'VERIFYING') {
+        alert(`Verificação falhou: ${last.rejectionReason || 'Tente novamente'}`);
+        setStep('INITIAL');
+        setPendingCheckIn(null);
+      }
+    } else {
+      setPunchType('IN');
+    }
+  }, [checkIns, employeeId, step]);
   const employee = employees.find(e => e.id === employeeId);
 
   if (!employee) {
@@ -9237,17 +9630,53 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
   const API_KEY = "B1pjmJOODdN7OWa5CY9qgqZCLdgCqez4"; // Chave de Reconhecimento Facial
 
-  const handleScan = (text: string) => {
+  const handleScan = async (text: string) => {
     if (text) {
       console.log("QR Code lido:", text);
-      console.log("Access Points disponíveis:", accessPoints.map(ap => ap.qrCodeValue));
       const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
-        setStep('PHOTO');
-        startCamera();
+        setStep('REDIRECTING');
+        
+        try {
+          // Get current location for metadata
+          let locationStr = "N/A";
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            locationStr = `${position.coords.latitude}, ${position.coords.longitude}`;
+          } catch (e) {
+            console.warn("Could not get location for check-in metadata");
+          }
+
+          const emp = employees.find(e => e.id === employeeId);
+          const agencyId = (emp as any)?.agencyId || "default";
+
+          const response = await fetch("/api/didit/create-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              employeeId,
+              agencyId,
+              type: punchType,
+              location: locationStr,
+              accessPointId: point.id
+            })
+          });
+
+          if (!response.ok) throw new Error("Failed to create verification session");
+          
+          const data = await response.json();
+          
+          // Redirect to Didit
+          window.location.href = data.url;
+        } catch (error) {
+          console.error("Error starting Didit session:", error);
+          alert("Erro ao iniciar verificação facial. Tente novamente.");
+          setStep('INITIAL');
+        }
       } else {
-        console.warn("QR Code não encontrado na lista de AccessPoints.");
         alert('QR Code inválido para esta unidade.');
       }
     }
@@ -9255,116 +9684,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
   const handleError = (err: any) => {
     console.error(err);
-  };
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.error("Erro ao acessar câmera:", err);
-      alert("Não foi possível acessar a câmera para a selfie.");
-    }
-  };
-
-  const takePhoto = async () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const photo = canvas.toDataURL('image/jpeg');
-        setCapturedPhoto(photo);
-        
-        // Stop camera
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-
-        setStep('VERIFYING');
-
-        // Geolocation verification
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
-          });
-          const { latitude, longitude } = position.coords;
-          console.log(`Localização atual: ${latitude}, ${longitude}`);
-
-          const unit = units.find(u => u.clientId === scannedPoint!.clientId);
-          if (unit?.coordinates) {
-            const distance = calculateDistance(latitude, longitude, unit.coordinates.lat, unit.coordinates.lng);
-            console.log(`Distância da unidade: ${distance.toFixed(2)}m`);
-            if (distance > 500) { // 500 meters threshold
-              alert(`Você está muito longe da unidade (${distance.toFixed(0)}m). Por favor, aproxime-se para bater o ponto.`);
-              setStep('PHOTO');
-              return;
-            }
-          }
-        } catch (err) {
-          console.error("Erro ao obter localização:", err);
-          alert("Não foi possível obter sua localização. Por favor, permita o acesso.");
-          setStep('PHOTO');
-          return;
-        }
-
-        // Reconhecimento Facial usando a chave fornecida
-        console.log(`Iniciando reconhecimento facial com a chave: ${API_KEY}`);
-        
-        // Simulação de chamada para API de Reconhecimento Facial
-        // Em um cenário real, você faria um POST para o endpoint da sua API
-        // enviando as duas imagens em base64 ou URLs.
-        // O cruzamento é feito entre a foto de perfil (employee.photoUrl) e a foto capturada (photo)
-        
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simula tempo de processamento
-        
-        // Simulação de verificação (em um app real, aqui você verificaria a resposta da API)
-        // Para fins de demonstração, vamos simular que a verificação passou se houver uma foto de perfil
-        // Se não houver foto de perfil, vamos permitir para não travar o teste, mas alertar.
-        const isMatch = true; // Simulação: sempre true para este ambiente de teste
-
-        if (!isMatch) {
-          alert('Reconhecimento facial falhou. A pessoa na foto não corresponde ao funcionário cadastrado. Por favor, tente novamente.');
-          setStep('PHOTO');
-          startCamera();
-          return;
-        }
-
-        // Save Check-in
-        const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        const todayCheckIns = checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(today));
-        const type = todayCheckIns.length % 2 === 0 ? 'IN' : 'OUT';
-
-        const newCheckIn: Omit<CheckIn, 'id'> = {
-          agencyId: employee.agencyId,
-          employeeId: employeeId,
-          accessPointId: scannedPoint!.id,
-          location: scannedPoint!.location,
-          timestamp: new Date().toISOString(),
-          photoUrl: photo,
-          type: type
-        };
-        await createDocument('checkIns', newCheckIn);
-
-        // Update Assignment status
-        const assignment = assignments.find(a => 
-          a.employeeId === employeeId && 
-          (a.clientId === scannedPoint!.clientId || a.clientId === scannedPoint!.id) && 
-          a.date === today &&
-          a.status === 'SCHEDULED'
-        );
-        if (assignment && type === 'OUT') {
-          await updateDocument('assignments', assignment.id, { status: 'COMPLETED' });
-        }
-
-        setStep('SUCCESS');
-      }
-    }
   };
 
   return (
@@ -9389,7 +9708,10 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
             </div>
             <div className="text-center space-y-2">
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Pronto para começar?</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Escaneie o QR Code fixado na parede da unidade.</p>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                Você está prestes a bater o ponto de <span className="font-bold text-blue-600">{punchType === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span>.
+              </p>
+              <p className="text-[10px] sm:text-xs text-slate-400">Escaneie o QR Code fixado na parede da unidade.</p>
             </div>
             <button 
               onClick={() => setStep('SCANNING')}
@@ -9397,6 +9719,27 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
             >
               Escanear QR Code
             </button>
+          </div>
+        )}
+
+        {step === 'REDIRECTING' && (
+          <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
+              <div className="absolute inset-0 border-4 sm:border-8 border-slate-100 rounded-full" />
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-blue-600">
+                <ExternalLink size={32} className="sm:hidden" />
+                <ExternalLink size={40} className="hidden sm:block" />
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Iniciando Verificação</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Redirecionando para o Didit Facial Recognition...</p>
+            </div>
           </div>
         )}
 
@@ -9430,35 +9773,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           </div>
         )}
 
-        {step === 'PHOTO' && (
-          <div className="flex flex-col items-center space-y-6 sm:space-y-8">
-            <div className="text-center space-y-1">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
-              <p className="text-[10px] sm:text-sm text-blue-600 font-bold uppercase tracking-widest">{scannedPoint?.location}</p>
-            </div>
-            <div className="relative aspect-square w-full rounded-2xl sm:rounded-[2rem] overflow-hidden bg-black border-4 border-blue-600 shadow-2xl">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-64 sm:w-64 sm:h-80 border-2 border-white/50 rounded-[80px] sm:rounded-[100px] border-dashed" />
-              </div>
-            </div>
-            <button 
-              onClick={takePhoto}
-              className="w-full py-4 sm:py-5 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
-            >
-              <Camera size={20} className="sm:hidden" />
-              <Camera size={24} className="hidden sm:block" />
-              Tirar Foto e Bater Ponto
-            </button>
-          </div>
-        )}
-
         {step === 'VERIFYING' && (
           <div className="flex flex-col items-center space-y-6 sm:space-y-8 py-8 sm:py-12">
             <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
@@ -9469,15 +9783,15 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                 className="absolute inset-0 border-4 sm:border-8 border-blue-600 rounded-full border-t-transparent"
               />
               <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                <Camera size={32} className="sm:hidden" />
-                <Camera size={40} className="hidden sm:block" />
+                <ShieldCheck size={32} className="sm:hidden" />
+                <ShieldCheck size={40} className="hidden sm:block" />
               </div>
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Validando Identidade</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Processando reconhecimento facial via IA...</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Aguardando Aprovação</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Sua verificação facial está sendo processada pelo Didit...</p>
               <div className="mt-4 sm:mt-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 rounded-xl inline-block border border-slate-100">
-                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">Protocolo: {API_KEY.substring(0, 8)}</p>
+                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">Sessão: {pendingCheckIn?.diditSessionId?.substring(0, 8) || '...'}</p>
               </div>
             </div>
           </div>
@@ -9624,33 +9938,33 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
         animate={{ opacity: 1, y: 0 }}
         className="space-y-10"
       >
-        <div className="flex flex-col gap-2 px-4 sm:px-0">
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
-          <p className="text-slate-500 font-medium text-xs sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
+        <div className="flex flex-col gap-1 px-2 sm:px-0 mb-2 sm:mb-0 items-center text-center sm:items-start sm:text-left">
+          <h2 className="text-base sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
+          <p className="text-slate-500 font-medium text-[8px] sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
         </div>
 
-        <div className="flex gap-2 p-2 bg-slate-100 rounded-2xl w-full sm:w-fit border border-slate-200/50 mx-4 sm:mx-0">
+        <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setActiveTab('STAFF')}
-            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'STAFF' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'STAFF' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Equipe
           </button>
           <button 
             onClick={() => setActiveTab('BILLING')}
-            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'BILLING' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'BILLING' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Faturamento
           </button>
           <button 
             onClick={() => setActiveTab('FAVORITES')}
-            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Favoritos
           </button>
           <button 
             onClick={() => setActiveTab('MURAL')}
-            className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Mural
           </button>
@@ -9658,21 +9972,21 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
 
         {activeTab === 'STAFF' ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-8">
               <StatCard 
-                icon={<Users size={24} />} 
+                icon={<Users size={20} className="sm:w-6 sm:h-6" />} 
                 label="Equipe Hoje" 
                 value={todayStaff.length.toString()} 
                 color="violet"
               />
               <StatCard 
-                icon={<Calendar size={24} />} 
+                icon={<Calendar size={20} className="sm:w-6 sm:h-6" />} 
                 label="Total de Diarias" 
                 value={myAssignments.length.toString()} 
                 color="indigo"
               />
               <StatCard 
-                icon={<Clock size={24} />} 
+                icon={<Clock size={20} className="sm:w-6 sm:h-6" />} 
                 label="Próxima Diaria" 
                 value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
                 color="emerald"
@@ -9774,7 +10088,13 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm border border-slate-100 shadow-sm overflow-hidden shrink-0">
-                            <img src={`https://picsum.photos/seed/${emp?.id}/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            {emp?.photoUrl ? (
+                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                                <UserIcon size={16} />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="font-black text-slate-950 text-xs sm:text-sm tracking-tight truncate">{emp?.firstName} {emp?.lastName}</p>
@@ -9830,32 +10150,32 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             </div>
           </>
         ) : activeTab === 'BILLING' ? (
-          <div className="space-y-8 px-4 sm:px-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+          <div className="space-y-4 sm:space-y-8 px-4 sm:px-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="p-4 bg-blue-50 rounded-2xl">
-                    <CreditCard size={32} className="text-blue-600" />
+                  <div className="p-3 sm:p-4 bg-blue-50 rounded-xl sm:rounded-2xl">
+                    <CreditCard size={24} className="text-blue-600 sm:w-8 sm:h-8" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Fatura Atual</span>
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Fatura Atual</span>
                 </div>
                 <div>
-                  <p className="text-slate-400 font-medium text-sm mb-1">Total do Mês</p>
-                  <h3 className="text-5xl font-black text-slate-950 tracking-tight">R$ {myAssignments.filter(a => a.status === 'COMPLETED').reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</h3>
+                  <p className="text-slate-400 font-medium text-xs sm:text-sm mb-1">Total do Mês</p>
+                  <h3 className="text-2xl sm:text-5xl font-black text-slate-950 tracking-tight">R$ {myAssignments.filter(a => a.status === 'COMPLETED').reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</h3>
                 </div>
               </div>
-              <div className="bg-slate-950 p-10 rounded-[3rem] text-white relative overflow-hidden group">
+              <div className="bg-slate-950 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] text-white relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-                <div className="relative z-10 space-y-6">
+                <div className="relative z-10 space-y-4 sm:space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
-                      <TrendingUp size={32} className="text-emerald-400" />
+                    <div className="p-3 sm:p-4 bg-white/10 rounded-xl sm:rounded-2xl backdrop-blur-md">
+                      <TrendingUp size={24} className="text-emerald-400 sm:w-8 sm:h-8" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Status</span>
+                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Status</span>
                   </div>
                   <div>
-                    <p className="text-slate-400 font-medium text-sm mb-1">Próximo Vencimento</p>
-                    <h3 className="text-5xl font-black tracking-tight">15/04</h3>
+                    <p className="text-slate-400 font-medium text-xs sm:text-sm mb-1">Próximo Vencimento</p>
+                    <h3 className="text-2xl sm:text-5xl font-black tracking-tight">15/04</h3>
                   </div>
                 </div>
               </div>
@@ -9898,13 +10218,13 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             </div>
           </div>
         ) : activeTab === 'MURAL' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 sm:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 px-4 sm:px-0">
             {bulletins.filter(b => b.targetRoles.includes('COMPANY')).length === 0 ? (
-              <div className="col-span-full bg-white p-24 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
-                <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
-                  <FileText size={48} />
+              <div className="col-span-full bg-white p-12 sm:p-24 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 text-center space-y-4 sm:space-y-6 shadow-sm">
+                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-slate-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100">
+                  <FileText size={32} className="sm:w-12 sm:h-12" />
                 </div>
-                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhum aviso no mural no momento.</p>
+                <p className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em]">Nenhum aviso no mural no momento.</p>
               </div>
             ) : (
               bulletins.filter(b => b.targetRoles.includes('COMPANY')).map(bulletin => (
@@ -9991,8 +10311,12 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                 </div>
 
                 <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
-                    <img src={evaluatingEmployee.photoUrl || `https://picsum.photos/seed/${evaluatingEmployee.id}/200`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg flex items-center justify-center bg-white">
+                    {evaluatingEmployee.photoUrl ? (
+                      <img src={evaluatingEmployee.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon size={24} className="text-slate-300" />
+                    )}
                   </div>
                   <div>
                     <p className="text-lg font-black text-slate-900 tracking-tight">{evaluatingEmployee.firstName} {evaluatingEmployee.lastName}</p>

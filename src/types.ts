@@ -142,6 +142,7 @@ export interface Company {
   phone: string;
   email: string;
   address?: string;
+  paymentDay?: string;
   createdAt: string;
   status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
   documents?: {
@@ -244,10 +245,14 @@ export interface CheckIn {
   agencyId: string;
   employeeId: string;
   accessPointId: string;
-  location: string; // Denormalized for easier filtering
+  location: string;
   timestamp: string;
-  photoUrl: string;
+  photoUrl?: string;
   type: 'IN' | 'OUT';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  diditSessionId?: string;
+  rejectionReason?: string;
+  verifiedAt?: any;
 }
 
 export interface PricingConfig {
