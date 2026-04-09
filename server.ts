@@ -5,7 +5,6 @@ import admin from "firebase-admin";
 import axios from "axios";
 import crypto from "crypto";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
@@ -53,76 +52,6 @@ export async function createServer() {
   });
 
   // AI Facial Recognition Endpoints
-  app.post("/api/verify-face", async (req, res) => {
-    try {
-      const { employeeId, livePhoto } = req.body;
-
-      if (!employeeId || !livePhoto) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      const db = admin.firestore();
-      const employeeDoc = await db.collection("employees").doc(employeeId).get();
-      
-      if (!employeeDoc.exists) {
-        return res.status(404).json({ error: "Employee not found" });
-      }
-
-      const employee = employeeDoc.data();
-      const referencePhotoUrl = employee?.faceReferenceUrl || employee?.photoUrl;
-
-      if (!referencePhotoUrl) {
-        return res.status(400).json({ error: "Reference photo not found in profile" });
-      }
-
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      
-      // Convert live photo base64
-      const livePhotoBase64 = livePhoto.split(',')[1];
-
-      // Fetch reference photo and convert to base64
-      let referencePhotoBase64 = "";
-      if (referencePhotoUrl.startsWith('data:')) {
-        referencePhotoBase64 = referencePhotoUrl.split(',')[1];
-      } else {
-        const response = await axios.get(referencePhotoUrl, { responseType: 'arraybuffer' });
-        referencePhotoBase64 = Buffer.from(response.data, 'binary').toString('base64');
-      }
-
-      const prompt = `Analise estas duas imagens. A primeira é uma foto de referência do funcionário e a segunda é uma foto capturada agora no registro de ponto. 
-      Responda APENAS em formato JSON com os seguintes campos:
-      - match: boolean (true se for a mesma pessoa, false caso contrário)
-      - confidence: number (0 a 1)
-      - reason: string (breve explicação em português)`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: "image/jpeg", data: referencePhotoBase64 } },
-            { inlineData: { mimeType: "image/jpeg", data: livePhotoBase64 } }
-          ]
-        },
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      const verificationResult = JSON.parse(response.text);
-
-      res.json(verificationResult);
-    } catch (error: any) {
-      console.error("Error in face verification:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   app.post("/api/check-in-verified", async (req, res) => {
     try {
       const { employeeId, agencyId, type, location, accessPointId, photoUrl, verificationResult } = req.body;
