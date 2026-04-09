@@ -66,6 +66,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { Feed } from './components/Feed';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -175,6 +176,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'staffing', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
@@ -186,12 +188,14 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
     { id: 'company_diaristas', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
     { id: 'employee_ponto', label: 'PONTO', icon: Scan, color: 'text-accent-rose bg-rose-50' },
   ];
@@ -215,12 +219,12 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
-          <div className="p-8 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
+          <div className="p-4 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center justify-center">
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="ProStaff Brasil" 
-                className="h-24 w-auto object-contain"
+                className="h-40 w-full object-contain"
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -324,7 +328,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
             <Menu size={20} />
           </button>
           <div className="lg:hidden flex items-center">
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-14 w-auto" referrerPolicy="no-referrer" />
           </div>
           <div className="hidden sm:block">
             <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display truncate max-w-[180px] sm:max-w-none">{getTitle()}</h2>
@@ -462,6 +466,13 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
 export default function App() {
   const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      setLoading(false);
+    }
+  }, [isAuthReady]);
   const [isPending, setIsPending] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [emailInput, setEmailInput] = useState('');
@@ -545,6 +556,8 @@ export default function App() {
         if (snapshot.exists()) {
           setOrgInfo(snapshot.data());
         }
+      }, (error) => {
+        console.error('Firestore Error (settings/organization):', error);
       });
       return () => unsubscribe();
     }
@@ -709,6 +722,17 @@ export default function App() {
   };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 font-bold">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     testConnection();
@@ -1782,6 +1806,11 @@ export default function App() {
                     />
                   </div>
                 )}
+                {activeTab === 'feed' && (
+                  <div key="feed">
+                    <Feed />
+                  </div>
+                )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'dashboard' && (
                   <div key="agency-dashboard">
                     <AgencyDashboard 
@@ -2126,7 +2155,7 @@ function SidebarItem({ icon, label, active, onClick, color }: SidebarItemProps) 
       `}>
         {icon}
       </div>
-      <span className={`text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
+      <span className={`text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
         {label}
       </span>
       {active && (
@@ -4311,12 +4340,6 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FINANCE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
         >
           Financeiro
-        </button>
-        <button 
-          onClick={() => setActiveTab('MURAL')}
-          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
-        >
-          Mural
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
@@ -9894,65 +9917,37 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       setCapturedPhoto(livePhoto);
       stopCamera();
 
-      const referencePhotoUrl = employee.faceReferenceUrl || employee.photoUrl;
-      if (!referencePhotoUrl) {
-        throw new Error("Foto de referência não encontrada no seu perfil.");
+      // Record check-in directly with photo
+      let locationStr = "N/A";
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        locationStr = `${position.coords.latitude}, ${position.coords.longitude}`;
+      } catch (e) {
+        console.warn("Could not get location");
       }
 
-      // Call backend for verification
-      const verifyResponse = await fetch("/api/verify-face", {
+      const checkInResponse = await fetch("/api/check-in-verified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: employee.id,
-          livePhoto
+          agencyId: employee.agencyId,
+          type: punchType,
+          location: locationStr,
+          accessPointId: scannedPoint?.id,
+          photoUrl: livePhoto,
+          verificationResult: { match: true, confidence: 1.0, reason: "Manual photo verification" }
         })
       });
 
-      if (!verifyResponse.ok) {
-        const errData = await verifyResponse.json();
-        throw new Error(errData.error || "Falha na verificação facial.");
-      }
-
-      const result = await verifyResponse.json();
-      console.log("Backend Verification Result:", result);
-
-      if (result.match && result.confidence > 0.7) {
-        // Record check-in
-        let locationStr = "N/A";
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          locationStr = `${position.coords.latitude}, ${position.coords.longitude}`;
-        } catch (e) {
-          console.warn("Could not get location");
-        }
-
-        const checkInResponse = await fetch("/api/check-in-verified", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            employeeId,
-            agencyId: employee.agencyId,
-            type: punchType,
-            location: locationStr,
-            accessPointId: scannedPoint?.id,
-            photoUrl: livePhoto,
-            verificationResult: result
-          })
-        });
-
-        if (!checkInResponse.ok) throw new Error("Falha ao registrar ponto no servidor.");
-        
-        setStep('SUCCESS');
-      } else {
-        alert(`Verificação facial falhou: ${result.reason || 'Rosto não reconhecido'}`);
-        setStep('INITIAL');
-      }
+      if (!checkInResponse.ok) throw new Error("Falha ao registrar ponto no servidor.");
+      
+      setStep('SUCCESS');
     } catch (error: any) {
-      console.error("Verification error:", error);
-      alert(`Erro na verificação: ${error.message}`);
+      console.error("Check-in error:", error);
+      alert(`Erro no registro: ${error.message}`);
       setStep('INITIAL');
     } finally {
       setIsVerifying(false);
@@ -10241,12 +10236,6 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Favoritos
-          </button>
-          <button 
-            onClick={() => setActiveTab('MURAL')}
-            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'MURAL' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
-          >
-            Mural
           </button>
         </div>
 

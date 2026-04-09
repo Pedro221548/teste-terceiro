@@ -112,6 +112,35 @@
       },
       "required": ["agencyId", "title", "content", "type", "createdAt"]
     },
+    "FeedPost": {
+      "title": "FeedPost",
+      "description": "A post in the feed with optional image.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "type": { "type": "string", "enum": ["TRAINING", "ANNOUNCEMENT", "URGENT", "RECOGNITION"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["agencyId", "title", "content", "type", "createdAt"]
+    },
+    "FeedComment": {
+      "title": "FeedComment",
+      "description": "A comment on a feed post.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "feedPostId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["feedPostId", "userId", "userName", "comment", "createdAt"]
+    },
     "Invoice": {
       "title": "Invoice",
       "description": "A monthly billing record for a company.",
@@ -202,6 +231,8 @@
     "/assignments": { "schema": "Assignment", "description": "Collection of scheduled assignments." },
     "/messages": { "schema": "Message", "description": "Collection of chat messages." },
     "/bulletins": { "schema": "Bulletin", "description": "Collection of announcements." },
+    "/feedPosts": { "schema": "FeedPost", "description": "Collection of feed posts." },
+    "/feedComments": { "schema": "FeedComment", "description": "Collection of feed comments." },
     "/invoices": { "schema": "Invoice", "description": "Collection of billing records." },
     "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
     "/agencies": { "schema": "Agency", "description": "Collection of agencies." },

@@ -204,9 +204,28 @@ service cloud.firestore {
              data.userId is string &&
              data.title is string &&
              data.message is string &&
-             data.type in ["ASSIGNMENT", "INFO"] &&
+             data.type in ["ASSIGNMENT", "INFO", "TRAINING", "URGENT"] &&
              data.read is bool &&
              data.createdAt is string;
+    }
+
+    function isValidFeedPost(data) {
+      return hasRequiredFields(['agencyId', 'title', 'content', 'type', 'createdAt']) &&
+             data.agencyId is string &&
+             data.title is string &&
+             data.content is string &&
+             data.type in ["TRAINING", "ANNOUNCEMENT", "URGENT", "RECOGNITION"] &&
+             (data.createdAt is string || data.createdAt is timestamp) &&
+             (!('imageUrl' in data) || data.imageUrl is string || data.imageUrl == null);
+    }
+
+    function isValidFeedComment(data) {
+      return hasRequiredFields(['feedPostId', 'userId', 'userName', 'comment', 'createdAt']) &&
+             data.feedPostId is string &&
+             data.userId is string &&
+             data.userName is string &&
+             data.comment is string &&
+             (data.createdAt is string || data.createdAt is timestamp);
     }
 
     // ===============================================================
@@ -360,6 +379,20 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isSuperAdmin() || resource.data.senderId == request.auth.uid);
       allow delete: if isSuperAdmin();
+    }
+
+    match /feedPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if (isSuperAdmin() || isAgency()) && isValidFeedPost(request.resource.data);
+      allow update: if (isSuperAdmin() || isAgency()) && isValidFeedPost(request.resource.data);
+      allow delete: if isSuperAdmin() || isAgency();
+    }
+
+    match /feedComments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidFeedComment(request.resource.data);
+      allow update: if isAuthenticated() && (isSuperAdmin() || isAgency() || resource.data.userId == request.auth.uid) && isValidFeedComment(request.resource.data);
+      allow delete: if isAuthenticated() && (isSuperAdmin() || isAgency() || resource.data.userId == request.auth.uid);
     }
 
     match /bulletins/{bulletinId} {
