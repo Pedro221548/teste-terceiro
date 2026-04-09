@@ -4,6 +4,9 @@ import path from "path";
 import admin from "firebase-admin";
 import axios from "axios";
 import crypto from "crypto";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 async function startServer() {
   const app = express();
@@ -55,7 +58,15 @@ async function startServer() {
       const { employeeId, agencyId, type, location, accessPointId } = req.body;
 
       if (!employeeId || !agencyId || !type) {
-        return res.status(400).json({ error: "Missing required fields" });
+        return res.status(400).json({ error: "Missing required fields (employeeId, agencyId, type)" });
+      }
+
+      const apiKey = process.env.DIDIT_API_KEY;
+      const workflowId = process.env.DIDIT_WORKFLOW_ID;
+
+      if (!apiKey || !workflowId) {
+        console.error("Missing Didit environment variables: DIDIT_API_KEY or DIDIT_WORKFLOW_ID");
+        return res.status(500).json({ error: "Server configuration error: Missing Didit credentials" });
       }
 
       const db = admin.firestore();
@@ -78,14 +89,14 @@ async function startServer() {
       console.log(`Creating Didit session for check-in: ${checkInId}`);
 
       const response = await axios.post("https://verification.didit.me/v3/session/", {
-        workflow_id: process.env.DIDIT_WORKFLOW_ID,
+        workflow_id: workflowId,
         user_id: checkInId, // Use checkInId as user_id to link back in webhook
         features: {
           face_verification: true
         }
       }, {
         headers: {
-          "Authorization": `Bearer ${process.env.DIDIT_API_KEY}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         }
       });
@@ -99,8 +110,9 @@ async function startServer() {
 
       res.json({ url: data.url, checkInId });
     } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
       console.error("Error creating Didit session:", error.response?.data || error.message);
-      res.status(500).json({ error: "Failed to create verification session" });
+      res.status(500).json({ error: `Didit API Error: ${errorMessage}` });
     }
   });
 

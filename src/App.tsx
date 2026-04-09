@@ -9634,8 +9634,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     );
   }
 
-  const API_KEY = "B1pjmJOODdN7OWa5CY9qgqZCLdgCqez4"; // Chave de Reconhecimento Facial
-
   const handleScan = async (text: string) => {
     if (text) {
       console.log("QR Code lido:", text);
@@ -9671,15 +9669,18 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
             })
           });
 
-          if (!response.ok) throw new Error("Failed to create verification session");
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to create verification session");
+          }
           
           const data = await response.json();
           
           // Redirect to Didit
           window.location.href = data.url;
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error starting Didit session:", error);
-          alert("Erro ao iniciar verificação facial. Tente novamente.");
+          alert(`Erro ao iniciar verificação facial: ${error.message}`);
           setStep('INITIAL');
         }
       } else {
