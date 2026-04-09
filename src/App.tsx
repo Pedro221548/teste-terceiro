@@ -1652,7 +1652,7 @@ export default function App() {
             }
           />
 
-          <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+          <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full pb-24 lg:pb-10">
               <AnimatePresence mode="wait">
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'PENDING' && (
                   <motion.div 
@@ -2048,6 +2048,11 @@ export default function App() {
                 )}
               </AnimatePresence>
           </main>
+          <BottomNav 
+            role={role} 
+            activeTab={activeTab} 
+            setActiveTab={handleTabChange} 
+          />
         </div>
       </div>
     </ErrorBoundary>
@@ -2093,6 +2098,63 @@ function SidebarItem({ icon, label, active, onClick, color }: SidebarItemProps) 
         />
       )}
     </button>
+  );
+}
+
+function BottomNav({ role, activeTab, setActiveTab }: { 
+  role: string, 
+  activeTab: string, 
+  setActiveTab: (tab: string) => void 
+}) {
+  const menuItems: MenuItem[] = role === 'ADMIN' ? [
+    { id: 'admin_dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'admin_agencies', label: 'Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
+    { id: 'admin_plans', label: 'Planos', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
+    { id: 'profile', label: 'Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+  ] : role === 'AGENCY' ? [
+    { id: 'dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'staffing', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'access_control', label: 'Acesso', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
+    { id: 'profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+  ] : role === 'COMPANY' ? [
+    { id: 'manager_dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'evaluate_team', label: 'Avaliar', icon: Star, color: 'text-accent-amber bg-amber-50' },
+    { id: 'company_diaristas', label: 'Equipe', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_profile', label: 'Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+  ] : [
+    { id: 'employee_profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'employee_ponto', label: 'PONTO', icon: Scan, color: 'text-accent-rose bg-rose-50' },
+  ];
+
+  return (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-2 py-2 z-40 pb-safe">
+      <div className="flex items-center justify-around max-w-md mx-auto">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center gap-1 p-2 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400'}`}
+            >
+              <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+              {isActive && (
+                <motion.div 
+                  layoutId="bottomNavDot"
+                  className="w-1 h-1 bg-blue-600 rounded-full"
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
