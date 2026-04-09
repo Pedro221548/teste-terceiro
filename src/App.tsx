@@ -1,5 +1,4 @@
 import React, { useState, useEffect, Component } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { 
   Users, 
   User as UserIcon,
@@ -9900,48 +9899,23 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         throw new Error("Foto de referência não encontrada no seu perfil.");
       }
 
-      // Initialize Gemini
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      // Convert base64 to parts
-      const livePhotoBase64 = livePhoto.split(',')[1];
-      
-      // Fetch reference photo and convert to base64 if it's a URL
-      let referencePhotoBase64 = "";
-      if (referencePhotoUrl.startsWith('data:')) {
-        referencePhotoBase64 = referencePhotoUrl.split(',')[1];
-      } else {
-        const refResp = await fetch(referencePhotoUrl);
-        const refBlob = await refResp.blob();
-        referencePhotoBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.readAsDataURL(refBlob);
-        });
-      }
-
-      const prompt = `Analise estas duas imagens. A primeira é uma foto de referência do funcionário e a segunda é uma foto capturada agora no registro de ponto. 
-      Responda APENAS em formato JSON com os seguintes campos:
-      - match: boolean (true se for a mesma pessoa, false caso contrário)
-      - confidence: number (0 a 1)
-      - reason: string (breve explicação em português)`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: "image/jpeg", data: referencePhotoBase64 } },
-            { inlineData: { mimeType: "image/jpeg", data: livePhotoBase64 } }
-          ]
-        },
-        config: {
-          responseMimeType: "application/json"
-        }
+      // Call backend for verification
+      const verifyResponse = await fetch("/api/verify-face", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: employee.id,
+          livePhoto
+        })
       });
 
-      const result = JSON.parse(response.text);
-      console.log("Gemini Verification Result:", result);
+      if (!verifyResponse.ok) {
+        const errData = await verifyResponse.json();
+        throw new Error(errData.error || "Falha na verificação facial.");
+      }
+
+      const result = await verifyResponse.json();
+      console.log("Backend Verification Result:", result);
 
       if (result.match && result.confidence > 0.7) {
         // Record check-in
