@@ -212,11 +212,11 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
       `}>
         <div className="flex flex-col h-full">
           <div className="p-8 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center">
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="ProStaff Brasil" 
-                className="h-16 w-auto object-contain"
+                className="h-24 w-auto object-contain"
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -253,8 +253,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
-                  <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-tight">{role}</p>
+                  <p className="text-2xl font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
                 </div>
               </div>
               <button 
@@ -328,10 +327,9 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-black text-slate-900 tracking-tight leading-none">
+            <p className="text-xl font-black text-slate-900 tracking-tight leading-none">
               {userName || user.displayName || 'Usuário'}
             </p>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{role}</p>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
             <img src={userPhoto || user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -1114,12 +1112,12 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="mb-12 -ml-16 px-16 py-8 bg-white shadow-2xl shadow-white/10 rounded-r-[4rem] inline-block"
+              className="mb-12 -ml-16 px-20 py-10 bg-white shadow-2xl shadow-white/10 rounded-r-[4rem] inline-block"
             >
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="ProStaff Brasil" 
-                className="h-40 w-auto object-contain"
+                className="h-52 w-auto object-contain"
                 referrerPolicy="no-referrer"
               />
             </motion.div>
@@ -3168,10 +3166,10 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tighter uppercase">
             {role === 'ADMIN' && agencies.find(a => a.id === selectedAgencyId) 
-              ? `Visão Geral: ${agencies.find(a => a.id === selectedAgencyId)?.name}` 
-              : 'Visão Geral'}
+              ? agencies.find(a => a.id === selectedAgencyId)?.name 
+              : role === 'AGENCY' ? agencies.find(a => a.id === agencyId)?.name || 'Visão Geral' : 'Visão Geral'}
           </h2>
           <p className="text-slate-500 font-medium text-sm sm:text-base">
             {role === 'ADMIN' && selectedAgencyId 
@@ -11703,7 +11701,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
         <div className="pt-12 sm:pt-16 p-6 sm:p-12 space-y-6 sm:space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{displayName}</h2>
+              <h2 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tighter">{displayName}</h2>
               <p className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
             </div>
             <button 
