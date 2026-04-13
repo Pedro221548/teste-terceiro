@@ -1,3 +1,4 @@
+import toast, { Toaster } from 'react-hot-toast';
 import React, { useState, useEffect, Component } from 'react';
 import { 
   Users, 
@@ -19,6 +20,8 @@ import {
   Info,
   Upload,
   Link as LinkIcon,
+  Moon,
+  Sun,
   LogOut,
   Menu,
   X,
@@ -62,6 +65,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -158,7 +162,7 @@ interface MenuItem {
   color: string;
 }
 
-function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout }: { 
+function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout, isDarkMode, setIsDarkMode }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -167,7 +171,9 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   userEmail: string | null,
   userName: string | null,
   userPhoto: string | null,
-  handleLogout: () => void
+  handleLogout: () => void,
+  isDarkMode: boolean,
+  setIsDarkMode: (dark: boolean) => void
 }) {
   const menuItems: MenuItem[] = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
@@ -264,13 +270,22 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                   <p className="text-2xl font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
                 </div>
               </div>
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-              >
-                <LogOut size={14} />
-                Sair da Conta
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all dark:hover:text-white dark:hover:bg-slate-800"
+                >
+                  {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+                  {isDarkMode ? 'Modo Claro' : 'Modo Escuro'}
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                >
+                  <LogOut size={14} />
+                  Sair da Conta
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -466,13 +481,6 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
 export default function App() {
   const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (isAuthReady) {
-      setLoading(false);
-    }
-  }, [isAuthReady]);
   const [isPending, setIsPending] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [emailInput, setEmailInput] = useState('');
@@ -485,6 +493,19 @@ export default function App() {
   const [passwordToVerify, setPasswordToVerify] = useState('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   const handleTabChange = (tab: string) => {
     if (tab === activeTab) return;
@@ -722,17 +743,6 @@ export default function App() {
   };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 font-bold">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
 
   useEffect(() => {
     testConnection();
@@ -1637,7 +1647,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <div className="min-h-screen flex bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900 pb-20 lg:pb-0">
+        <Toaster position="top-center" />
         <Sidebar 
           role={role} 
           activeTab={activeTab} 
@@ -1663,6 +1674,8 @@ export default function App() {
             user.photoURL
           }
           handleLogout={handleLogout}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
 
         <div className="flex-1 lg:ml-72 flex flex-col min-h-screen overflow-x-hidden">
@@ -2253,7 +2266,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
     if (agencyUser) {
       await updateDocument('users', agencyUser.id, { status: 'ACTIVE' });
     }
-    alert('Agência liberada com sucesso!');
+    toast.success('Agência liberada com sucesso!');
   };
 
   const handleAddAgency = async (e: React.FormEvent) => {
@@ -2594,7 +2607,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
             onClick={() => {
               const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
               navigator.clipboard.writeText(link);
-              alert('Link de cadastro copiado para a área de transferência!');
+              toast('Link de cadastro copiado para a área de transferência!');
             }}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-100 transition-all active:scale-95 border border-blue-100"
           >
@@ -2834,7 +2847,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
         updatedAt: new Date().toISOString()
       });
       setEditingPlan(null);
-      alert('Plano atualizado com sucesso!');
+      toast.success('Plano atualizado com sucesso!');
     } catch (error) {
       console.error('Error updating plan:', error);
     }
@@ -3008,14 +3021,42 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         maxCompanies: maxCompanies === '' ? null : parseInt(maxCompanies)
       });
       setEditingAgencyLimits(null);
-      alert('Limites atualizados com sucesso!');
+      toast.success('Limites atualizados com sucesso!');
     } catch (error) {
       console.error('Error updating limits:', error);
-      alert('Erro ao atualizar limites.');
+      toast.error('Erro ao atualizar limites.');
     } finally {
       setIsUpdatingLimits(false);
     }
   };
+
+  // Chart Data Preparation
+  const statusCounts = assignments.reduce((acc, curr) => {
+    acc[curr.status] = (acc[curr.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieData = [
+    { name: 'Concluídos', value: statusCounts['COMPLETED'] || 0, color: '#10b981' },
+    { name: 'Em Andamento', value: statusCounts['IN_PROGRESS'] || 0, color: '#3b82f6' },
+    { name: 'Agendados', value: statusCounts['SCHEDULED'] || 0, color: '#8b5cf6' },
+    { name: 'Cancelados', value: statusCounts['CANCELLED'] || 0, color: '#f43f5e' },
+  ].filter(d => d.value > 0);
+
+  const last6Months = Array.from({ length: 6 }).map((_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return d.toISOString().substring(0, 7);
+  }).reverse();
+
+  const barData = last6Months.map(month => {
+    const monthAssignments = assignments.filter(a => a.date.startsWith(month) && a.status === 'COMPLETED');
+    const revenue = monthAssignments.reduce((acc, curr) => acc + curr.value, 0);
+    return {
+      name: month.split('-').reverse().join('/'),
+      Faturamento: revenue
+    };
+  });
 
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
@@ -3050,7 +3091,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       setEvaluatingEmployee(null);
       setEvalComment('');
       setEvalRating(5);
-      alert('Avaliação enviada com sucesso!');
+      toast.success('Avaliação enviada com sucesso!');
     } catch (error) {
       console.error('Error submitting evaluation:', error);
     } finally {
@@ -3434,6 +3475,65 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           alert={alerts > 0}
           color="rose"
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-black text-slate-900 mb-6">Faturamento (Últimos 6 meses)</h3>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
+                <RechartsTooltip 
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
+                />
+                <Bar dataKey="Faturamento" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-black text-slate-900 mb-6">Status das Diárias</h3>
+          <div className="h-72 w-full flex items-center justify-center">
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-slate-400 font-medium text-sm">Nenhum dado disponível</p>
+            )}
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 mt-4">
+            {pieData.map((entry, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-xs font-bold text-slate-600">{entry.name} ({entry.value})</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {alerts > 0 && (
@@ -3985,7 +4085,7 @@ function FaceUpdateModal({ employee, onClose }: { employee: Employee, onClose: (
       setStep('CAPTURE');
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Não foi possível acessar a câmera.");
+      toast("Não foi possível acessar a câmera.");
     }
   };
 
@@ -4017,7 +4117,7 @@ function FaceUpdateModal({ employee, onClose }: { employee: Employee, onClose: (
       setStep('SUCCESS');
     } catch (error) {
       console.error('Error updating face reference:', error);
-      alert('Erro ao atualizar cadastro facial.');
+      toast.error('Erro ao atualizar cadastro facial.');
     } finally {
       setIsSubmitting(false);
     }
@@ -4722,11 +4822,11 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
         createdAt: new Date().toISOString()
       });
 
-      alert(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
+      toast.success(`Usuário criado com sucesso! Credenciais enviadas para ${employee.personalEmail || employee.phone}.`);
       onComplete(username);
     } catch (error: any) {
       console.error('Error creating user:', error);
-      alert('Erro ao criar usuário: ' + error.message);
+      toast('Erro ao criar usuário: ' + error.message);
     } finally {
       setIsSending(false);
     }
@@ -4816,7 +4916,7 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
       if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
         const currentEmployees = employees.filter(emp => emp.agencyId === targetAgencyId).length;
         if (currentEmployees >= agency.maxEmployees) {
-          alert(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
+          toast(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
           setIsSending(false);
           return;
         }
@@ -4868,14 +4968,14 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
       const whatsappUrl = `https://wa.me/55${registration.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       
-      alert(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
+      toast.success(`Cadastro finalizado! Credenciais enviadas para ${registration.phone}.`);
       onComplete();
     } catch (error: any) {
       console.error('Error processing registration:', error);
       if (error.code === 'auth/email-already-in-use') {
-        alert('Este e-mail já está cadastrado. Tente outro.');
+        toast('Este e-mail já está cadastrado. Tente outro.');
       } else {
-        alert('Erro ao processar cadastro. Verifique os dados e tente novamente.');
+        toast.error('Erro ao processar cadastro. Verifique os dados e tente novamente.');
       }
     } finally {
       setIsSending(false);
@@ -4964,10 +5064,10 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     try {
       await updateDocument('companyUsers', userId, { status });
       await updateDocument('users', userId, { status });
-      alert(`Status do usuário atualizado para ${status === 'ACTIVE' ? 'Ativo' : status}!`);
+      toast(`Status do usuário atualizado para ${status === 'ACTIVE' ? 'Ativo' : status}!`);
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('Erro ao atualizar status do usuário.');
+      toast.error('Erro ao atualizar status do usuário.');
     }
   };
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -5089,7 +5189,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Não foi possível acessar a câmera.");
+      toast("Não foi possível acessar a câmera.");
       setIsCameraOpen(false);
     }
   };
@@ -5141,26 +5241,26 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     }
 
     if (age < 18) {
-      alert('Não aceitamos menores de idade.');
+      toast('Não aceitamos menores de idade.');
       return;
     }
 
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
-      alert('Agência não identificada.');
+      toast('Agência não identificada.');
       return;
     }
 
     if (isEditing && selectedEmployee) {
       await updateDocument('employees', selectedEmployee.id, formData);
-      alert('Cadastro atualizado com sucesso!');
+      toast.success('Cadastro atualizado com sucesso!');
     } else {
       // Check limits
       const agency = agencies.find(a => a.id === targetAgencyId);
       if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
         const currentEmployees = employees.length;
         if (currentEmployees >= agency.maxEmployees) {
-          alert(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
+          toast(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
           return;
         }
       }
@@ -5173,7 +5273,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         complaints: 0,
       };
       await createDocument('employees', newEmp);
-      alert('Funcionário cadastrado com sucesso!');
+      toast.success('Funcionário cadastrado com sucesso!');
     }
 
     setShowForm(false);
@@ -5922,7 +6022,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     if (activeRequest) {
       await updateDocument('companyRequests', activeRequest.id, { status: 'ACCEPTED' });
       setActiveRequest(null);
-      alert('Solicitação finalizada com sucesso!');
+      toast.success('Solicitação finalizada com sucesso!');
     }
   };
 
@@ -5934,7 +6034,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   const confirmRejectRequest = async () => {
     if (!rejectingRequest) return;
     if (rejectReason.trim() === '') {
-      alert('É necessário informar um motivo para recusar a solicitação.');
+      toast('É necessário informar um motivo para recusar a solicitação.');
       return;
     }
 
@@ -5956,12 +6056,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     
     setRejectingRequest(null);
     setRejectReason('');
-    alert('Solicitação recusada e empresa notificada.');
+    toast('Solicitação recusada e empresa notificada.');
   };
 
   const handleStaff = async (empId: string) => {
     if (!selectedClientId) {
-      alert('Por favor, selecione um parceiro antes de escalar o funcionário.');
+      toast('Por favor, selecione um parceiro antes de escalar o funcionário.');
       return;
     }
     const emp = employees.find(e => e.id === empId);
@@ -6023,7 +6123,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     const whatsappUrl = `https://wa.me/55${emp.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
 
-    alert(`${emp.firstName} agendado com sucesso para o dia ${formatDateBR(selectedDate)}!`);
+    toast.success(`${emp.firstName} agendado com sucesso para o dia ${formatDateBR(selectedDate)}!`);
   };
 
   return (
@@ -6428,7 +6528,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                                 })
                                 .join('\n');
                               navigator.clipboard.writeText(text);
-                              alert('Lista copiada!');
+                              toast('Lista copiada!');
                             }}
                             className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-black uppercase tracking-widest text-[9px] hover:bg-blue-100 transition-all whitespace-nowrap"
                           >
@@ -6701,7 +6801,7 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
     }
     setPricing(localPricing);
     setRatingLabel(localLabel);
-    alert('Configurações salvas com sucesso!');
+    toast.success('Configurações salvas com sucesso!');
   };
 
   const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -6982,23 +7082,23 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       await updateDocument('companyUsers', userId, { status });
       await updateDocument('users', userId, { status });
       const message = status === 'ACTIVE' ? 'Usuário liberado com sucesso!' : 'Status atualizado com sucesso!';
-      alert(message);
+      toast(message);
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('Erro ao atualizar status do usuário.');
+      toast.error('Erro ao atualizar status do usuário.');
     }
   };
 
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password && formData.password !== formData.confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast('As senhas não coincidem!');
       return;
     }
 
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
-      alert('Selecione uma agência para gerenciar antes de adicionar uma empresa.');
+      toast('Selecione uma agência para gerenciar antes de adicionar uma empresa.');
       return;
     }
 
@@ -7007,7 +7107,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     if (agency && agency.maxCompanies !== undefined && agency.maxCompanies !== null) {
       const currentCompanies = companies.length;
       if (currentCompanies >= agency.maxCompanies) {
-        alert(`Limite de empresas atingido (${agency.maxCompanies}). Entre em contato com o administrador para aumentar o limite.`);
+        toast(`Limite de empresas atingido (${agency.maxCompanies}). Entre em contato com o administrador para aumentar o limite.`);
         return;
       }
     }
@@ -7074,7 +7174,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     e.preventDefault();
     if (!showUnitModal) return;
     if (unitData.password !== unitData.confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast('As senhas não coincidem!');
       return;
     }
     const company = companies.find(c => c.id === showUnitModal);
@@ -7082,7 +7182,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
-      alert('Agência não identificada.');
+      toast('Agência não identificada.');
       return;
     }
 
@@ -7146,7 +7246,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     e.preventDefault();
     if (!showUserModal) return;
     if (userData.password !== userData.confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast('As senhas não coincidem!');
       return;
     }
     const company = companies.find(c => c.id === showUserModal);
@@ -7154,7 +7254,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
-      alert('Agência não identificada.');
+      toast('Agência não identificada.');
       return;
     }
 
@@ -7195,7 +7295,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
     setShowUserModal(null);
     setUserData({ fullName: '', unitId: '', password: '', confirmPassword: '' });
-    alert(`Usuário criado com sucesso!\nLogin: ${login}`);
+    toast.success(`Usuário criado com sucesso!\nLogin: ${login}`);
   };
 
   const filteredCompanies = companies.filter(company => {
@@ -8113,7 +8213,7 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
 
   const handleSubmitRequest = async () => {
     if (!selectedUnitId) {
-      alert('Selecione uma unidade.');
+      toast('Selecione uma unidade.');
       return;
     }
     setIsSubmitting(true);
@@ -8130,12 +8230,12 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
         createdAt: new Date().toISOString()
       };
       await createDocument('companyRequests', newRequest);
-      alert('Solicitação enviada com sucesso para a agência!');
+      toast.success('Solicitação enviada com sucesso para a agência!');
       setSelectedEmployeeIds([]);
       setQuantity(1);
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Erro ao enviar solicitação.');
+      toast.error('Erro ao enviar solicitação.');
     } finally {
       setIsSubmitting(false);
     }
@@ -8414,7 +8514,7 @@ function CompanyEvaluateTeam({ companyId, unitId, clients, assignments, employee
       setEvaluatingEmployee(null);
       setEvalComment('');
       setEvalRating(5);
-      alert('Avaliação enviada com sucesso!');
+      toast.success('Avaliação enviada com sucesso!');
     } catch (error) {
       console.error('Error submitting evaluation:', error);
     } finally {
@@ -8728,6 +8828,29 @@ const exportToExcel = async (data: any[], columns: any[], filename: string) => {
   saveAs(new Blob([buffer]), `${filename}.xlsx`);
 };
 
+const exportToPDF = (data: any[], columns: any[], filename: string, title: string) => {
+  const doc = new jsPDF();
+  
+  doc.setFontSize(18);
+  doc.text(title, 14, 22);
+  doc.setFontSize(11);
+  doc.setTextColor(100);
+  
+  const tableColumn = columns.map(col => col.header);
+  const tableRows = data.map(item => columns.map(col => item[col.key]));
+
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 30,
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: { fillColor: [15, 23, 42], textColor: 255 }
+  });
+
+  doc.save(`${filename}.pdf`);
+};
+
 function AgencyReports({ employees, assignments, clients, companies, units, agencyId }: { 
   employees: Employee[], 
   assignments: Assignment[], 
@@ -8765,10 +8888,14 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
       { header: 'Valor Total', key: 'value', width: 20 },
     ];
 
-    await exportToExcel(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`);
+    if (format === 'excel') {
+      await exportToExcel(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`);
+    } else {
+      exportToPDF(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`, `Relatório de Diaristas - ${selectedMonth}`);
+    }
   };
 
-  const handleExportCompanies = async () => {
+  const handleExportCompanies = async (format: 'excel' | 'pdf') => {
     const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
     
     const reportData = companies.map(comp => {
@@ -8799,7 +8926,11 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
       { header: 'Dia do Pagamento', key: 'paymentDay', width: 20 },
     ];
 
-    await exportToExcel(reportData, columns, `Relatorio_Empresas_${selectedMonth}`);
+    if (format === 'excel') {
+      await exportToExcel(reportData, columns, `Relatorio_Empresas_${selectedMonth}`);
+    } else {
+      exportToPDF(reportData, columns, `Relatorio_Empresas_${selectedMonth}`, `Relatório de Empresas - ${selectedMonth}`);
+    }
   };
 
   return (
@@ -8835,13 +8966,20 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Diaristas</h3>
               <p className="text-sm text-slate-500 mt-1">Exporta nome, CPF, telefone, dias trabalhados e valor total.</p>
             </div>
-            <button 
-              onClick={handleExportEmployees}
-              className="w-full py-4 bg-violet-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-violet-700 transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-3"
-            >
-              <Download size={18} />
-              Exportar Diaristas
-            </button>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => handleExportEmployees('excel')}
+                className="flex-1 py-4 bg-violet-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-violet-700 transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-2"
+              >
+                <Download size={16} /> Excel
+              </button>
+              <button 
+                onClick={() => handleExportEmployees('pdf')}
+                className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+              >
+                <FileText size={16} /> PDF
+              </button>
+            </div>
           </div>
 
           <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
@@ -8852,13 +8990,20 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Empresas</h3>
               <p className="text-sm text-slate-500 mt-1">Exporta nome da empresa, funcionários do mês, total a pagar e dia de pagamento.</p>
             </div>
-            <button 
-              onClick={handleExportCompanies}
-              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-3"
-            >
-              <Download size={18} />
-              Exportar Empresas
-            </button>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => handleExportCompanies('excel')}
+                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+              >
+                <Download size={16} /> Excel
+              </button>
+              <button 
+                onClick={() => handleExportCompanies('pdf')}
+                className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+              >
+                <FileText size={16} /> PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -8875,7 +9020,7 @@ function CompanyReports({ employees, assignments, clients, units, companyId }: {
 }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
 
-  const handleExportMyReport = async () => {
+  const handleExportMyReport = async (format: 'excel' | 'pdf') => {
     const compUnits = units.filter(u => u.companyId === companyId);
     const monthAssignments = assignments.filter(a => 
       a.date.startsWith(selectedMonth) && 
@@ -8901,7 +9046,11 @@ function CompanyReports({ employees, assignments, clients, units, companyId }: {
       { header: 'Valor da Diária', key: 'value', width: 20 },
     ];
 
-    await exportToExcel(reportData, columns, `Relatorio_Mensal_${selectedMonth}`);
+    if (format === 'excel') {
+      await exportToExcel(reportData, columns, `Relatorio_Mensal_${selectedMonth}`);
+    } else {
+      exportToPDF(reportData, columns, `Relatorio_Mensal_${selectedMonth}`, `Relatório Mensal - ${selectedMonth}`);
+    }
   };
 
   return (
@@ -8964,7 +9113,7 @@ function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns
 
     const targetAgencyId = selectedAgencyId || agencyId;
     if (!targetAgencyId) {
-      alert('Agência não identificada.');
+      toast('Agência não identificada.');
       return;
     }
 
@@ -9508,7 +9657,7 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
 
   const handleConfirm = async (assignmentId: string) => {
     await updateDocument('assignments', assignmentId, { confirmed: true });
-    alert('Diaria confirmada com sucesso!');
+    toast.success('Diaria confirmada com sucesso!');
   };
 
   return (
@@ -9878,7 +10027,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         setStep('FACE_VERIFY');
         startCamera();
       } else {
-        alert('QR Code inválido para esta unidade.');
+        toast.error('QR Code inválido para esta unidade.');
       }
     }
   };
@@ -9891,7 +10040,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Não foi possível acessar a câmera para verificação facial.");
+      toast("Não foi possível acessar a câmera para verificação facial.");
     }
   };
 
@@ -9947,7 +10096,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       setStep('SUCCESS');
     } catch (error: any) {
       console.error("Check-in error:", error);
-      alert(`Erro no registro: ${error.message}`);
+      toast.error(`Erro no registro: ${error.message}`);
       setStep('INITIAL');
     } finally {
       setIsVerifying(false);
@@ -10156,6 +10305,8 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[] }) {
   if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
   const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL'>('STAFF');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const company = companies.find(c => c.id === companyId);
   const companyUnitClientIds = units.filter(u => u.companyId === companyId).map(u => u.clientId).filter(Boolean);
   const myInvoices = invoices.filter(i => i.companyId === companyId);
@@ -10173,8 +10324,40 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
     }
     return units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId);
   });
+  const sortedAssignments = [...myAssignments].sort((a, b) => b.date.localeCompare(a.date));
+  const totalPages = Math.ceil(sortedAssignments.length / itemsPerPage);
+  const paginatedAssignments = sortedAssignments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
+
+  // Chart Data Preparation
+  const statusCounts = myAssignments.reduce((acc, curr) => {
+    acc[curr.status] = (acc[curr.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieData = [
+    { name: 'Concluídos', value: statusCounts['COMPLETED'] || 0, color: '#10b981' },
+    { name: 'Em Andamento', value: statusCounts['IN_PROGRESS'] || 0, color: '#3b82f6' },
+    { name: 'Agendados', value: statusCounts['SCHEDULED'] || 0, color: '#8b5cf6' },
+    { name: 'Cancelados', value: statusCounts['CANCELLED'] || 0, color: '#f43f5e' },
+  ].filter(d => d.value > 0);
+
+  const last6Months = Array.from({ length: 6 }).map((_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return d.toISOString().substring(0, 7);
+  }).reverse();
+
+  const barData = last6Months.map(month => {
+    const monthAssignments = myAssignments.filter(a => a.date.startsWith(month) && a.status === 'COMPLETED');
+    const expenses = monthAssignments.reduce((acc, curr) => acc + curr.value, 0);
+    return {
+      name: month.split('-').reverse().join('/'),
+      Gastos: expenses
+    };
+  });
 
   const handleEvaluate = async () => {
     if (!evaluatingEmployee) return;
@@ -10198,7 +10381,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
       setEvaluatingEmployee(null);
       setEvalComment('');
       setEvalRating(5);
-      alert('Avaliação enviada com sucesso!');
+      toast.success('Avaliação enviada com sucesso!');
     } catch (error) {
       console.error('Error submitting evaluation:', error);
     } finally {
@@ -10282,7 +10465,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
+                    {paginatedAssignments.map(as => {
                       const emp = employees.find(e => e.id === as.employeeId);
                       const unit = units.find(u => u.id === as.unitId);
                       const isToday = as.date === today;
@@ -10345,6 +10528,13 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                     })}
                   </tbody>
                 </table>
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 p-4 border-t border-slate-100">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50">Anterior</button>
+                    <span className="text-sm font-bold text-slate-900">{currentPage} de {totalPages}</span>
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50">Próximo</button>
+                  </div>
+                )}
               </div>
 
               {/* Mobile View */}
@@ -10671,7 +10861,7 @@ function CompanyFeedbackForm({ companyId, unitId, clients, assignments, employee
       await updateDocument('employees', emp.id, { rating: newRating });
     }
 
-    alert('Feedback enviado com sucesso!');
+    toast.success('Feedback enviado com sucesso!');
     setSelectedAssignmentId('');
     setComment('');
     setRating(5);
@@ -10846,12 +11036,12 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast('As senhas não coincidem!');
       return;
     }
 
     if (!formData.email) {
-      alert('O login ainda não foi gerado. Certifique-se de preencher o nome completo corretamente.');
+      toast('O login ainda não foi gerado. Certifique-se de preencher o nome completo corretamente.');
       return;
     }
 
@@ -10867,7 +11057,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       }
 
       if (!agencyId) {
-        alert('Não foi possível identificar a agência vinculada a esta empresa. Por favor, entre em contato com o suporte.');
+        toast('Não foi possível identificar a agência vinculada a esta empresa. Por favor, entre em contato com o suporte.');
         setIsSubmitting(false);
         return;
       }
@@ -10928,7 +11118,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         });
       }
       
-      alert('Cadastro concluído com sucesso! Aguarde a aprovação do administrador.');
+      toast.success('Cadastro concluído com sucesso! Aguarde a aprovação do administrador.');
       onComplete();
     } catch (error: any) {
       console.error('Error registering company:', error);
@@ -10951,7 +11141,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         }
       }
       
-      alert(errorMessage);
+      toast(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -11180,7 +11370,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast('As senhas não coincidem!');
       return;
     }
     setIsSubmitting(true);
@@ -11238,7 +11428,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         createdAt: new Date().toISOString()
       });
       
-      alert('Cadastro enviado com sucesso! Aguarde a aprovação do administrador.');
+      toast.success('Cadastro enviado com sucesso! Aguarde a aprovação do administrador.');
       onComplete();
     } catch (error: any) {
       console.error('Error registering agency:', error);
@@ -11261,7 +11451,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         }
       }
       
-      alert(errorMessage);
+      toast(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -11578,7 +11768,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Não foi possível acessar a câmera.");
+      toast("Não foi possível acessar a câmera.");
       setIsCameraOpen(false);
     }
   };
@@ -11613,7 +11803,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     e.preventDefault();
     
     if (!formData.photo) {
-      alert("Por favor, tire uma foto para o cadastro.");
+      toast("Por favor, tire uma foto para o cadastro.");
       return;
     }
 
@@ -11643,7 +11833,7 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     };
 
     await createDocument('employeeRegistrations', newEmployeeRegistration);
-    alert('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
+    toast.success('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
     onComplete();
   };
 
@@ -11948,7 +12138,7 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
 
     setShowEditModal(null);
     setEditData({ email: '', password: '' });
-    alert('Credenciais atualizadas com sucesso!');
+    toast.success('Credenciais atualizadas com sucesso!');
   };
 
   const handleDeleteUser = (id: string, type: 'EMPLOYEE' | 'COMPANY') => {
@@ -11962,12 +12152,12 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
     try {
       await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
       await deleteDocument('users', id);
-      alert('Usuário excluído com sucesso!');
+      toast.success('Usuário excluído com sucesso!');
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Erro ao excluir usuário.');
+      toast.error('Erro ao excluir usuário.');
       setShowDeleteModal(false);
       setDeleteTarget(null);
     }
@@ -11984,7 +12174,7 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
       }
     } catch (error) {
       console.error('Error toggling user status:', error);
-      alert('Erro ao alterar status do usuário.');
+      toast.error('Erro ao alterar status do usuário.');
     }
   };
 
@@ -12315,7 +12505,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
 
   const handleSaveOrgInfo = async () => {
     if (role === 'AGENCY' && !agency) {
-      alert('Erro: Dados da agência não encontrados. Tente sair e entrar novamente.');
+      toast.error('Erro: Dados da agência não encontrados. Tente sair e entrar novamente.');
       return;
     }
 
@@ -12368,7 +12558,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
       } else {
         errorMessage = `Erro: ${errorStr}`;
       }
-      alert(errorMessage);
+      toast(errorMessage);
     }
   };
 
@@ -12376,7 +12566,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert('O arquivo é muito grande (máx 2MB).');
+        toast('O arquivo é muito grande (máx 2MB).');
         return;
       }
 
@@ -12420,7 +12610,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
   const handleSendResetEmail = async () => {
     const email = employee?.personalEmail || companyUser?.email || user?.email;
     if (!email) {
-      alert("E-mail não encontrado!");
+      toast("E-mail não encontrado!");
       return;
     }
 
