@@ -34,6 +34,7 @@ export async function createServer() {
   }
 
   app.use(express.json({
+    limit: '10mb',
     verify: (req: any, res, buf) => {
       req.rawBody = buf.toString();
     }
