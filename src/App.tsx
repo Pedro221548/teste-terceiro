@@ -272,13 +272,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                 </div>
               </div>
               <div className="flex gap-2">
-                <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all dark:hover:text-white dark:hover:bg-slate-800"
-                >
-                  {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
-                  {isDarkMode ? 'Modo Claro' : 'Modo Escuro'}
-                </button>
+                {/* Dark mode toggle removed */}
                 <button 
                   onClick={handleLogout}
                   className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"

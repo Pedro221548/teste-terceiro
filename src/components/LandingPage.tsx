@@ -69,7 +69,7 @@ export function LandingPage({
               >
                 <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight font-display mb-6">
                   Gestão <br className="hidden lg:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 italic">Inteligente</span> <br className="hidden lg:block" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-mono">Inteligente</span> <br className="hidden lg:block" />
                   de Diaristas.
                 </h1>
                 <div className="h-1.5 w-24 bg-[#10A34A] rounded-full mx-auto lg:mx-0 mb-6" />
