@@ -9661,7 +9661,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           location: locationStr,
           accessPointId: scannedPoint?.id,
           photoUrl: livePhoto,
-          verificationResult: { match: true, confidence: 1.0, reason: "Manual photo verification" }
+          verificationResult: { match: true, confidence: 1.0, reason: "Manual photo capture" }
         })
       });
 
