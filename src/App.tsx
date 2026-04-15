@@ -9711,19 +9711,27 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           accessPointId: scannedPoint.id,
           photoUrl
         })
+      }).catch(err => {
+        console.error("Fetch error:", err);
+        throw new Error("Não foi possível conectar ao servidor. Verifique sua internet.");
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Erro na comunicação com o servidor." }));
-        throw new Error(data.error || "Erro ao salvar o registro de ponto.");
+        let errorMsg = "Erro ao salvar o registro de ponto.";
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch (e) {
+          console.error("Response parse error:", e);
+        }
+        throw new Error(errorMsg);
       }
 
       setStep('SUCCESS');
       toast.success("Ponto registrado com sucesso!");
     } catch (err: any) {
       console.error("HandleRegister Error:", err);
-      toast.error(err.message || "Erro inesperado ao processar a foto.");
-      // Don't reset to IDLE immediately if it's a camera readiness issue
+      toast.error(err.message || "Erro inesperado ao processar o ponto.");
       if (err.message?.includes("câmera")) {
         // Stay on PHOTO step
       } else {
@@ -9734,7 +9742,15 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     }
   };
 
-  if (!employee) return null;
+  if (!employee) {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <AlertCircle size={48} className="mx-auto text-rose-500" />
+        <h3 className="text-lg font-black text-slate-900">Funcionário não encontrado</h3>
+        <p className="text-sm text-slate-500">Não foi possível carregar seus dados de funcionário. Por favor, tente sair e entrar novamente.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div 

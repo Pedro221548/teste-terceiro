@@ -63,12 +63,12 @@ export async function createServer() {
 
   app.post("/api/check-in-verified", async (req, res) => {
     try {
-      const { employeeId, agencyId, type, location, accessPointId, photoUrl, verificationResult } = req.body;
+      const { employeeId, agencyId, type, location, accessPointId, photoUrl } = req.body;
 
       console.log(`Check-in request received: ${type} for employee ${employeeId}`);
 
       if (!employeeId || !agencyId || !type) {
-        return res.status(400).json({ error: "Missing required fields" });
+        return res.status(400).json({ error: "Campos obrigatórios ausentes (ID do funcionário, agência ou tipo)." });
       }
 
       const db = getDb();
@@ -76,11 +76,12 @@ export async function createServer() {
       const checkInId = checkInRef.id;
 
       // Log photo size
-      if (photoUrl) {
-        const sizeInBytes = Buffer.from(photoUrl.split(',')[1], 'base64').length;
-        console.log(`Photo size: ${(sizeInBytes / 1024).toFixed(2)} KB`);
-        if (sizeInBytes > 1000000) {
-          console.warn("Photo exceeds 1MB Firestore limit!");
+      if (photoUrl && typeof photoUrl === 'string' && photoUrl.includes(',')) {
+        try {
+          const sizeInBytes = Buffer.from(photoUrl.split(',')[1], 'base64').length;
+          console.log(`Photo size: ${(sizeInBytes / 1024).toFixed(2)} KB`);
+        } catch (e) {
+          console.warn("Could not calculate photo size");
         }
       }
 
@@ -94,44 +95,17 @@ export async function createServer() {
         timestamp: new Date().toISOString(),
         status: "APPROVED",
         photoUrl: photoUrl || null,
-        verificationResult: verificationResult || null,
-        method: "AI_FACIAL_RECOGNITION",
+        method: "MANUAL_PHOTO",
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Update employee lastAssignmentDate if it's an IN punch
-      if (type === 'IN') {
-        const employeeRef = db.collection("employees").doc(employeeId);
-        await employeeRef.update({
-          lastAssignmentDate: new Date().toISOString()
-        });
-      }
-
-      // Update Assignment status if it's an OUT punch
-      if (type === 'OUT') {
-        const today = new Date().toISOString().split('T')[0];
-        const assignmentsRef = db.collection("assignments");
-        const q = assignmentsRef
-          .where('employeeId', '==', employeeId)
-          .where('date', '==', today)
-          .where('status', '==', 'SCHEDULED');
-        
-        const snapshot = await q.get();
-        if (!snapshot.empty) {
-          const batch = db.batch();
-          snapshot.docs.forEach(doc => {
-            batch.update(doc.ref, { status: 'COMPLETED' });
-          });
-          await batch.commit();
-          console.log(`Assignments updated to COMPLETED for employee ${employeeId}`);
-        }
-      }
+      console.log(`Check-in ${checkInId} saved successfully for employee ${employeeId}`);
 
       res.json({ success: true, checkInId });
     } catch (error: any) {
-      console.error("Error recording verified check-in:", error);
+      console.error("Error recording check-in:", error);
       res.status(500).json({ 
-        error: "Erro ao salvar o ponto no banco de dados.",
+        error: "Erro ao salvar o ponto no servidor.",
         details: error.message 
       });
     }
