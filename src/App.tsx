@@ -9554,7 +9554,7 @@ function PrivacyListItem({ title, description }: { title: string, description: s
 }
 
 function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
-  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'FACE_VERIFY' | 'VERIFYING' | 'SUCCESS'>('INITIAL');
+  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO_CAPTURE' | 'SUCCESS'>('INITIAL');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
@@ -9598,7 +9598,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       const point = accessPoints.find(ap => ap.qrCodeValue === text);
       if (point) {
         setScannedPoint(point);
-        setStep('FACE_VERIFY');
+        setStep('PHOTO_CAPTURE');
         startCamera();
       } else {
         toast.error('QR Code inválido para esta unidade.');
@@ -9625,7 +9625,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     }
   };
 
-  const verifyFace = async () => {
+  const registerPoint = async () => {
     if (!videoRef.current || !canvasRef.current || !employee) return;
     
     setIsVerifying(true);
@@ -9640,7 +9640,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       setCapturedPhoto(livePhoto);
       stopCamera();
 
-      // Record check-in directly with photo
       let locationStr = "N/A";
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -9680,10 +9679,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     }
   };
 
-  const handleError = (err: any) => {
-    console.error(err);
-  };
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -9692,7 +9687,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     >
       <div className="text-center space-y-2 sm:space-y-3">
         <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
-        <p className="text-slate-500 font-medium text-sm sm:text-base">Registre sua entrada ou saída na unidade com segurança.</p>
+        <p className="text-slate-500 font-medium text-sm sm:text-base">Registre sua entrada ou saída na unidade.</p>
       </div>
 
       <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
@@ -9720,17 +9715,16 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           </div>
         )}
 
-        {step === 'FACE_VERIFY' && (
+        {step === 'PHOTO_CAPTURE' && (
           <div className="flex flex-col items-center space-y-6 sm:space-y-8">
             <div className="text-center space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Verificação Facial</h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">Posicione seu rosto no centro da câmera.</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Tirar Foto</h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">Posicione-se para a foto.</p>
             </div>
 
             <div className="relative w-full aspect-square max-w-[280px] bg-slate-100 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl">
               <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
               <div className="absolute inset-0 border-[16px] border-blue-600/20 pointer-events-none rounded-[2.5rem]"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-dashed border-white/50 rounded-full"></div>
               
               {isVerifying && (
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
@@ -9739,7 +9733,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                     className="w-12 h-12 border-4 border-white border-t-transparent rounded-full"
                   />
-                  <p className="text-xs font-black uppercase tracking-widest">Analisando Rosto...</p>
+                  <p className="text-xs font-black uppercase tracking-widest">Registrando...</p>
                 </div>
               )}
             </div>
@@ -9758,11 +9752,11 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                 Cancelar
               </button>
               <button 
-                onClick={verifyFace}
+                onClick={registerPoint}
                 disabled={isVerifying}
                 className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50"
               >
-                Verificar Agora
+                Registrar Ponto
               </button>
             </div>
           </div>
@@ -9777,7 +9771,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
                     handleScan(result[0].rawValue);
                   }
                 }}
-                onError={handleError}
+                onError={(err) => console.error(err)}
                 styles={{
                   container: { width: '100%', height: '100%' },
                   video: { width: '100%', height: '100%', objectFit: 'cover' }
