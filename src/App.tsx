@@ -9555,59 +9555,65 @@ function PrivacyListItem({ title, description }: { title: string, description: s
 }
 
 function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
-  const [step, setStep] = useState<'INITIAL' | 'SCANNING' | 'PHOTO' | 'SUCCESS'>('INITIAL');
+  const [step, setStep] = useState<'IDLE' | 'SCANNING' | 'PHOTO' | 'SUCCESS'>('IDLE');
   const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
   const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
 
   const employee = employees.find(e => e.id === employeeId);
 
-  // Auto-determine if next punch is IN or OUT
+  // Auto-determine punch type
   useEffect(() => {
     const myCheckIns = checkIns
       .filter(c => c.employeeId === employeeId)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
-    if (myCheckIns.length > 0) {
-      setPunchType(myCheckIns[0].type === 'IN' ? 'OUT' : 'IN');
-    } else {
-      setPunchType('IN');
-    }
+    setPunchType(myCheckIns[0]?.type === 'IN' ? 'OUT' : 'IN');
   }, [checkIns, employeeId]);
 
-  if (!employee) {
-    return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-          <Scan size={40} />
-        </div>
-        <h3 className="text-xl font-black text-slate-900">Ponto Indisponível</h3>
-        <p className="text-slate-500 max-w-xs mx-auto">Funcionário não encontrado. Verifique seu cadastro com a agência.</p>
-      </div>
-    );
-  }
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.error("Camera error:", err);
-      toast.error("Erro ao acessar a câmera. Verifique as permissões.");
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+  const startCamera = async (facingMode: 'user' | 'environment' = 'user') => {
+    stopCamera();
+    setCameraError(null);
+
+    const constraints = [
+      { video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: { facingMode } },
+      { video: true }
+    ];
+
+    for (const constraint of constraints) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraint);
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          return true;
+        }
+      } catch (err: any) {
+        console.warn("Camera attempt failed:", constraint, err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setCameraError("Acesso à câmera negado. Por favor, autorize nas configurações do seu navegador.");
+          return false;
+        }
+      }
     }
+    setCameraError("Não foi possível encontrar uma câmera disponível.");
+    return false;
   };
 
   const handleQRScan = (text: string) => {
@@ -9615,282 +9621,241 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     if (point) {
       setScannedPoint(point);
       setStep('PHOTO');
-      startCamera();
+      // Wait for scanner to unmount before starting selfie camera
+      setTimeout(() => startCamera('user'), 300);
     } else {
-      toast.error('QR Code não reconhecido.');
+      toast.error('QR Code inválido para esta unidade.');
     }
   };
 
   const handleRegister = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !scannedPoint || !employee) return;
     
     setIsProcessing(true);
     try {
-      // 1. Capture Photo
-      const canvas = canvasRef.current;
       const video = videoRef.current;
+      const canvas = canvasRef.current;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("Não foi possível capturar a foto.");
-      ctx.drawImage(video, 0, 0);
+      if (!ctx) throw new Error("Falha ao capturar imagem.");
       
-      // Compress Photo
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-      if (!blob) throw new Error("Erro ao processar imagem.");
+      // Mirror if using front camera
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -canvas.width, 0);
+      ctx.restore();
       
-      const compressedFile = await imageCompression(new File([blob], "photo.jpg", { type: "image/jpeg" }), {
-        maxSizeMB: 0.8,
-        maxWidthOrHeight: 1024,
-        useWebWorker: true
+      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.7));
+      if (!blob) throw new Error("Falha ao processar imagem.");
+
+      const compressed = await imageCompression(new File([blob], "ponto.jpg"), {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 800
       });
-      
-      const photoData = await imageCompression.getDataUrlFromFile(compressedFile);
+      const photoUrl = await imageCompression.getDataUrlFromFile(compressed);
+
       stopCamera();
 
-      // 2. Get Location
-      let locationStr = "Localização não disponível";
+      // Get Location
+      let location = "Localização não capturada";
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) => {
           navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 });
         });
-        locationStr = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-      } catch (e) {
-        console.warn("Location error:", e);
-      }
+        location = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+      } catch (e) { console.warn("Location error", e); }
 
-      // 3. Send to Server
-      const response = await fetch("/api/check-in-verified", {
+      const res = await fetch("/api/check-in-verified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: employee.id,
           agencyId: employee.agencyId,
           type: punchType,
-          location: locationStr,
-          accessPointId: scannedPoint?.id,
-          photoUrl: photoData,
-          verificationResult: { match: true, confidence: 1.0, reason: "Captura manual" }
+          location,
+          accessPointId: scannedPoint.id,
+          photoUrl
         })
       });
 
-      if (!response.ok) {
-        let errorMessage = "Erro no servidor";
-        try {
-          const err = await response.json();
-          errorMessage = err.error || errorMessage;
-        } catch (e) {
-          // If not JSON, try to get text or just use default
-          const text = await response.text().catch(() => "");
-          console.error("Server returned non-JSON error:", text);
-          errorMessage = "O servidor encontrou um problema ao processar a foto. Tente novamente.";
-        }
-        throw new Error(errorMessage);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Erro desconhecido no servidor" }));
+        throw new Error(data.error || "Erro ao salvar registro.");
       }
 
       setStep('SUCCESS');
       toast.success("Ponto registrado com sucesso!");
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      toast.error(error.message);
-      setStep('INITIAL');
+    } catch (err: any) {
+      toast.error(err.message);
+      setStep('IDLE');
     } finally {
       setIsProcessing(false);
     }
   };
 
+  if (!employee) return null;
+
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-xl mx-auto space-y-8 px-4 sm:px-0 pb-20"
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }}
+      className="max-w-xl mx-auto p-4 space-y-8 pb-24"
     >
       <div className="text-center space-y-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
-        <p className="text-slate-500 font-medium">Fluxo rápido e seguro de registro.</p>
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
+        <p className="text-slate-500 font-medium">Sistema de registro biométrico e geolocalizado.</p>
       </div>
 
-      <div className="bg-white rounded-[3rem] border border-slate-200 shadow-2xl overflow-hidden relative">
-        <div className="h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
+      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
+        <div className="h-2 bg-blue-600" />
         
         <div className="p-8 sm:p-12">
-          {step === 'INITIAL' && (
-            <div className="flex flex-col items-center space-y-8">
-              <div className="w-32 h-32 bg-blue-50 rounded-[2.5rem] flex items-center justify-center text-blue-600 shadow-inner">
-                <Scan size={64} />
+          {step === 'IDLE' && (
+            <div className="flex flex-col items-center space-y-8 text-center">
+              <div className="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600">
+                <Scan size={48} />
               </div>
-              <div className="text-center space-y-3">
+              <div className="space-y-2">
                 <h3 className="text-2xl font-black text-slate-900">Olá, {employee.firstName}!</h3>
                 <p className="text-slate-500 font-medium">
-                  Pronto para registrar sua <span className="text-blue-600 font-bold">{punchType === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span>?
+                  Vamos registrar sua <span className="text-blue-600 font-bold">{punchType === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span>?
                 </p>
               </div>
               <button 
                 onClick={() => setStep('SCANNING')}
-                className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 flex items-center justify-center gap-3"
+                className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center gap-3"
               >
-                <QrCode size={20} /> Começar Escaneamento
+                <QrCode size={20} /> Escanear QR Code
               </button>
             </div>
           )}
 
           {step === 'SCANNING' && (
-            <div className="space-y-8">
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-black text-slate-900">Escanear QR Code</h3>
-                <p className="text-sm text-slate-500">Aponte a câmera para o código da unidade.</p>
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-xl font-black text-slate-900">Escanear Unidade</h3>
+                <p className="text-sm text-slate-500">Aponte para o QR Code da unidade.</p>
               </div>
-              <div className="relative aspect-square rounded-[2rem] overflow-hidden border-4 border-blue-600 shadow-2xl bg-black">
+              <div className="aspect-square rounded-3xl overflow-hidden bg-black border-4 border-blue-600 relative">
                 <Scanner
-                  onScan={(result) => result?.[0] && handleQRScan(result[0].rawValue)}
-                  onError={(err) => console.error(err)}
+                  onScan={(res) => res?.[0] && handleQRScan(res[0].rawValue)}
+                  onError={(err: any) => {
+                    if (err?.name === 'NotAllowedError') toast.error("Permissão de câmera negada.");
+                  }}
+                  constraints={{ facingMode: 'environment' }}
                   styles={{ container: { width: '100%', height: '100%' } }}
-                  allowMultiple={false}
-                  scanDelay={300}
                 />
                 <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
                   <div className="w-full h-full border-2 border-white/50 border-dashed rounded-2xl" />
                 </div>
               </div>
-              <button 
-                onClick={() => setStep('INITIAL')}
-                className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-colors"
-              >
-                Voltar
-              </button>
+              <button onClick={() => setStep('IDLE')} className="w-full py-4 text-slate-400 font-bold text-xs uppercase tracking-widest">Cancelar</button>
             </div>
           )}
 
           {step === 'PHOTO' && (
-            <div className="flex flex-col items-center space-y-8">
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-black text-slate-900">Sua Foto</h3>
-                <p className="text-sm text-slate-500">Sorria! Estamos quase lá.</p>
+            <div className="space-y-8">
+              <div className="text-center">
+                <h3 className="text-xl font-black text-slate-900">Foto de Verificação</h3>
+                <p className="text-sm text-slate-500">Posicione seu rosto no centro.</p>
               </div>
 
-              <div className="relative w-full aspect-square max-w-[320px] bg-slate-100 rounded-[3rem] overflow-hidden border-4 border-white shadow-2xl">
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />
-                <div className="absolute inset-0 border-[20px] border-blue-600/10 pointer-events-none" />
+              <div className="relative aspect-square max-w-[320px] mx-auto bg-slate-100 rounded-[3rem] overflow-hidden border-4 border-white shadow-xl flex items-center justify-center">
+                {cameraError ? (
+                  <div className="p-6 text-center space-y-4">
+                    <AlertCircle size={40} className="mx-auto text-rose-500" />
+                    <p className="text-xs font-bold text-slate-600">{cameraError}</p>
+                    <button onClick={() => startCamera('user')} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Tentar Novamente</button>
+                  </div>
+                ) : (
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                )}
                 
                 {isProcessing && (
-                  <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-12 h-12 border-4 border-white border-t-transparent rounded-full"
-                    />
-                    <p className="text-xs font-black uppercase tracking-widest">Processando...</p>
+                  <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
+                    <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Registrando...</p>
                   </div>
                 )}
               </div>
 
               <canvas ref={canvasRef} className="hidden" />
 
-              <div className="flex gap-4 w-full">
+              <div className="flex gap-4">
+                <button onClick={() => { stopCamera(); setStep('IDLE'); }} className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px]">Voltar</button>
                 <button 
-                  onClick={() => { stopCamera(); setStep('INITIAL'); }}
-                  disabled={isProcessing}
-                  className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                  onClick={handleRegister} 
+                  disabled={isProcessing || !!cameraError}
+                  className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
                 >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleRegister}
-                  disabled={isProcessing}
-                  className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Camera size={18} /> Registrar Ponto
+                  <Camera size={18} /> Confirmar Ponto
                 </button>
               </div>
             </div>
           )}
 
           {step === 'SUCCESS' && (
-            <div className="flex flex-col items-center space-y-8">
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="w-32 h-32 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center text-emerald-600 shadow-inner"
-              >
-                <CheckCircle size={64} />
-              </motion.div>
-              <div className="text-center space-y-4">
-                <h3 className="text-3xl font-black text-slate-900">Sucesso!</h3>
-                <p className="text-slate-500 font-medium">Seu ponto de {punchType === 'IN' ? 'Entrada' : 'Saída'} foi registrado.</p>
-                
-                <div className="p-6 bg-slate-50 rounded-[2rem] text-left space-y-4 border border-slate-100">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                      <MapPin size={20} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Localização</p>
-                      <p className="text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
-                    </div>
+            <div className="flex flex-col items-center space-y-8 text-center">
+              <div className="w-24 h-24 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600">
+                <CheckCircle size={48} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-slate-900">Ponto Registrado!</h3>
+                <p className="text-slate-500 font-medium">Sua {punchType === 'IN' ? 'Entrada' : 'Saída'} foi salva com sucesso.</p>
+              </div>
+              <div className="w-full p-6 bg-slate-50 rounded-3xl text-left space-y-4 border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <MapPin size={18} className="text-blue-600" />
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Local</p>
+                    <p className="text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
-                      <Clock size={20} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
-                      <p className="text-sm font-bold text-slate-700">{new Date().toLocaleString('pt-BR')}</p>
-                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock size={18} className="text-blue-600" />
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
+                    <p className="text-sm font-bold text-slate-700">{new Date().toLocaleTimeString('pt-BR')}</p>
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setStep('INITIAL')}
-                className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-black transition-all shadow-xl active:scale-95"
-              >
-                Entendido
-              </button>
+              <button onClick={() => setStep('IDLE')} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Concluir</button>
             </div>
           )}
         </div>
       </div>
 
       {/* History Section */}
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Meus Registros de Hoje</h3>
-          <Calendar size={20} className="text-blue-600" />
-        </div>
-        
-        <div className="space-y-4">
+      {/* History */}
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+          <Calendar size={16} className="text-blue-600" /> Registros de Hoje
+        </h3>
+        <div className="space-y-3">
           {checkIns
             .filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(new Date().toISOString().split('T')[0]))
-            .slice()
-            .reverse()
-            .map(ci => {
-              const ap = accessPoints.find(p => p.id === ci.accessPointId);
-              return (
-                <div key={ci.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 transition-all group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform bg-slate-200">
-                      <img src={ci.photoUrl} alt="Selfie" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${ci.type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {ci.type === 'IN' ? 'Entrada' : 'Saída'}
-                        </span>
-                        <p className="text-sm font-bold text-slate-700">{ap?.location || 'Unidade'}</p>
-                      </div>
-                      <p className="text-[10px] text-slate-400 font-medium mt-1">
-                        {new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
+            .slice().reverse().map(ci => (
+              <div key={ci.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-200 border-2 border-white shadow-sm">
+                    <img src={ci.photoUrl} alt="Selfie" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
-                  <CheckCircle size={20} className="text-emerald-500" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${ci.type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                      </span>
+                      <p className="text-xs font-bold text-slate-700">{accessPoints.find(p => p.id === ci.accessPointId)?.location || 'Unidade'}</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
                 </div>
-              );
-            })}
-          
+                <CheckCircle size={16} className="text-emerald-500" />
+              </div>
+            ))}
           {checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(new Date().toISOString().split('T')[0])).length === 0 && (
-            <div className="py-12 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-              <p className="text-sm text-slate-400 font-medium italic">Nenhum registro hoje.</p>
-            </div>
+            <p className="text-center py-8 text-xs text-slate-400 italic">Nenhum registro hoje.</p>
           )}
         </div>
       </div>
