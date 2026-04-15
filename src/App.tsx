@@ -1297,6 +1297,7 @@ export default function App() {
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
                       plans={plans}
+                      companyRequests={companyRequests}
                     />
                   </div>
                 )}
@@ -1368,6 +1369,7 @@ export default function App() {
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       companyUsers={companyUsers}
                       plans={plans}
+                      companyRequests={companyRequests}
                     />
                   </div>
                 )}
@@ -2526,7 +2528,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[] }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans, companyRequests }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[], companyRequests: CompanyRequest[] }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -2942,6 +2944,16 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             trend="Na Plataforma"
             color="violet"
             onClick={() => setActiveTab('admin_agencies')}
+          />
+        )}
+        {role === 'AGENCY' && (
+          <StatCard 
+            icon={<FileText size={24} />} 
+            label="Solicitações" 
+            value={companyRequests.filter(r => r.status === 'PENDING').length.toString()} 
+            trend="Pendentes"
+            color="amber"
+            onClick={() => setActiveTab('staffing')}
           />
         )}
         <StatCard 
@@ -5487,23 +5499,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   const confirmedAssignments = assignments.filter(a => a.confirmed).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Grouping logic for AgencyStaffing
-  const groupedConfirmedByCompany = confirmedAssignments.reduce((acc, as) => {
+  const groupedConfirmedByDate = confirmedAssignments.reduce((acc, as) => {
+    const date = as.date;
+    if (!acc[date]) acc[date] = { assignments: [], companies: {} };
+    
+    acc[date].assignments.push(as);
+    
     const unit = units.find(u => u.clientId === as.clientId);
     const companyId = unit?.companyId || as.clientId;
-    if (!acc[companyId]) acc[companyId] = { assignments: [], units: {} };
     
-    acc[companyId].assignments.push(as);
-    
-    if (unit) {
-      if (!acc[companyId].units[unit.id]) acc[companyId].units[unit.id] = [];
-      acc[companyId].units[unit.id].push(as);
-    } else {
-      if (!acc[companyId].units['default']) acc[companyId].units['default'] = [];
-      acc[companyId].units['default'].push(as);
-    }
+    if (!acc[date].companies[companyId]) acc[date].companies[companyId] = [];
+    acc[date].companies[companyId].push(as);
     
     return acc;
-  }, {} as Record<string, { assignments: Assignment[], units: Record<string, Assignment[]> }>);
+  }, {} as Record<string, { assignments: Assignment[], companies: Record<string, Assignment[]> }>);
 
   const getMatchScore = (emp: Employee, unit?: Unit) => {
     let score = emp.rating * 20; // 0-100
@@ -6014,19 +6023,16 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             </div>
           ) : (
             <div className="space-y-10">
-              {Object.entries(groupedConfirmedByCompany).map(([companyId, companyData]) => {
-                const company = companies.find(c => c.id === companyId);
-                const client = clients.find(c => c.id === companyId);
-                const companyName = company?.name || client?.name || 'Empresa não identificada';
-                const isExpanded = expandedCompanies[companyId] === true;
+              {Object.entries(groupedConfirmedByDate).map(([date, dateData]) => {
+                const isExpanded = expandedCompanies[date] === true;
 
                 return (
-                  <div key={companyId} className="space-y-6">
+                  <div key={date} className="space-y-6">
                     <div 
                       role="button"
                       tabIndex={0}
-                      onClick={() => toggleCompany(companyId)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCompany(companyId); }}
+                      onClick={() => toggleCompany(date)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCompany(date); }}
                       className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-4 px-2 py-4 sm:py-0 group/header cursor-pointer outline-none"
                     >
                       <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -6034,8 +6040,8 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                           <Building2 size={20} />
                         </div>
                         <div className="text-left flex-1">
-                          <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase truncate max-w-[150px] sm:max-w-none">{companyName}</h4>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{companyData.assignments.length} Profissionais</p>
+                          <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase truncate max-w-[150px] sm:max-w-none">{formatDateBR(date)}</h4>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{dateData.assignments.length} Profissionais</p>
                         </div>
                       </div>
                       <div className="hidden sm:block flex-1 h-px bg-slate-100 mx-4"></div>
@@ -6044,7 +6050,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const text = companyData.assignments
+                              const text = dateData.assignments
                                 .map(a => {
                                   const emp = employees.find(e => e.id === a.employeeId);
                                   return emp ? `${emp.firstName} ${emp.lastName} - CPF: ${emp.cpf || 'N/A'}` : '';
@@ -6064,7 +6070,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                               const { saveAs } = await import('file-saver');
                               const zip = new JSZip();
                               
-                              const promises = companyData.assignments.map(async (a) => {
+                              const promises = dateData.assignments.map(async (a) => {
                                 const emp = employees.find(e => e.id === a.employeeId);
                                 if (emp && emp.photoUrl) {
                                   try {
@@ -6080,7 +6086,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                               
                               await Promise.all(promises);
                               const content = await zip.generateAsync({ type: 'blob' });
-                              saveAs(content, `fotos_diaristas_${companyName.replace(/\s+/g, '_')}.zip`);
+                              saveAs(content, `fotos_diaristas_${formatDateBR(date).replace(/\s+/g, '_')}.zip`);
                             }}
                             className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-100 font-black uppercase tracking-widest text-[9px] hover:bg-slate-100 transition-all whitespace-nowrap"
                           >
@@ -6101,19 +6107,20 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden space-y-8 pl-4 border-l-2 border-slate-100 ml-6"
                         >
-                          {Object.entries(companyData.units).map(([unitId, unitAssignments]) => {
-                            const unit = units.find(u => u.id === unitId);
-                            const unitName = unit?.name || (unitId === 'default' ? 'Unidade Principal' : 'Unidade não identificada');
+                          {Object.entries(dateData.companies).map(([companyId, companyAssignments]) => {
+                            const company = companies.find(c => c.id === companyId);
+                            const client = clients.find(c => c.id === companyId);
+                            const companyName = company?.name || client?.name || 'Empresa não identificada';
 
                             return (
-                              <div key={unitId} className="space-y-4">
+                              <div key={companyId} className="space-y-4">
                                 <div className="flex items-center gap-3">
                                   <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                                  <h5 className="text-sm font-black text-slate-900 uppercase tracking-widest">{unitName}</h5>
-                                  <span className="text-[10px] font-bold text-slate-400">({unitAssignments.length})</span>
+                                  <h5 className="text-sm font-black text-slate-900 uppercase tracking-widest">{companyName}</h5>
+                                  <span className="text-[10px] font-bold text-slate-400">({companyAssignments.length})</span>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                  {unitAssignments.map(as => {
+                                  {companyAssignments.map(as => {
                                     const emp = employees.find(e => e.id === as.employeeId);
                                     if (!emp) return null;
                                     const empCheckIns = checkIns.filter(ci => ci.employeeId === as.employeeId && ci.timestamp.startsWith(as.date));
@@ -8428,7 +8435,7 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
 }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
 
-  const handleExportEmployees = async () => {
+  const handleExportEmployees = async (format: 'excel' | 'pdf') => {
     const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
     
     const reportData = employees.map(emp => {
@@ -9871,7 +9878,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
 function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins, companyRequests }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[], companyRequests: CompanyRequest[] }) {
   if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
-  const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL'>('STAFF');
+  const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL' | 'REQUESTS'>('STAFF');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const company = companies.find(c => c.id === companyId);
@@ -10010,6 +10017,12 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
           >
             Favoritos
+          </button>
+          <button 
+            onClick={() => setActiveTab('REQUESTS')}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'REQUESTS' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          >
+            Solicitações
           </button>
         </div>
 
@@ -10299,6 +10312,43 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                 </table>
               </div>
             </div>
+          </div>
+        ) : activeTab === 'REQUESTS' ? (
+          <div className="space-y-4 px-4 sm:px-0">
+            {myRequests.length === 0 ? (
+              <div className="p-12 text-center text-slate-400">Nenhuma solicitação encontrada.</div>
+            ) : (
+              myRequests.map(req => {
+                const unit = units.find(u => u.clientId === req.clientId);
+                return (
+                  <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                    <div>
+                      <p className="font-black text-slate-900 text-sm">Solicitação para {unit?.name || 'Unidade'}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                        {req.quantity} Profissionais {req.employeeIds?.length > 0 ? '(Específicos)' : '(Qualquer)'} - {formatDateBR(req.date)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-[10px] px-4 py-1.5 rounded-lg font-black uppercase tracking-widest ${
+                        req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                        req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
+                      </span>
+                      {req.status === 'PENDING' && (
+                        <button 
+                          onClick={() => handleCancelRequest(req.id)}
+                          className="text-[10px] font-black text-red-600 hover:text-red-800 uppercase tracking-widest transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         ) : activeTab === 'MURAL' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 px-4 sm:px-0">
