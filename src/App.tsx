@@ -9665,7 +9665,10 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
         })
       });
 
-      if (!checkInResponse.ok) throw new Error("Falha ao registrar ponto no servidor.");
+      if (!checkInResponse.ok) {
+        const errorData = await checkInResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Falha ao registrar ponto: ${checkInResponse.statusText}`);
+      }
       
       setStep('SUCCESS');
     } catch (error: any) {
