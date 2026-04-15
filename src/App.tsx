@@ -9560,6 +9560,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
   const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -9683,23 +9684,6 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
 
       stopCamera();
 
-      // Get Location
-      let location = "Localização não capturada";
-      try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => {
-          navigator.geolocation.getCurrentPosition(res, rej, { 
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-          });
-        });
-        location = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-      } catch (e) { 
-        console.warn("Location error", e);
-        // We still allow registration without location if it fails, 
-        // but we could also throw if it's mandatory.
-      }
-
       const res = await fetch("/api/check-in-verified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -9707,7 +9691,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
           employeeId: employee.id,
           agencyId: employee.agencyId,
           type: punchType,
-          location,
+          location: "Desativado",
           accessPointId: scannedPoint.id,
           photoUrl
         })
@@ -9784,6 +9768,41 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
               >
                 <QrCode size={20} /> Escanear QR Code
               </button>
+
+              <div className="w-full pt-4 border-t border-slate-100">
+                <button 
+                  onClick={() => setShowDiagnostics(!showDiagnostics)}
+                  className="w-full py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                >
+                  {showDiagnostics ? 'Ocultar Dicas' : 'Problemas com a câmera ou GPS?'}
+                </button>
+
+                {showDiagnostics && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-4 p-4 bg-slate-50 rounded-2xl space-y-3 border border-slate-100 text-left"
+                  >
+                    <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                      Para o ponto funcionar corretamente, siga estas dicas:
+                    </p>
+                    <ul className="space-y-2">
+                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
+                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <span><strong>Abra em uma nova aba:</strong> Clique no ícone de "seta para fora" no topo da tela. Isso resolve a maioria dos problemas de permissão.</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
+                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <span><strong>Autorize o acesso:</strong> Quando o navegador perguntar, clique em "Permitir" para Câmera e Localização.</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
+                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <span><strong>Use HTTPS:</strong> O sistema exige conexão segura para acessar a câmera.</span>
+                      </li>
+                    </ul>
+                  </motion.div>
+                )}
+              </div>
             </div>
           )}
 

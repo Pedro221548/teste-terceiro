@@ -326,10 +326,10 @@ service cloud.firestore {
     }
 
     function isValidCheckIn(data) {
-      return hasRequiredFields(['employeeId', 'accessPointId', 'location', 'timestamp', 'photoUrl', 'type']) &&
+      return hasRequiredFields(['employeeId', 'accessPointId', 'timestamp', 'photoUrl', 'type']) &&
              data.employeeId is string &&
              data.accessPointId is string &&
-             data.location is string &&
+             (!('location' in data) || data.location is string) &&
              data.timestamp is string &&
              data.photoUrl is string &&
              data.type in ["IN", "OUT"];
