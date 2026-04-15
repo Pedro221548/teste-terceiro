@@ -43,7 +43,7 @@ export function LandingPage({
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F4FBF7] border-b border-emerald-100/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-12 w-auto" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="w-[200px] h-[140px] object-contain" />
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#inicio" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Início</a>
