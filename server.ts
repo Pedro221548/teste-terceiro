@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import axios from "axios";
 import crypto from "crypto";
 import dotenv from "dotenv";
@@ -12,6 +13,7 @@ export async function createServer() {
   const app = express();
 
   // Initialize Firebase Admin SDK
+  let firestoreDatabaseId = "(default)";
   try {
     if (admin.apps.length === 0) {
       const fs = await import("fs");
@@ -19,12 +21,13 @@ export async function createServer() {
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
         console.log("Initializing Firebase Admin with project ID:", config.projectId);
+        firestoreDatabaseId = config.firestoreDatabaseId || "(default)";
         process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
           projectId: config.projectId,
         });
-        console.log("Firebase Admin initialized successfully.");
+        console.log("Firebase Admin initialized successfully. Database:", firestoreDatabaseId);
       } else {
         console.warn("firebase-applet-config.json not found. Firebase Admin might not work correctly.");
       }
@@ -32,6 +35,10 @@ export async function createServer() {
   } catch (error) {
     console.error("Error initializing Firebase Admin:", error);
   }
+
+  const getDb = () => {
+    return getFirestore(firestoreDatabaseId);
+  };
 
   app.use(express.json({
     limit: '10mb',
@@ -56,13 +63,24 @@ export async function createServer() {
     try {
       const { employeeId, agencyId, type, location, accessPointId, photoUrl, verificationResult } = req.body;
 
+      console.log(`Check-in request received: ${type} for employee ${employeeId}`);
+
       if (!employeeId || !agencyId || !type) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const db = admin.firestore();
+      const db = getDb();
       const checkInRef = db.collection("checkIns").doc();
       const checkInId = checkInRef.id;
+
+      // Log photo size
+      if (photoUrl) {
+        const sizeInBytes = Buffer.from(photoUrl.split(',')[1], 'base64').length;
+        console.log(`Photo size: ${(sizeInBytes / 1024).toFixed(2)} KB`);
+        if (sizeInBytes > 1000000) {
+          console.warn("Photo exceeds 1MB Firestore limit!");
+        }
+      }
 
       await checkInRef.set({
         id: checkInId,
@@ -110,7 +128,7 @@ export async function createServer() {
       res.json({ success: true, checkInId });
     } catch (error: any) {
       console.error("Error recording verified check-in:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || "Internal server error" });
     }
   });
 

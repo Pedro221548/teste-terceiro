@@ -65,6 +65,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import imageCompression from 'browser-image-compression';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -9633,7 +9634,18 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error("Não foi possível capturar a foto.");
       ctx.drawImage(video, 0, 0);
-      const photoData = canvas.toDataURL('image/jpeg', 0.7); // Compressed
+      
+      // Compress Photo
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+      if (!blob) throw new Error("Erro ao processar imagem.");
+      
+      const compressedFile = await imageCompression(new File([blob], "photo.jpg", { type: "image/jpeg" }), {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true
+      });
+      
+      const photoData = await imageCompression.getDataUrlFromFile(compressedFile);
       stopCamera();
 
       // 2. Get Location
