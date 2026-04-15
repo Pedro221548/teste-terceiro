@@ -72,6 +72,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
+import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
 import { createNewUser } from './secondary-auth';
@@ -1142,494 +1143,21 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen flex bg-white overflow-hidden">
-        {/* Left Side: Branding & Purpose */}
-        <div className="hidden lg:flex lg:w-[45%] bg-slate-950 p-16 flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.15),transparent_50%)]" />
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-500/10 rounded-full -mr-96 -mt-96 blur-[160px] animate-pulse" />
-          <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-accent-violet/10 rounded-full -ml-96 -mb-96 blur-[160px] animate-pulse" style={{ animationDelay: '3s' }} />
-          
-          <div className="relative z-10">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="mb-12 -ml-16 px-20 py-10 bg-white shadow-2xl shadow-white/10 rounded-r-[4rem] inline-block"
-            >
-              <img 
-                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
-                alt="ProStaff Brasil" 
-                className="h-52 w-auto object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </motion.div>
-            
-            <div className="space-y-6 max-w-xl">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <h2 className="text-8xl font-black text-white leading-[0.9] tracking-tight font-display mb-8">
-                  Gestão <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-violet italic pr-4">Inteligente</span> <br />
-                  de Diaristas.
-                </h2>
-                <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-6" />
-              </motion.div>
-
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-lg text-slate-400 font-medium leading-relaxed max-w-md"
-              >
-                Automatize sua agência com a plataforma líder em controle operacional e satisfação do cliente.
-              </motion.p>
-              
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5, type: 'spring' }}
-                className="relative rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] mt-8 group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10" />
-                <img 
-                  src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
-                  alt="ProStaff Brasil Dashboard" 
-                  className="w-full h-auto object-cover opacity-90 group-hover:scale-105 transition-all duration-1000"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
-                
-                {/* Demo Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <button 
-                    onClick={() => setShowDemoModal(true)}
-                    className="flex items-center gap-3 px-8 py-4 bg-white text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-2xl hover:scale-110 active:scale-95 transition-all"
-                  >
-                    <div className="w-8 h-8 bg-brand-500 text-white rounded-full flex items-center justify-center">
-                      <Play size={16} fill="currentColor" />
-                    </div>
-                    Ver Demonstração
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex items-center gap-8 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-            <span>© 2026 ProStaff Brasil Platform</span>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-              <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: Plans & Login */}
-        <div className="w-full lg:w-[55%] flex flex-col bg-slate-100 overflow-y-auto relative selection:bg-brand-100 selection:text-brand-900">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
-          
-          <div className="flex-1 flex flex-col items-center py-6 px-4 sm:py-12 sm:px-8 relative z-10">
-            {/* Login Section */}
-            <div className="w-full max-w-xl mb-16">
-              <motion.div 
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 rounded-full -mr-24 -mt-24" />
-                
-                <div className="relative z-10 space-y-8">
-                  <div className="flex justify-center lg:hidden">
-                    <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-20 sm:h-28 w-auto" referrerPolicy="no-referrer" />
-                  </div>
-                  <div className="space-y-2 sm:space-y-3">
-                    <h3 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight font-display">Acesso Restrito</h3>
-                    <p className="text-slate-500 text-sm sm:text-base font-medium">Insira suas credenciais para continuar na plataforma.</p>
-                  </div>
-
-                  {isForgotPassword ? (
-                    <form onSubmit={handleResetPassword} className="space-y-10">
-                      <div className="space-y-4">
-                        <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Recuperação</label>
-                        <div className="relative">
-                          <Mail className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                          <input 
-                            type="email" 
-                            placeholder="seu@email.com"
-                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {resetStatus === 'SUCCESS' && (
-                        <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-3xl text-emerald-600 text-sm font-bold flex items-center gap-4">
-                          <CheckCircle2 size={20} />
-                          E-mail enviado! Verifique sua caixa de entrada.
-                        </div>
-                      )}
-
-                      <div className="space-y-5">
-                        <button 
-                          type="submit" 
-                          disabled={resetStatus === 'LOADING'}
-                          className="w-full py-4 sm:py-6 bg-slate-950 text-white rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 disabled:opacity-50"
-                        >
-                          {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link de Recuperação'}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => setIsForgotPassword(false)}
-                          className="w-full py-2 text-slate-400 font-black uppercase tracking-widest text-xs hover:text-slate-600 transition-all"
-                        >
-                          Voltar ao Login
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleEmailLogin} className="space-y-8">
-                      <div className="space-y-4">
-                        <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
-                        <div className="relative">
-                          <Mail className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                          <input 
-                            type="email" 
-                            placeholder="admin@stafflink.com"
-                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
-                            value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between ml-1">
-                          <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                          <button 
-                            type="button"
-                            onClick={() => setIsForgotPassword(true)}
-                            className="text-[11px] font-black text-brand-600 uppercase tracking-widest hover:text-brand-700 transition-colors"
-                          >
-                            Esqueceu sua senha?
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <Lock className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                          <input 
-                            type="password" 
-                            placeholder="••••••••"
-                            className="w-full pl-14 sm:pl-16 pr-6 sm:pr-8 py-4 sm:py-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] text-sm sm:text-base font-bold focus:bg-white focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 outline-none transition-all"
-                            value={passwordInput}
-                            onChange={(e) => setPasswordInput(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {loginError && (
-                        <div className="p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-red-600 text-sm font-bold">
-                          <AlertCircle size={20} />
-                          {loginError}
-                        </div>
-                      )}
-
-                      <button 
-                        type="submit" 
-                        className="w-full py-5 sm:py-7 bg-slate-950 text-white rounded-[1.5rem] sm:rounded-[2.5rem] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center gap-4"
-                      >
-                        Entrar na Plataforma
-                        <ArrowRight size={20} className="sm:w-[22px] sm:h-[22px]" />
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Plans Section */}
-            <div className="w-full max-w-5xl mb-20">
-              <div className="text-center mb-10">
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="px-4 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] shadow-sm mb-4 inline-block"
-                >
-                  Planos & Preços
-                </motion.span>
-                <h2 className="text-4xl font-black text-slate-950 tracking-tight font-display">A escala que você precisa.</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {plans.sort((a, b) => a.price - b.price).map((plan, index) => {
-                  const isPopular = plan.id === 'PROFESSIONAL';
-                  const isEnterprise = plan.id === 'ENTERPRISE';
-                  
-                  return (
-                    <motion.div 
-                      key={plan.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 + 0.5 }}
-                      className={`relative flex flex-col bg-white p-8 rounded-[2rem] border transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] group ${
-                        isPopular ? 'border-brand-500 shadow-xl shadow-brand-500/5 scale-105 z-20' : 'border-slate-200 z-10'
-                      }`}
-                    >
-                      {isPopular && (
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl shadow-brand-500/20">
-                          Recomendado
-                        </div>
-                      )}
-                      
-                      <div className="mb-6">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 ${
-                          isEnterprise ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' :
-                          isPopular ? 'bg-brand-500 text-white shadow-lg shadow-brand-200' :
-                          'bg-slate-950 text-white shadow-lg shadow-slate-200'
-                        }`}>
-                          {isEnterprise ? <ShieldCheck size={24} /> : isPopular ? <Activity size={24} /> : <Briefcase size={24} />}
-                        </div>
-                        <h4 className="font-black text-slate-950 uppercase tracking-tight text-lg mb-1">{plan.name}</h4>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black text-slate-950 tracking-tighter">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">/mês</span>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-3 mb-8 flex-1">
-                        {plan.features.map((feature, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-slate-600 font-medium leading-snug">
-                            <div className={`mt-0.5 p-0.5 rounded-full ${isPopular ? 'text-brand-500' : 'text-slate-400'}`}>
-                              <CheckCircle2 size={14} />
-                            </div>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <div className="pt-6 border-t border-slate-50 space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
-                          <span className="text-xs font-black text-slate-950">{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
-                        </div>
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
-                          <span className="text-xs font-black text-slate-950">{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* How it Works Section */}
-            <div className="w-full max-w-5xl mb-24">
-              <div className="text-center mb-12">
-                <h3 className="text-3xl font-black text-slate-950 tracking-tight font-display">Como Funciona</h3>
-                <p className="text-slate-500 font-medium mt-2">Três passos simples para transformar sua agência</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                {[
-                  { step: '01', title: 'Cadastre sua Agência', desc: 'Crie sua conta em minutos e configure seu perfil operacional.', icon: Building2 },
-                  { step: '02', title: 'Aloque Diaristas', desc: 'Gerencie escalas e atribua profissionais às demandas dos clientes.', icon: Users },
-                  { step: '03', title: 'Monitore em Tempo Real', desc: 'Acompanhe o status das diárias e receba feedbacks instantâneos.', icon: Activity }
-                ].map((item, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 + (i * 0.1) }}
-                    className="text-center space-y-6 group"
-                  >
-                    <div className="relative inline-block">
-                      <div className="w-20 h-20 bg-white rounded-[2rem] border border-slate-200 flex items-center justify-center text-brand-500 shadow-sm group-hover:shadow-xl group-hover:-translate-y-2 transition-all duration-500">
-                        <item.icon size={32} />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-950 text-white rounded-full flex items-center justify-center text-[10px] font-black border-4 border-slate-100">
-                        {item.step}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-lg font-black text-slate-950 uppercase tracking-tight">{item.title}</h4>
-                      <p className="text-sm text-slate-500 font-medium leading-relaxed px-4">{item.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* FAQ Section */}
-            <div className="w-full max-w-3xl mb-24">
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-200/50 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
-                  <HelpCircle size={12} />
-                  Dúvidas Frequentes
-                </div>
-                <h3 className="text-3xl font-black text-slate-950 tracking-tight font-display">FAQ Rápido</h3>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  { q: 'Posso trocar de plano depois?', a: 'Sim! Você pode fazer o upgrade ou downgrade do seu plano a qualquer momento diretamente pelo painel administrativo.' },
-                  { q: 'Como funciona o suporte técnico?', a: 'Oferecemos suporte via chat em tempo real e WhatsApp para todos os planos, com prioridade para os planos Professional e Enterprise.' },
-                  { q: 'Existe período de fidelidade?', a: 'Não. Nossos planos são mensais e você pode cancelar a qualquer momento sem multas ou taxas escondidas.' }
-                ].map((faq, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 + (i * 0.1) }}
-                    className="bg-white rounded-3xl border border-slate-200 overflow-hidden"
-                  >
-                    <button 
-                      onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
-                      className="w-full p-6 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{faq.q}</span>
-                      <ChevronDown 
-                        size={20} 
-                        className={`text-slate-400 transition-transform duration-300 ${openFaqIndex === i ? 'rotate-180' : ''}`} 
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {openFaqIndex === i && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="px-6 pb-6"
-                        >
-                          <p className="text-sm text-slate-500 font-medium leading-relaxed border-t border-slate-50 pt-4">
-                            {faq.a}
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* WhatsApp Button */}
-        <motion.a 
-          initial={{ scale: 0, rotate: -45 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', delay: 1.5 }}
-          href="https://wa.me/5511999999999?text=Olá,%20quero%20conhecer%20a%20plataforma"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-8 right-8 z-50 bg-[#25D366] text-white p-5 rounded-full shadow-[0_20px_50px_rgba(37,211,102,0.3)] hover:scale-110 active:scale-90 transition-all group"
-        >
-          <Phone size={24} className="group-hover:rotate-12 transition-transform" />
-          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-white text-slate-900 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-100">
-            Fale Conosco
-          </div>
-        </motion.a>
-
-        {/* Demo Modal */}
-        <AnimatePresence>
-          {showDemoModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-slate-950/90 backdrop-blur-md"
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="w-full max-w-5xl aspect-video bg-slate-900 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl relative"
-              >
-                <button 
-                  onClick={() => setShowDemoModal(false)}
-                  className="absolute top-6 right-6 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md transition-all"
-                >
-                  <X size={24} />
-                </button>
-                
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-12">
-                  <div className="w-24 h-24 bg-brand-500 rounded-full flex items-center justify-center text-white mb-8 animate-pulse">
-                    <Play size={48} fill="currentColor" />
-                  </div>
-                  <h3 className="text-4xl font-black text-white tracking-tight font-display mb-4">Tour Interativo ProStaff Brasil</h3>
-                  <p className="text-slate-400 text-lg max-w-md mx-auto">
-                    Assista como automatizamos a gestão de diaristas em tempo real.
-                  </p>
-                  <div className="mt-12 flex gap-4">
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
-                      Dashboard
-                    </div>
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
-                      Escalas
-                    </div>
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-xs font-bold uppercase tracking-widest">
-                      QR Code
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Simulated Video Progress */}
-                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
-                    className="h-full bg-brand-500"
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  if (role === 'REGISTRATION') {
-    return (
-      <ErrorBoundary>
-        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
-          <RegistrationForm 
-            onComplete={() => setRole('EMPLOYEE')} 
-          />
-        </div>
-      </ErrorBoundary>
-    );
-  }
-
-  if (role === 'COMPANY_REGISTRATION') {
-    return (
-      <ErrorBoundary>
-        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
-          <CompanyRegistrationForm 
-            onComplete={() => setRole('COMPANY')} 
-          />
-        </div>
-      </ErrorBoundary>
-    );
-  }
-
-  if (role === 'AGENCY_REGISTRATION') {
-    return (
-      <ErrorBoundary>
-        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
-          <AgencyRegistrationForm 
-            onComplete={() => setRole('AGENCY')} 
-          />
-        </div>
-      </ErrorBoundary>
+      <LandingPage
+        emailInput={emailInput}
+        setEmailInput={setEmailInput}
+        passwordInput={passwordInput}
+        setPasswordInput={setPasswordInput}
+        handleEmailLogin={handleEmailLogin}
+        loginError={loginError}
+        isForgotPassword={isForgotPassword}
+        setIsForgotPassword={setIsForgotPassword}
+        resetEmail={resetEmail}
+        setResetEmail={setResetEmail}
+        handleResetPassword={handleResetPassword}
+        resetStatus={resetStatus}
+        plans={plans}
+      />
     );
   }
 
@@ -1957,6 +1485,7 @@ export default function App() {
                       companies={companies}
                       invoices={invoices}
                       bulletins={bulletins}
+                      companyRequests={companyRequests}
                     />
                   </div>
                 )}
@@ -2948,7 +2477,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
                     required
                     type="number"
                     step="0.01"
-                    value={editingPlan.price}
+                    value={Number.isNaN(editingPlan.price) ? '' : editingPlan.price}
                     onChange={e => setEditingPlan({ ...editingPlan, price: parseFloat(e.target.value) })}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
                   />
@@ -2959,7 +2488,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
                     <input
                       required
                       type="number"
-                      value={editingPlan.maxEmployees}
+                      value={Number.isNaN(editingPlan.maxEmployees) ? '' : editingPlan.maxEmployees}
                       onChange={e => setEditingPlan({ ...editingPlan, maxEmployees: parseInt(e.target.value) })}
                       className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
                     />
@@ -2969,7 +2498,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
                     <input
                       required
                       type="number"
-                      value={editingPlan.maxCompanies}
+                      value={Number.isNaN(editingPlan.maxCompanies) ? '' : editingPlan.maxCompanies}
                       onChange={e => setEditingPlan({ ...editingPlan, maxCompanies: parseInt(e.target.value) })}
                       className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-slate-950 outline-none transition-all"
                     />
@@ -8174,7 +7703,8 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 }
 
 function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, companies, units }: { companyId: string, unitId?: string, clients: Client[], employees: Employee[], assignments: Assignment[], companies: Company[], units: Unit[] }) {
-  const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [selectedUnitId, setSelectedUnitId] = useState(unitId || '');
   const [minRating, setMinRating] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -8197,10 +7727,26 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
     return matchesSearch;
   });
 
-  const isEmployeeAvailable = (empId: string, date: string) => {
+  const getDatesInRange = (start: string, end: string) => {
+    const dates = [];
+    let currentDate = new Date(start);
+    const lastDate = new Date(end);
+    while (currentDate <= lastDate) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const isEmployeeAvailable = (empId: string, start: string, end: string) => {
+    const dates = getDatesInRange(start, end);
     const employee = employees.find(e => e.id === empId);
-    if (employee?.unavailableDates?.includes(date)) return false;
-    return !assignments.some(a => a.employeeId === empId && a.date === date && a.status !== 'CANCELLED');
+    
+    for (const date of dates) {
+      if (employee?.unavailableDates?.includes(date)) return false;
+      if (assignments.some(a => a.employeeId === empId && a.date === date && a.status !== 'CANCELLED')) return false;
+    }
+    return true;
   };
 
   const handleToggleEmployee = (empId: string) => {
@@ -8216,20 +7762,30 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
       toast('Selecione uma unidade.');
       return;
     }
+    if (startDate > endDate) {
+      toast.error('A data final deve ser maior ou igual à data inicial.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const selectedUnit = units.find(u => u.id === selectedUnitId);
-      const newRequest: Omit<CompanyRequest, 'id'> = {
+      const dates = getDatesInRange(startDate, endDate);
+      
+      const requests = dates.map(date => ({
         agencyId: selectedUnit?.agencyId || '',
         companyId: selectedUnit?.companyId || '',
         clientId: selectedUnit?.clientId || '',
         employeeIds: selectedEmployeeIds,
         quantity: Math.max(quantity, selectedEmployeeIds.length),
-        date: selectedDate,
-        status: 'PENDING',
+        date: date,
+        status: 'PENDING' as const,
         createdAt: new Date().toISOString()
-      };
-      await createDocument('companyRequests', newRequest);
+      }));
+
+      for (const req of requests) {
+        await createDocument('companyRequests', req);
+      }
+      
       toast.success('Solicitação enviada com sucesso para a agência!');
       setSelectedEmployeeIds([]);
       setQuantity(1);
@@ -8254,8 +7810,8 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
         <p className="text-slate-500 font-medium">Selecione os profissionais preferidos ou solicite reforço para suas unidades.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50 space-y-8 sticky top-24">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
@@ -8322,17 +7878,34 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data da Diaria</label>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
-                    <Calendar size={16} />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Período da Diária</label>
+                <div className="flex flex-col gap-3">
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                      <Calendar size={16} />
+                    </div>
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                    />
                   </div>
-                  <input 
-                    type="date" 
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
-                  />
+                  <div className="flex items-center justify-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Até</span>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                      <Calendar size={16} />
+                    </div>
+                    <input 
+                      type="date" 
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      min={startDate}
+                      className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -8345,7 +7918,7 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                   <input 
                     type="number" 
                     min={1}
-                    value={quantity}
+                    value={Number.isNaN(quantity) ? '' : quantity}
                     onChange={(e) => setQuantity(parseInt(e.target.value))}
                     className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
                   />
@@ -8394,10 +7967,10 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
           </div>
         </div>
 
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-8 xl:col-span-9">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredEmployees.map(emp => {
-              const available = isEmployeeAvailable(emp.id, selectedDate);
+              const available = isEmployeeAvailable(emp.id, startDate, endDate);
               const isSelected = selectedEmployeeIds.includes(emp.id);
               return (
                 <div 
@@ -10302,7 +9875,7 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
   );
 }
 
-function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[] }) {
+function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins, companyRequests }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[], companyRequests: CompanyRequest[] }) {
   if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
   const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL'>('STAFF');
   const [currentPage, setCurrentPage] = useState(1);
@@ -10324,9 +9897,21 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
     }
     return units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId);
   });
-  const sortedAssignments = [...myAssignments].sort((a, b) => b.date.localeCompare(a.date));
-  const totalPages = Math.ceil(sortedAssignments.length / itemsPerPage);
-  const paginatedAssignments = sortedAssignments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const myRequests = companyRequests.filter(r => {
+    if (unitId) {
+      return units.find(u => u.id === unitId)?.clientId === r.clientId;
+    }
+    return r.companyId === companyId;
+  });
+
+  const allDates = Array.from(new Set([
+    ...myAssignments.map(a => a.date),
+    ...myRequests.map(r => r.date)
+  ])).sort((a, b) => b.localeCompare(a));
+
+  const totalPages = Math.ceil(allDates.length / itemsPerPage);
+  const paginatedDates = allDates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
@@ -10386,6 +9971,18 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
       console.error('Error submitting evaluation:', error);
     } finally {
       setIsSubmittingEval(false);
+    }
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (window.confirm('Tem certeza que deseja cancelar esta solicitação?')) {
+      try {
+        await updateDocument('companyRequests', requestId, { status: 'REJECTED' });
+        toast.success('Solicitação cancelada com sucesso.');
+      } catch (error) {
+        console.error('Error cancelling request:', error);
+        toast.error('Erro ao cancelar solicitação.');
+      }
     }
   };
 
@@ -10454,156 +10051,130 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                 </div>
               </div>
               
-              <div className="overflow-x-auto custom-scrollbar hidden md:block">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="bg-white">
-                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Funcionário</th>
-                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unidade</th>
-                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Data Agendada</th>
-                      <th className="p-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status Atual</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {paginatedAssignments.map(as => {
-                      const emp = employees.find(e => e.id === as.employeeId);
-                      const unit = units.find(u => u.id === as.unitId);
-                      const isToday = as.date === today;
-                      return (
-                        <tr key={as.id} className={`transition-all duration-300 group/row ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}>
-                          <td className="p-8">
-                            <div className="flex items-center gap-5">
-                              <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-slate-950 font-black text-xl border border-slate-100 shadow-xl group-hover/row:scale-110 group-hover/row:rotate-3 transition-all duration-500 relative overflow-hidden">
-                                {emp?.photoUrl ? (
-                                  <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                                    <UserIcon size={24} />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-black text-slate-950 tracking-tight text-lg group-hover/row:text-blue-600 transition-colors">{emp ? `${emp.firstName} ${emp.lastName}` : 'Funcionário não encontrado'}</p>
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Profissional Parceiro • ★ {emp?.rating || 0}</p>
-                                <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">{emp?.phone || 'Telefone não disponível'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-8">
-                            <p className="font-black text-slate-950 tracking-tight text-sm">{unit?.name || 'Matriz'}</p>
-                          </td>
-                          <td className="p-8">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3 text-slate-950 font-black text-[10px] uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 w-fit shadow-sm group-hover/row:border-blue-200 transition-colors">
-                                <Calendar size={14} className="text-blue-600" />
-                                {formatDateBR(as.date)}
-                              </div>
-                              <div className="flex items-center gap-3 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4">
-                                <Clock size={12} className="text-slate-300" />
-                                08:00 - 17:00
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-8 text-right">
-                            <div className="flex items-center justify-end gap-4">
-                              <span className={`text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${
-                                as.status === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-emerald-500/20 border border-emerald-500' : 
-                                as.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-blue-500/20 border border-blue-500' :
-                                'bg-slate-500 text-white shadow-slate-500/20 border border-slate-400'
-                              }`}>
-                                {as.status === 'COMPLETED' ? 'Finalizado' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
-                              </span>
-                              {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
-                                <button 
-                                  onClick={() => setEvaluatingEmployee(emp || null)}
-                                  className="p-3 bg-slate-100 text-slate-950 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
-                                >
-                                  <Star size={18} />
-                                </button>
+              <div className="divide-y divide-slate-100">
+                {paginatedDates.map(date => {
+                  const dateAssignments = myAssignments.filter(a => a.date === date);
+                  const dateRequests = myRequests.filter(r => r.date === date);
+                  const totalRequested = dateRequests.reduce((acc, curr) => acc + curr.quantity, 0);
+                  const totalAssigned = dateAssignments.length;
+                  const isToday = date === today;
+
+                  return (
+                    <div key={date} className={`transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/30'}`}>
+                      <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100/50 bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isToday ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-white text-slate-400 border border-slate-200'}`}>
+                            <Calendar size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-lg font-black text-slate-900">{formatDateBR(date)}</h4>
+                              {isToday && (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-md text-[8px] font-black uppercase tracking-widest">Hoje</span>
                               )}
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-4 p-4 border-t border-slate-100">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50">Anterior</button>
-                    <span className="text-sm font-bold text-slate-900">{currentPage} de {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50">Próximo</button>
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile View */}
-              <div className="md:hidden divide-y divide-slate-100">
-                {myAssignments.sort((a, b) => b.date.localeCompare(a.date)).map(as => {
-                  const emp = employees.find(e => e.id === as.employeeId);
-                  const isToday = as.date === today;
-                  return (
-                    <div key={as.id} className={`p-5 sm:p-6 space-y-4 sm:space-y-5 transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm border border-slate-100 shadow-sm overflow-hidden shrink-0">
-                            {emp?.photoUrl ? (
-                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                                <UserIcon size={16} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-black text-slate-950 text-xs sm:text-sm tracking-tight truncate">{emp?.firstName} {emp?.lastName}</p>
-                            <p className="text-[8px] sm:text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Profissional Parceiro</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                              {totalRequested > 0 && <span className="text-amber-600">{totalRequested} Solicitados</span>}
+                              {totalRequested > 0 && totalAssigned > 0 && <span className="mx-2 text-slate-300">•</span>}
+                              {totalAssigned > 0 && <span className="text-emerald-600">{totalAssigned} Agendados</span>}
+                            </p>
                           </div>
                         </div>
-                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[9px] border ${
-                          as.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                          as.status === 'SCHEDULED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                          'bg-slate-50 text-slate-400 border-slate-200'
-                        }`}>
-                          {as.status === 'COMPLETED' ? 'Concluído' : as.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
-                        </span>
                       </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 text-slate-950 font-black text-[9px] sm:text-[10px] uppercase tracking-widest bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
-                          <Calendar size={10} className="text-blue-600" />
-                          {formatDateBR(as.date)}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
-                            <button 
-                              onClick={() => setEvaluatingEmployee(emp || null)}
-                              className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-lg border border-amber-100 text-[8px] font-black uppercase tracking-widest"
-                            >
-                              <Star size={10} />
-                              Avaliar
-                            </button>
-                          )}
-                          {isToday && (
-                            <span className="flex items-center gap-1.5 text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
-                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-                              Hoje
-                            </span>
-                          )}
-                        </div>
+
+                      <div className="p-6 sm:p-8 space-y-6">
+                        {dateRequests.map(req => {
+                          const unit = units.find(u => u.clientId === req.clientId);
+                          return (
+                            <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                              <div>
+                                <p className="font-black text-slate-900 text-sm">Solicitação para {unit?.name || 'Unidade'}</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                  {req.quantity} Profissionais {req.employeeIds?.length > 0 ? '(Específicos)' : '(Qualquer)'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className={`text-[10px] px-4 py-1.5 rounded-lg font-black uppercase tracking-widest ${
+                                  req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                  req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
+                                </span>
+                                {req.status === 'PENDING' && (
+                                  <button 
+                                    onClick={() => handleCancelRequest(req.id)}
+                                    className="text-[10px] font-black text-red-600 hover:text-red-800 uppercase tracking-widest transition-colors"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {dateAssignments.map(as => {
+                          const emp = employees.find(e => e.id === as.employeeId);
+                          const unit = units.find(u => u.id === as.unitId);
+                          return (
+                            <div key={as.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shrink-0">
+                                  {emp?.photoUrl ? (
+                                    <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <UserIcon size={20} />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-black text-slate-900 text-sm">{emp ? `${emp.firstName} ${emp.lastName}` : 'Funcionário'}</p>
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{unit?.name || 'Unidade'}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className={`text-[10px] px-4 py-1.5 rounded-lg font-black uppercase tracking-widest ${
+                                  as.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 
+                                  as.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {as.status === 'COMPLETED' ? 'Finalizado' : as.status === 'SCHEDULED' ? 'Agendado' : 'Cancelado'}
+                                </span>
+                                {as.status === 'COMPLETED' && !feedbacks.some(f => f.assignmentId === as.id) && (
+                                  <button 
+                                    onClick={() => setEvaluatingEmployee(emp || null)}
+                                    className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-amber-50 hover:text-amber-500 transition-all"
+                                    title="Avaliar"
+                                  >
+                                    <Star size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
                 })}
+
+                {allDates.length === 0 && (
+                  <div className="p-12 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100">
+                        <Calendar size={40} />
+                      </div>
+                      <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhum registro encontrado.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {myAssignments.length === 0 && (
-                <div className="p-12 text-center">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100">
-                      <Calendar size={40} />
-                    </div>
-                    <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhuma diaria encontrada.</p>
-                  </div>
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 p-6 border-t border-slate-100 bg-slate-50/30">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors">Anterior</button>
+                  <span className="text-xs font-black text-slate-900">{currentPage} de {totalPages}</span>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors">Próximo</button>
                 </div>
               )}
             </div>
@@ -10634,8 +10205,67 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                   </div>
                   <div>
                     <p className="text-slate-400 font-medium text-xs sm:text-sm mb-1">Próximo Vencimento</p>
-                    <h3 className="text-2xl sm:text-5xl font-black tracking-tight">15/04</h3>
+                    <h3 className="text-2xl sm:text-5xl font-black tracking-tight">Dia {company?.paymentDay || '10'}</h3>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                <h3 className="text-lg font-black text-slate-900 mb-6">Gastos (Últimos 6 meses)</h3>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={barData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
+                      <RechartsTooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Gastos']}
+                      />
+                      <Bar dataKey="Gastos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                <h3 className="text-lg font-black text-slate-900 mb-6">Status das Diárias</h3>
+                <div className="h-72 w-full flex items-center justify-center">
+                  {pieData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-slate-400 font-medium text-sm">Nenhum dado disponível</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap justify-center gap-4 mt-4">
+                  {pieData.map((entry, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span className="text-xs font-bold text-slate-600">{entry.name} ({entry.value})</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
