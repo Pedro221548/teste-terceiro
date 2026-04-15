@@ -9576,6 +9576,11 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     setPunchType(myCheckIns[0]?.type === 'IN' ? 'OUT' : 'IN');
   }, [checkIns, employeeId]);
 
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
+
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -9635,25 +9640,46 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
     try {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+
+      // Ensure video is ready
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        throw new Error("A câmera ainda não está pronta. Aguarde um momento.");
+      }
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("Falha ao capturar imagem.");
+      if (!ctx) throw new Error("Não foi possível acessar o contexto da imagem.");
       
-      // Mirror if using front camera
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Mirror if using front camera (we assume it's 'user' mode)
       ctx.save();
+      ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, -canvas.width, 0);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       ctx.restore();
       
-      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.7));
-      if (!blob) throw new Error("Falha ao processar imagem.");
+      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.8));
+      if (!blob) throw new Error("Erro ao processar a captura da foto.");
 
-      const compressed = await imageCompression(new File([blob], "ponto.jpg"), {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 800
-      });
-      const photoUrl = await imageCompression.getDataUrlFromFile(compressed);
+      let photoUrl = "";
+      try {
+        const compressed = await imageCompression(new File([blob], "ponto.jpg"), {
+          maxSizeMB: 0.4,
+          maxWidthOrHeight: 1024,
+          useWebWorker: true
+        });
+        photoUrl = await imageCompression.getDataUrlFromFile(compressed);
+      } catch (compressionErr) {
+        console.warn("Compression failed, using original blob", compressionErr);
+        photoUrl = await new Promise((res) => {
+          const reader = new FileReader();
+          reader.onloadend = () => res(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
 
       stopCamera();
 
@@ -9661,10 +9687,18 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       let location = "Localização não capturada";
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) => {
-          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 });
+          navigator.geolocation.getCurrentPosition(res, rej, { 
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
         });
         location = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-      } catch (e) { console.warn("Location error", e); }
+      } catch (e) { 
+        console.warn("Location error", e);
+        // We still allow registration without location if it fails, 
+        // but we could also throw if it's mandatory.
+      }
 
       const res = await fetch("/api/check-in-verified", {
         method: "POST",
@@ -9680,15 +9714,21 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Erro desconhecido no servidor" }));
-        throw new Error(data.error || "Erro ao salvar registro.");
+        const data = await res.json().catch(() => ({ error: "Erro na comunicação com o servidor." }));
+        throw new Error(data.error || "Erro ao salvar o registro de ponto.");
       }
 
       setStep('SUCCESS');
       toast.success("Ponto registrado com sucesso!");
     } catch (err: any) {
-      toast.error(err.message);
-      setStep('IDLE');
+      console.error("HandleRegister Error:", err);
+      toast.error(err.message || "Erro inesperado ao processar a foto.");
+      // Don't reset to IDLE immediately if it's a camera readiness issue
+      if (err.message?.includes("câmera")) {
+        // Stay on PHOTO step
+      } else {
+        setStep('IDLE');
+      }
     } finally {
       setIsProcessing(false);
     }
