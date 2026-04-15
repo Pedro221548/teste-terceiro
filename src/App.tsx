@@ -9675,8 +9675,17 @@ function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignme
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Erro ao salvar no servidor.");
+        let errorMessage = "Erro no servidor";
+        try {
+          const err = await response.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // If not JSON, try to get text or just use default
+          const text = await response.text().catch(() => "");
+          console.error("Server returned non-JSON error:", text);
+          errorMessage = "O servidor encontrou um problema ao processar a foto. Tente novamente.";
+        }
+        throw new Error(errorMessage);
       }
 
       setStep('SUCCESS');

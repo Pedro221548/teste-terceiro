@@ -20,20 +20,22 @@ export async function createServer() {
       const configPath = path.join(process.cwd(), "firebase-applet-config.json");
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        console.log("Initializing Firebase Admin with project ID:", config.projectId);
         firestoreDatabaseId = config.firestoreDatabaseId || "(default)";
+        console.log(`Initializing Firebase Admin: Project=${config.projectId}, DB=${firestoreDatabaseId}`);
+        
         process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
+        
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
           projectId: config.projectId,
         });
-        console.log("Firebase Admin initialized successfully. Database:", firestoreDatabaseId);
+        console.log("Firebase Admin initialized successfully.");
       } else {
-        console.warn("firebase-applet-config.json not found. Firebase Admin might not work correctly.");
+        console.error("CRITICAL: firebase-applet-config.json not found!");
       }
     }
   } catch (error) {
-    console.error("Error initializing Firebase Admin:", error);
+    console.error("FATAL: Error initializing Firebase Admin:", error);
   }
 
   const getDb = () => {
@@ -128,8 +130,20 @@ export async function createServer() {
       res.json({ success: true, checkInId });
     } catch (error: any) {
       console.error("Error recording verified check-in:", error);
-      res.status(500).json({ error: error.message || "Internal server error" });
+      res.status(500).json({ 
+        error: "Erro ao salvar o ponto no banco de dados.",
+        details: error.message 
+      });
     }
+  });
+
+  // Global error handler to ensure JSON responses
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global error:", err);
+    res.status(500).json({ 
+      error: "Erro interno do servidor", 
+      message: err.message 
+    });
   });
 
   // Didit API Endpoints
