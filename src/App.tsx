@@ -28,10 +28,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Eye,
-  QrCode,
-  Scan,
-  Camera,
-  MapPin,
   Plus,
   ShieldCheck,
   Download,
@@ -60,11 +56,13 @@ import {
   ExternalLink,
   Activity,
   Play,
-  HelpCircle
+  HelpCircle,
+  QrCode,
+  Scan,
+  MapPin,
+  Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import { Scanner } from '@yudiel/react-qr-scanner';
 import imageCompression from 'browser-image-compression';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
@@ -72,7 +70,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, AccessPoint, CheckIn, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -189,7 +187,6 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
     { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
-    { id: 'access_control', label: 'Controle de Acesso', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
@@ -205,7 +202,6 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
-    { id: 'employee_ponto', label: 'PONTO', icon: Scan, color: 'text-accent-rose bg-rose-50' },
   ];
 
   return (
@@ -323,7 +319,6 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
       case 'company_profile': return 'Perfil da Empresa';
       case 'employee_schedule': return 'Minha Agenda';
       case 'employee_profile': return 'Meu Perfil';
-      case 'employee_ponto': return 'Registro de Ponto';
       default: return 'Visão Geral';
     }
   };
@@ -544,8 +539,6 @@ export default function App() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [contacts, setContacts] = useState<ContactRequest[]>([]);
   const [employeeRegistrations, setEmployeeRegistrations] = useState<EmployeeRegistration[]>([]);
-  const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
@@ -913,22 +906,8 @@ export default function App() {
       });
     }) : () => {};
     
-    const unsubAccessPoints = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<AccessPoint>('accessPoints', (data) => setAccessPoints(filterByAgency(data))) : () => {};
-    
     // Role-based check-ins subscription
-    const checkInConstraints = role === 'EMPLOYEE' ? [where('employeeId', '==', user.uid)] : [];
-    const unsubCheckIns = subscribeToCollection<CheckIn>('checkIns', (docs) => {
-      const filtered = filterByAgency(docs);
-      if (role === 'AGENCY' || role === 'ADMIN') {
-        setCheckIns(prev => {
-          if (filtered.length > prev.length) playNotificationSound();
-          return filtered;
-        });
-      } else {
-        setCheckIns(filtered);
-      }
-    }, checkInConstraints);
-
+    
     const unsubCompanies = (role === 'AGENCY' || role === 'ADMIN' || role === 'COMPANY' || role === 'EMPLOYEE') ? subscribeToCollection<Company>('companies', (data) => {
       setCompanies(filterByAgency(data));
     }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
@@ -974,8 +953,6 @@ export default function App() {
       unsubFeedbacks();
       unsubContacts();
       unsubEmployeeRegistrations();
-      unsubAccessPoints();
-      unsubCheckIns();
       unsubCompanies();
       unsubUnits();
       unsubCompanyUsers();
@@ -1410,7 +1387,6 @@ export default function App() {
                       units={units}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       selectedAgencyId={selectedAgencyId}
-                      checkIns={checkIns}
                     />
                   </div>
                 )}
@@ -1423,20 +1399,6 @@ export default function App() {
                       companies={companies}
                       units={units}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
-                    />
-                  </div>
-                )}
-                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'access_control' && (
-                  <div key="agency-access-control">
-                    <AgencyAccessControl 
-                      accessPoints={accessPoints}
-                      clients={clients}
-                      units={units}
-                      companies={companies}
-                      checkIns={checkIns}
-                      employees={employees}
-                      agencyId={role === 'AGENCY' ? currentAgencyId : null}
-                      selectedAgencyId={selectedAgencyId}
                     />
                   </div>
                 )}
@@ -1567,20 +1529,7 @@ export default function App() {
                       employees={employees}
                       assignments={assignments}
                       notifications={notifications}
-                      checkIns={checkIns}
                       pricing={pricing}
-                    />
-                  </div>
-                )}
-                {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
-                  <div key="employee-ponto">
-                    <EmployeePonto 
-                      employeeId={employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.id || ''}
-                      employees={employees}
-                      accessPoints={accessPoints}
-                      checkIns={checkIns}
-                      assignments={assignments}
-                      units={units}
                     />
                   </div>
                 )}
@@ -3605,164 +3554,6 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function FaceUpdateModal({ employee, onClose }: { employee: Employee, onClose: () => void }) {
-  const [step, setStep] = useState<'START' | 'CAPTURE' | 'SUCCESS'>('START');
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setStep('CAPTURE');
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      toast("Não foi possível acessar a câmera.");
-    }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-    }
-  };
-
-  const capture = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const context = canvasRef.current.getContext('2d');
-    if (!context) return;
-
-    canvasRef.current.width = videoRef.current.videoWidth;
-    canvasRef.current.height = videoRef.current.videoHeight;
-    context.drawImage(videoRef.current, 0, 0);
-    const photo = canvasRef.current.toDataURL('image/jpeg');
-    setCapturedPhoto(photo);
-    stopCamera();
-  };
-
-  const handleSubmit = async () => {
-    if (!capturedPhoto) return;
-    setIsSubmitting(true);
-    try {
-      await updateDocument('employees', employee.id, { faceReferenceUrl: capturedPhoto });
-      setStep('SUCCESS');
-    } catch (error) {
-      console.error('Error updating face reference:', error);
-      toast.error('Erro ao atualizar cadastro facial.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl"
-      >
-        <div className="p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cadastro Facial</h3>
-            {step !== 'SUCCESS' && (
-              <button onClick={() => { stopCamera(); onClose(); }} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
-              </button>
-            )}
-          </div>
-
-          {step === 'START' && (
-            <div className="space-y-6 text-center py-4">
-              <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 mx-auto">
-                <Camera size={40} />
-              </div>
-              <div className="space-y-2">
-                <p className="text-slate-600 font-medium">Para garantir sua segurança e agilizar o ponto, precisamos atualizar sua foto de referência facial.</p>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Posicione-se em um local iluminado</p>
-              </div>
-              <button 
-                onClick={startCamera}
-                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
-              >
-                Começar Agora
-              </button>
-            </div>
-          )}
-
-          {step === 'CAPTURE' && (
-            <div className="space-y-6">
-              <div className="relative aspect-square rounded-[2rem] overflow-hidden bg-slate-100 border-4 border-slate-100 shadow-inner">
-                {!capturedPhoto ? (
-                  <>
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />
-                    <div className="absolute inset-0 border-[3rem] border-slate-950/20 pointer-events-none">
-                      <div className="w-full h-full border-2 border-dashed border-white/50 rounded-full" />
-                    </div>
-                  </>
-                ) : (
-                  <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover scale-x-[-1]" />
-                )}
-              </div>
-              
-              <canvas ref={canvasRef} className="hidden" />
-
-              <div className="flex gap-3">
-                {!capturedPhoto ? (
-                  <button 
-                    onClick={capture}
-                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20"
-                  >
-                    Capturar Foto
-                  </button>
-                ) : (
-                  <>
-                    <button 
-                      onClick={() => { setCapturedPhoto(null); startCamera(); }}
-                      className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all"
-                    >
-                      Refazer
-                    </button>
-                    <button 
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl disabled:opacity-50"
-                    >
-                      {isSubmitting ? 'Salvando...' : 'Confirmar'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {step === 'SUCCESS' && (
-            <div className="space-y-6 text-center py-4">
-              <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600 mx-auto">
-                <CheckCircle size={40} />
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Tudo Pronto!</h4>
-                <p className="text-slate-600 font-medium">Seu cadastro facial foi atualizado com sucesso. Agora você já pode bater o ponto usando reconhecimento facial.</p>
-              </div>
-              <button 
-                onClick={onClose}
-                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
-              >
-                Entendido
-              </button>
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -3871,34 +3662,6 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         <h2 className="text-base sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
         <p className="text-slate-500 font-medium text-[8px] sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
-
-      {/* Facial Recognition Update Box */}
-      {!employee.faceReferenceUrl && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-blue-600 text-white p-6 sm:p-8 rounded-[2.5rem] flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20 border border-blue-400/30 relative overflow-hidden group"
-        >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700" />
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-md shadow-inner">
-              <Camera size={32} />
-            </div>
-            <div className="text-center sm:text-left space-y-1">
-              <h3 className="text-lg font-black uppercase tracking-tight">Atualize seu Reconhecimento Facial</h3>
-              <p className="text-xs font-medium text-blue-100 max-w-sm">Para bater o ponto com segurança, precisamos de uma foto de referência atualizada.</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setShowFaceUpdate(true)}
-            className="w-full sm:w-auto px-8 py-4 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl active:scale-95 relative z-10"
-          >
-            Atualizar Agora
-          </button>
-        </motion.div>
-      )}
-
-      {showFaceUpdate && <FaceUpdateModal employee={employee} onClose={() => setShowFaceUpdate(false)} />}
 
       {/* Notifications Section */}
       {myNotifications.length > 0 && (
@@ -5474,7 +5237,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkIns }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkIns: CheckIn[] }) {
+function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
@@ -5485,17 +5248,11 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
   const [selectedAssignmentForDetails, setSelectedAssignmentForDetails] = useState<Assignment | null>(null);
+  const selectedAssignmentEmployee = selectedAssignmentForDetails ? employees.find(e => e.id === selectedAssignmentForDetails.employeeId) : null;
 
   const toggleCompany = (id: string) => {
     setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }));
   };
-
-  const selectedAssignmentCheckIns = selectedAssignmentForDetails 
-    ? checkIns.filter(ci => ci.employeeId === selectedAssignmentForDetails.employeeId && ci.timestamp.startsWith(selectedAssignmentForDetails.date))
-    : [];
-  const selectedAssignmentEmployee = selectedAssignmentForDetails
-    ? employees.find(e => e.id === selectedAssignmentForDetails.employeeId)
-    : null;
 
   const confirmedAssignments = assignments.filter(a => a.confirmed).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -5699,40 +5456,12 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8">
-                {selectedAssignmentCheckIns.length === 0 ? (
-                  <div className="py-12 text-center space-y-4">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                      <Clock size={32} />
-                    </div>
-                    <p className="text-slate-400 font-medium">Nenhum ponto registrado para este dia.</p>
+                <div className="py-12 text-center space-y-4">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                    <Calendar size={32} />
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {selectedAssignmentCheckIns.map((ci, idx) => (
-                      <div key={ci.id} className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                            Ponto de {ci.type === 'IN' ? 'Entrada' : 'Saída'}
-                          </span>
-                          <span className="text-xs font-bold text-slate-400">{formatTime(ci.timestamp)}</span>
-                        </div>
-                        <div className="aspect-video rounded-2xl overflow-hidden border border-slate-100 shadow-inner bg-slate-50 relative group">
-                          <img src={ci.photoUrl} alt="Foto do registro" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                            <div className="flex items-center gap-2 text-white">
-                              <MapPin size={14} />
-                              <span className="text-[10px] font-medium truncate">{ci.location}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <MapPin size={14} className="text-blue-500 shrink-0" />
-                          <p className="text-[10px] font-medium leading-tight">{ci.location}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  <p className="text-slate-400 font-medium">Informações da escala confirmada.</p>
+                </div>
               </div>
 
               {/* Modal Footer */}
@@ -6121,49 +5850,46 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                                   <span className="text-[10px] font-bold text-slate-400">({companyAssignments.length})</span>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                  {companyAssignments.map(as => {
-                                    const emp = employees.find(e => e.id === as.employeeId);
-                                    if (!emp) return null;
-                                    const empCheckIns = checkIns.filter(ci => ci.employeeId === as.employeeId && ci.timestamp.startsWith(as.date));
-                                    const entry = empCheckIns.find(ci => ci.type === 'IN');
-                                    const exit = empCheckIns.find(ci => ci.type === 'OUT');
+                                    {companyAssignments.map(as => {
+                                      const emp = employees.find(e => e.id === as.employeeId);
+                                      if (!emp) return null;
 
-                                    return (
-                                      <button 
-                                        key={as.id} 
-                                        onClick={() => setSelectedAssignmentForDetails(as)}
-                                        className="w-full p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4 hover:border-emerald-200 hover:bg-white transition-all group text-left"
-                                      >
-                                        <div className="flex items-center gap-3 sm:gap-4">
-                                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
-                                            {emp.photoUrl ? (
-                                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                            ) : (
-                                              <UserIcon size={20} className="text-slate-300" />
-                                            )}
+                                      return (
+                                        <button 
+                                          key={as.id} 
+                                          onClick={() => setSelectedAssignmentForDetails(as)}
+                                          className="w-full p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4 hover:border-emerald-200 hover:bg-white transition-all group text-left"
+                                        >
+                                          <div className="flex items-center gap-3 sm:gap-4">
+                                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                                              {emp.photoUrl ? (
+                                                <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                              ) : (
+                                                <UserIcon size={20} className="text-slate-300" />
+                                              )}
+                                            </div>
+                                            <div>
+                                              <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
+                                              <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">Confirmado para {formatDateBR(as.date)}</p>
+                                            </div>
                                           </div>
-                                          <div>
-                                            <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
-                                            <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">Confirmado para {formatDateBR(as.date)}</p>
+                                          <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
+                                            <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
+                                              <CheckCircle size={14} className="sm:w-4 sm:h-4" />
+                                              <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
+                                                Presença Confirmada
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-slate-400">
+                                              <Clock size={10} />
+                                              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                                08:00 - 17:00
+                                              </span>
+                                            </div>
                                           </div>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
-                                          <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
-                                            <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                                            <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
-                                              {entry && exit ? 'Ponto Completo' : entry ? 'Entrada Registrada' : 'Presença Confirmada'}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-1 text-slate-400">
-                                            <Clock size={10} />
-                                            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
-                                              {entry ? formatTime(entry.timestamp) : '08:00'} - {exit ? formatTime(exit.timestamp) : '17:00'}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
+                                        </button>
+                                      );
+                                    })}
                                 </div>
                               </div>
                             );
@@ -8673,337 +8399,6 @@ function CompanyReports({ employees, assignments, clients, units, companyId }: {
   );
 }
 
-function AgencyAccessControl({ accessPoints, clients, units, companies, checkIns, employees, agencyId, selectedAgencyId }: { accessPoints: AccessPoint[], clients: Client[], units: Unit[], companies: Company[], checkIns: CheckIn[], employees: Employee[], agencyId: string | null, selectedAgencyId?: string | null }) {
-  const [showForm, setShowForm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [selectedUnitId, setSelectedUnitId] = useState('');
-
-  const availableUnits = units.filter(u => !accessPoints.some(ap => ap.location === u.location));
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const unit = units.find(u => u.id === selectedUnitId);
-    const company = companies.find(c => c.id === unit?.companyId);
-    if (!unit || !company) return;
-
-    const targetAgencyId = selectedAgencyId || agencyId;
-    if (!targetAgencyId) {
-      toast('Agência não identificada.');
-      return;
-    }
-
-    const newAP: Omit<AccessPoint, 'id'> = {
-      agencyId: targetAgencyId,
-      clientId: unit.clientId,
-      managerName: unit.managerName,
-      location: unit.location,
-      qrCodeValue: `unit-${unit.id}-${Date.now()}`,
-      createdAt: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-    };
-    
-    await createDocument('accessPoints', newAP);
-    setShowForm(false);
-    setSelectedUnitId('');
-  };
-
-  const handleDeleteAccessPoint = async (id: string) => {
-    const ap = accessPoints.find(a => a.id === id);
-    if (!ap) return;
-    const clientToDelete = clients.find(c => c.location === ap.location);
-    await deleteDocument('accessPoints', id);
-    if (clientToDelete) {
-      await deleteDocument('clients', clientToDelete.id);
-    }
-    setShowDeleteConfirm(null);
-  };
-
-  const downloadQRCode = (ap: AccessPoint) => {
-    const canvas = document.getElementById(`canvas-${ap.id}`) as HTMLCanvasElement;
-    if (canvas) {
-      const unitId = ap.qrCodeValue.split('-')[1];
-      const unit = units.find(u => u.id === unitId);
-      const company = companies.find(c => c.id === unit?.companyId);
-      
-      // Create a new canvas for the box
-      const boxCanvas = document.createElement('canvas');
-      const ctx = boxCanvas.getContext('2d');
-      if (!ctx) return;
-
-      const width = 800;
-      const height = 1000;
-      boxCanvas.width = width;
-      boxCanvas.height = height;
-
-      // Draw background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-
-      // Draw border
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 20;
-      ctx.strokeRect(10, 10, width - 20, height - 20);
-
-      // Draw QR Code
-      ctx.drawImage(canvas, 150, 100, 500, 500);
-
-      // Draw Text
-      ctx.fillStyle = '#0f172a';
-      ctx.textAlign = 'center';
-      
-      // Company Name
-      ctx.font = 'bold 40px Arial';
-      ctx.fillText(company?.name || 'Empresa', width / 2, 680);
-
-      // Unit Name
-      ctx.font = '30px Arial';
-      ctx.fillText(unit?.name || ap.location, width / 2, 740);
-
-      // Date
-      ctx.font = '24px Arial';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(`Gerado em: ${formatDateBR(ap.createdAt)}`, width / 2, 800);
-
-      // Agency Name
-      ctx.font = 'bold 32px Arial';
-      ctx.fillStyle = '#2563eb';
-      ctx.fillText('ProStaff Brasil', width / 2, 900);
-
-      const pngUrl = boxCanvas.toDataURL("image/png");
-      let downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
-      downloadLink.download = `qrcode-${ap.location.replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    }
-  };
-
-  // Group check-ins by company
-  const checkInsByCompany = companies
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map(company => {
-      const companyUnits = units.filter(u => u.companyId === company.id);
-      const companyCheckIns = checkIns.filter(ci => companyUnits.some(u => u.location === ci.location));
-      return {
-        company,
-        checkIns: companyCheckIns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      };
-    })
-    .filter(item => item.checkIns.length > 0);
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-10"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Controle de Acesso</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Gere e gerencie QR Codes para as unidades atendidas.</p>
-        </div>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 w-full sm:w-auto"
-        >
-          <Plus size={20} />
-          Adicionar Unidade
-        </button>
-      </div>
-
-      <ConfirmationModal 
-        isOpen={!!showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(null)}
-        onConfirm={() => showDeleteConfirm && handleDeleteAccessPoint(showDeleteConfirm)}
-        title="Excluir Unidade"
-        message="Deseja realmente excluir esta unidade e empresa?"
-      />
-
-      <AnimatePresence>
-        {showForm && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
-            >
-              <div className="p-6 sm:p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Nova Unidade</h3>
-                  <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Gere um QR Code para controle de ponto.</p>
-                </div>
-                <button onClick={() => setShowForm(false)} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-              <form onSubmit={handleAdd} className="p-6 sm:p-8 space-y-6">
-                <div className="space-y-6">
-                  <div>
-                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Selecionar Unidade Cadastrada</label>
-                    <select 
-                      required
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 appearance-none text-sm"
-                      value={selectedUnitId}
-                      onChange={e => setSelectedUnitId(e.target.value)}
-                    >
-                      <option value="">Selecione uma unidade...</option>
-                      {availableUnits.map(unit => {
-                        const company = companies.find(c => c.id === unit.companyId);
-                        return (
-                          <option key={unit.id} value={unit.id}>
-                            {company?.name} - {unit.name}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {availableUnits.length === 0 && (
-                      <p className="text-[9px] sm:text-[10px] text-amber-600 font-bold mt-2 italic">
-                        Todas as unidades cadastradas já possuem QR Code.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button 
-                  type="submit" 
-                  disabled={!selectedUnitId}
-                  className="w-full py-5 bg-blue-600 text-white rounded-xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Gerar QR Code
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-        {[...accessPoints].sort((a, b) => a.location.localeCompare(b.location)).map(ap => (
-          <div key={ap.id} className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden flex flex-col">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
-            
-            <div className="flex flex-col items-center text-center space-y-6 flex-1 relative z-10">
-              <div className="p-4 sm:p-6 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-xl group-hover:scale-105 transition-transform relative">
-                <QRCodeSVG value={ap.qrCodeValue} size={120} className="sm:w-[180px] sm:h-[180px]" />
-                <div className="hidden">
-                  <QRCodeCanvas id={`canvas-${ap.id}`} value={ap.qrCodeValue} size={512} />
-                </div>
-              </div>
-              
-              <div className="space-y-2 w-full">
-                <h4 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight line-clamp-2 min-h-[3rem] sm:min-h-[3.5rem] flex items-center justify-center">{ap.location}</h4>
-                <div className="flex items-center justify-center gap-2 text-slate-500 font-medium">
-                  <Users size={14} className="text-blue-600" />
-                  <span className="text-xs sm:text-sm">Gestor: {ap.managerName}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg">
-                <Calendar size={12} />
-                <span>Criado em {formatDateBR(ap.createdAt)}</span>
-              </div>
-            </div>
-
-            <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-100 flex flex-col gap-3 relative z-10">
-              {ap.location.startsWith('http') && (
-                <a 
-                  href={ap.location}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 sm:py-4 bg-blue-50 text-blue-600 rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-100 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                >
-                  <MapPin size={16} />
-                  Ver Localização
-                </a>
-              )}
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => downloadQRCode(ap)}
-                  className="flex-1 py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-[1.25rem] font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
-                >
-                  <Download size={16} />
-                  Baixar
-                </button>
-                <button 
-                  onClick={() => setShowDeleteConfirm(ap.id)}
-                  className="p-3 sm:p-4 bg-rose-50 text-rose-600 rounded-xl sm:rounded-[1.25rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95"
-                  title="Excluir Empresa"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Clock-in Monitoring section */}
-      <div className="space-y-10 mt-20">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Monitoramento de Pontos</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe os pontos batidos por empresa em tempo real.</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-12">
-          {checkInsByCompany.map(({ company, checkIns: companyCheckIns }) => (
-            <div key={company.id} className="bg-white rounded-[2rem] p-8 sm:p-12 shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-                  <Building2 size={24} />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{company.name}</h3>
-              </div>
-
-              <div className="overflow-x-auto -mx-8 sm:-mx-12">
-                <table className="w-full border-collapse min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Funcionário</th>
-                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidade</th>
-                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Data/Hora</th>
-                      <th className="px-8 sm:px-12 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {companyCheckIns.map(ci => {
-                      const employee = employees.find(e => e.id === ci.employeeId);
-                      return (
-                        <tr key={ci.id} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="px-8 sm:px-12 py-6">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-sm">
-                                {employee?.firstName?.[0]}{employee?.lastName?.[0]}
-                              </div>
-                              <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                                {employee ? `${employee.firstName} ${employee.lastName}` : 'Desconhecido'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-8 sm:px-12 py-6 text-slate-500 font-medium">{ci.location}</td>
-                          <td className="px-8 sm:px-12 py-6 text-slate-500 font-medium">
-                            {new Date(ci.timestamp).toLocaleString('pt-BR')}
-                          </td>
-                          <td className="px-8 sm:px-12 py-6">
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                              ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                            }`}>
-                              {ci.type === 'IN' ? 'Entrada' : 'Saída'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUserId: string, companyUsers: CompanyUser[], companies: Company[] }) {
   const companyUser = companyUsers.find(cu => cu.id === companyUserId);
   const company = companies.find(c => c.id === companyUser?.companyId);
@@ -9191,32 +8586,11 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   );
 }
 
-function EmployeeProfile({ employeeId, employees, assignments, notifications, checkIns, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], checkIns: CheckIn[], pricing: PricingConfig }) {
+function EmployeeProfile({ employeeId, employees, assignments, notifications, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], pricing: PricingConfig }) {
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
-
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.text(`Comprovante de Acessos - ${employee?.firstName} ${employee?.lastName}`, 10, 10);
-    
-    const employeeCheckIns = checkIns.filter(c => c.employeeId === employeeId);
-    
-    const tableData = employeeCheckIns.map(c => [
-      new Date(c.timestamp).toLocaleDateString('pt-BR'),
-      c.type,
-      c.location,
-      'R$ 100,00' // Placeholder for daily rate
-    ]);
-
-    autoTable(doc, {
-      head: [['Data', 'Tipo', 'Local', 'Valor']],
-      body: tableData,
-    });
-    
-    doc.save(`comprovante_${employee?.firstName}_${employee?.lastName}.pdf`);
-  };
 
   if (!employee) {
     return (
@@ -9333,23 +8707,6 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
               )}
             </div>
           </div>
-          
-          <div className="flex items-center justify-center md:justify-start gap-1">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={18} className={i < employee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
-            ))}
-            <span className="ml-2 text-sm font-bold text-slate-400">({employee.rating.toFixed(1)})</span>
-          </div>
-        </div>
-
-        <div className="relative z-10 hidden lg:block">
-          <button 
-            onClick={generatePDF}
-            className="flex items-center gap-3 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-          >
-            <Eye size={18} />
-            Ver Comprovante
-          </button>
         </div>
       </div>
 
@@ -9426,43 +8783,7 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
           </div>
         </div>
 
-        {/* Facial Recognition Card */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6 md:col-span-2">
-          <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ShieldCheck size={16} />
-            </div>
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Reconhecimento Facial</h4>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-8">
-            <div className="w-32 h-32 rounded-3xl bg-slate-50 overflow-hidden border-2 border-slate-100 flex items-center justify-center shrink-0 shadow-inner">
-              {employee.faceReferenceUrl ? (
-                <img src={employee.faceReferenceUrl} alt="Face Reference" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <Camera size={40} className="text-slate-300" />
-              )}
-            </div>
-            <div className="flex-1 text-center sm:text-left space-y-3">
-              <p className="text-lg font-black text-slate-900 tracking-tight">
-                {employee.faceReferenceUrl ? 'Seu cadastro facial está ativo.' : 'Você ainda não possui um cadastro facial.'}
-              </p>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-2xl">
-                O reconhecimento facial garante que apenas você possa registrar seu ponto, trazendo mais segurança e agilidade para sua jornada diária. Mantenha sua foto sempre atualizada para evitar falhas na verificação.
-              </p>
-              <button 
-                onClick={() => setShowFaceUpdate(true)}
-                className="mt-2 px-8 py-4 bg-slate-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95 flex items-center gap-3 mx-auto sm:mx-0"
-              >
-                <Camera size={18} />
-                {employee.faceReferenceUrl ? 'Atualizar Biometria Facial' : 'Cadastrar Biometria Facial'}
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
-
-      {showFaceUpdate && <FaceUpdateModal employee={employee} onClose={() => setShowFaceUpdate(false)} />}
 
       {/* Privacy & Data Card */}
       <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8">
@@ -9488,22 +8809,10 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, ch
           
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <PrivacyListItem title="Identificação Profissional" description="Para que as empresas saibam quem irá realizar o serviço." />
-            <PrivacyListItem title="Controle de Ponto" description="Sua foto é utilizada no reconhecimento facial para autenticidade." />
             <PrivacyListItem title="Comunicação" description="Seu telefone é usado para envio de diarias via WhatsApp." />
             <PrivacyListItem title="Segurança" description="Documentos armazenados para conformidade e antecedentes." />
           </ul>
         </div>
-      </div>
-
-      {/* Mobile Doc Link */}
-      <div className="lg:hidden">
-        <button 
-          onClick={generatePDF}
-          className="flex items-center justify-center gap-3 px-6 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-        >
-          <Eye size={18} />
-          Ver Comprovante
-        </button>
       </div>
 
       {/* Unavailable Dates Card */}
@@ -9551,390 +8860,6 @@ function PrivacyListItem({ title, description }: { title: string, description: s
       </div>
       <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{description}</p>
     </li>
-  );
-}
-
-function EmployeePonto({ employeeId, employees, accessPoints, checkIns, assignments, units }: { employeeId: string, employees: Employee[], accessPoints: AccessPoint[], checkIns: CheckIn[], assignments: Assignment[], units: Unit[] }) {
-  const [step, setStep] = useState<'IDLE' | 'SCANNING' | 'PHOTO' | 'SUCCESS'>('IDLE');
-  const [scannedPoint, setScannedPoint] = useState<AccessPoint | null>(null);
-  const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  
-  const videoRef = React.useRef<HTMLVideoElement>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const streamRef = React.useRef<MediaStream | null>(null);
-
-  const employee = employees.find(e => e.id === employeeId);
-
-  // Auto-determine punch type
-  useEffect(() => {
-    const myCheckIns = checkIns
-      .filter(c => c.employeeId === employeeId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
-    setPunchType(myCheckIns[0]?.type === 'IN' ? 'OUT' : 'IN');
-  }, [checkIns, employeeId]);
-
-  // Cleanup camera on unmount
-  useEffect(() => {
-    return () => stopCamera();
-  }, []);
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const startCamera = async (facingMode: 'user' | 'environment' = 'user') => {
-    stopCamera();
-    setCameraError(null);
-
-    const constraints = [
-      { video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } },
-      { video: { facingMode } },
-      { video: true }
-    ];
-
-    for (const constraint of constraints) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraint);
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          return true;
-        }
-      } catch (err: any) {
-        console.warn("Camera attempt failed:", constraint, err);
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setCameraError("Acesso à câmera negado. Por favor, autorize nas configurações do seu navegador.");
-          return false;
-        }
-      }
-    }
-    setCameraError("Não foi possível encontrar uma câmera disponível.");
-    return false;
-  };
-
-  const handleQRScan = (text: string) => {
-    const point = accessPoints.find(ap => ap.qrCodeValue === text);
-    if (point) {
-      setScannedPoint(point);
-      setStep('PHOTO');
-      // Wait for scanner to unmount before starting selfie camera
-      setTimeout(() => startCamera('user'), 300);
-    } else {
-      toast.error('QR Code inválido para esta unidade.');
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!videoRef.current || !canvasRef.current || !scannedPoint || !employee) return;
-    
-    setIsProcessing(true);
-    try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-
-      // Ensure video is ready
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        throw new Error("A câmera ainda não está pronta. Aguarde um momento.");
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("Não foi possível acessar o contexto da imagem.");
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Mirror if using front camera (we assume it's 'user' mode)
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
-      
-      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.8));
-      if (!blob) throw new Error("Erro ao processar a captura da foto.");
-
-      let photoUrl = "";
-      try {
-        const compressed = await imageCompression(new File([blob], "ponto.jpg"), {
-          maxSizeMB: 0.4,
-          maxWidthOrHeight: 1024,
-          useWebWorker: true
-        });
-        photoUrl = await imageCompression.getDataUrlFromFile(compressed);
-      } catch (compressionErr) {
-        console.warn("Compression failed, using original blob", compressionErr);
-        photoUrl = await new Promise((res) => {
-          const reader = new FileReader();
-          reader.onloadend = () => res(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      }
-
-      stopCamera();
-
-      const res = await fetch("/api/check-in-verified", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId: employee.id,
-          agencyId: employee.agencyId,
-          type: punchType,
-          location: "Desativado",
-          accessPointId: scannedPoint.id,
-          photoUrl
-        })
-      }).catch(err => {
-        console.error("Fetch error:", err);
-        throw new Error("Não foi possível conectar ao servidor. Verifique sua internet.");
-      });
-
-      if (!res.ok) {
-        let errorMsg = "Erro ao salvar o registro de ponto.";
-        try {
-          const data = await res.json();
-          errorMsg = data.error || errorMsg;
-        } catch (e) {
-          console.error("Response parse error:", e);
-        }
-        throw new Error(errorMsg);
-      }
-
-      setStep('SUCCESS');
-      toast.success("Ponto registrado com sucesso!");
-    } catch (err: any) {
-      console.error("HandleRegister Error:", err);
-      toast.error(err.message || "Erro inesperado ao processar o ponto.");
-      if (err.message?.includes("câmera")) {
-        // Stay on PHOTO step
-      } else {
-        setStep('IDLE');
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  if (!employee) {
-    return (
-      <div className="p-8 text-center space-y-4">
-        <AlertCircle size={48} className="mx-auto text-rose-500" />
-        <h3 className="text-lg font-black text-slate-900">Funcionário não encontrado</h3>
-        <p className="text-sm text-slate-500">Não foi possível carregar seus dados de funcionário. Por favor, tente sair e entrar novamente.</p>
-      </div>
-    );
-  }
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }}
-      className="max-w-xl mx-auto p-4 space-y-8 pb-24"
-    >
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Registro de Ponto</h2>
-        <p className="text-slate-500 font-medium">Sistema de registro biométrico e geolocalizado.</p>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
-        <div className="h-2 bg-blue-600" />
-        
-        <div className="p-8 sm:p-12">
-          {step === 'IDLE' && (
-            <div className="flex flex-col items-center space-y-8 text-center">
-              <div className="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600">
-                <Scan size={48} />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-slate-900">Olá, {employee.firstName}!</h3>
-                <p className="text-slate-500 font-medium">
-                  Vamos registrar sua <span className="text-blue-600 font-bold">{punchType === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span>?
-                </p>
-              </div>
-              <button 
-                onClick={() => setStep('SCANNING')}
-                className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center gap-3"
-              >
-                <QrCode size={20} /> Escanear QR Code
-              </button>
-
-              <div className="w-full pt-4 border-t border-slate-100">
-                <button 
-                  onClick={() => setShowDiagnostics(!showDiagnostics)}
-                  className="w-full py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
-                >
-                  {showDiagnostics ? 'Ocultar Dicas' : 'Problemas com a câmera ou GPS?'}
-                </button>
-
-                {showDiagnostics && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-4 p-4 bg-slate-50 rounded-2xl space-y-3 border border-slate-100 text-left"
-                  >
-                    <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-                      Para o ponto funcionar corretamente, siga estas dicas:
-                    </p>
-                    <ul className="space-y-2">
-                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
-                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                        <span><strong>Abra em uma nova aba:</strong> Clique no ícone de "seta para fora" no topo da tela. Isso resolve a maioria dos problemas de permissão.</span>
-                      </li>
-                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
-                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                        <span><strong>Autorize o acesso:</strong> Quando o navegador perguntar, clique em "Permitir" para Câmera e Localização.</span>
-                      </li>
-                      <li className="flex items-start gap-2 text-[10px] text-slate-600">
-                        <div className="w-1 h-1 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                        <span><strong>Use HTTPS:</strong> O sistema exige conexão segura para acessar a câmera.</span>
-                      </li>
-                    </ul>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {step === 'SCANNING' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-xl font-black text-slate-900">Escanear Unidade</h3>
-                <p className="text-sm text-slate-500">Aponte para o QR Code da unidade.</p>
-              </div>
-              <div className="aspect-square rounded-3xl overflow-hidden bg-black border-4 border-blue-600 relative">
-                <Scanner
-                  onScan={(res) => res?.[0] && handleQRScan(res[0].rawValue)}
-                  onError={(err: any) => {
-                    if (err?.name === 'NotAllowedError') toast.error("Permissão de câmera negada.");
-                  }}
-                  constraints={{ facingMode: 'environment' }}
-                  styles={{ container: { width: '100%', height: '100%' } }}
-                />
-                <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
-                  <div className="w-full h-full border-2 border-white/50 border-dashed rounded-2xl" />
-                </div>
-              </div>
-              <button onClick={() => setStep('IDLE')} className="w-full py-4 text-slate-400 font-bold text-xs uppercase tracking-widest">Cancelar</button>
-            </div>
-          )}
-
-          {step === 'PHOTO' && (
-            <div className="space-y-8">
-              <div className="text-center">
-                <h3 className="text-xl font-black text-slate-900">Foto de Verificação</h3>
-                <p className="text-sm text-slate-500">Posicione seu rosto no centro.</p>
-              </div>
-
-              <div className="relative aspect-square max-w-[320px] mx-auto bg-slate-100 rounded-[3rem] overflow-hidden border-4 border-white shadow-xl flex items-center justify-center">
-                {cameraError ? (
-                  <div className="p-6 text-center space-y-4">
-                    <AlertCircle size={40} className="mx-auto text-rose-500" />
-                    <p className="text-xs font-bold text-slate-600">{cameraError}</p>
-                    <button onClick={() => startCamera('user')} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Tentar Novamente</button>
-                  </div>
-                ) : (
-                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                )}
-                
-                {isProcessing && (
-                  <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
-                    <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Registrando...</p>
-                  </div>
-                )}
-              </div>
-
-              <canvas ref={canvasRef} className="hidden" />
-
-              <div className="flex gap-4">
-                <button onClick={() => { stopCamera(); setStep('IDLE'); }} className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px]">Voltar</button>
-                <button 
-                  onClick={handleRegister} 
-                  disabled={isProcessing || !!cameraError}
-                  className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
-                >
-                  <Camera size={18} /> Confirmar Ponto
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 'SUCCESS' && (
-            <div className="flex flex-col items-center space-y-8 text-center">
-              <div className="w-24 h-24 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600">
-                <CheckCircle size={48} />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-slate-900">Ponto Registrado!</h3>
-                <p className="text-slate-500 font-medium">Sua {punchType === 'IN' ? 'Entrada' : 'Saída'} foi salva com sucesso.</p>
-              </div>
-              <div className="w-full p-6 bg-slate-50 rounded-3xl text-left space-y-4 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <MapPin size={18} className="text-blue-600" />
-                  <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Local</p>
-                    <p className="text-sm font-bold text-slate-700">{scannedPoint?.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Clock size={18} className="text-blue-600" />
-                  <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Horário</p>
-                    <p className="text-sm font-bold text-slate-700">{new Date().toLocaleTimeString('pt-BR')}</p>
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => setStep('IDLE')} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Concluir</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* History Section */}
-      {/* History */}
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-          <Calendar size={16} className="text-blue-600" /> Registros de Hoje
-        </h3>
-        <div className="space-y-3">
-          {checkIns
-            .filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(new Date().toISOString().split('T')[0]))
-            .slice().reverse().map(ci => (
-              <div key={ci.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-200 border-2 border-white shadow-sm">
-                    <img src={ci.photoUrl} alt="Selfie" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${ci.type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                        {ci.type === 'IN' ? 'Entrada' : 'Saída'}
-                      </span>
-                      <p className="text-xs font-bold text-slate-700">{accessPoints.find(p => p.id === ci.accessPointId)?.location || 'Unidade'}</p>
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                  </div>
-                </div>
-                <CheckCircle size={16} className="text-emerald-500" />
-              </div>
-            ))}
-          {checkIns.filter(ci => ci.employeeId === employeeId && ci.timestamp.startsWith(new Date().toISOString().split('T')[0])).length === 0 && (
-            <p className="text-center py-8 text-xs text-slate-400 italic">Nenhum registro hoje.</p>
-          )}
-        </div>
-      </div>
-    </motion.div>
   );
 }
 

@@ -3,8 +3,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
-import axios from "axios";
-import crypto from "crypto";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -27,8 +25,7 @@ export async function createServer() {
         
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
-          projectId: config.projectId,
-          storageBucket: config.storageBucket
+          projectId: config.projectId
         });
         console.log("Firebase Admin initialized successfully.");
       } else {
@@ -62,78 +59,6 @@ export async function createServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
-  app.post("/api/check-in-verified", async (req, res) => {
-    try {
-      const { employeeId, agencyId, type, location, accessPointId, photoUrl } = req.body;
-
-      console.log(`Check-in request received: ${type} for employee ${employeeId}`);
-
-      if (!employeeId || !agencyId || !type) {
-        return res.status(400).json({ error: "Campos obrigatórios ausentes (ID do funcionário, agência ou tipo)." });
-      }
-
-      const db = getDb();
-      const checkInRef = db.collection("checkIns").doc();
-      const checkInId = checkInRef.id;
-
-      let finalPhotoUrl = photoUrl;
-
-      // Upload to Storage if it's a base64 image
-      if (photoUrl && typeof photoUrl === 'string' && photoUrl.startsWith('data:image')) {
-        try {
-          const bucket = admin.storage().bucket();
-          const fileName = `checkins/${employeeId}/${checkInId}.jpg`;
-          const file = bucket.file(fileName);
-          const buffer = Buffer.from(photoUrl.split(',')[1], 'base64');
-
-          await file.save(buffer, {
-            metadata: { 
-              contentType: 'image/jpeg',
-              metadata: {
-                employeeId,
-                type,
-                timestamp: new Date().toISOString()
-              }
-            },
-            public: true
-          });
-
-          // Construct public URL
-          finalPhotoUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-          console.log(`Photo uploaded to Storage: ${finalPhotoUrl}`);
-        } catch (storageErr: any) {
-          console.error("Error uploading photo to Storage:", storageErr);
-          // We'll keep the base64 as fallback if storage fails, 
-          // but log the error.
-        }
-      }
-
-      await checkInRef.set({
-        id: checkInId,
-        employeeId,
-        agencyId,
-        type,
-        location: location || "N/A",
-        accessPointId: accessPointId || "N/A",
-        timestamp: new Date().toISOString(),
-        status: "APPROVED",
-        photoUrl: finalPhotoUrl || null,
-        method: "MANUAL_PHOTO",
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log(`Check-in ${checkInId} saved successfully for employee ${employeeId}`);
-
-      res.json({ success: true, checkInId });
-    } catch (error: any) {
-      console.error("Error recording check-in:", error);
-      res.status(500).json({ 
-        error: "Erro ao salvar o ponto no servidor.",
-        details: error.message 
-      });
-    }
-  });
-
   // Global error handler to ensure JSON responses
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error("Global error:", err);
@@ -141,137 +66,6 @@ export async function createServer() {
       error: "Erro interno do servidor", 
       message: err.message 
     });
-  });
-
-  // Didit API Endpoints
-  app.post("/api/didit/create-session", async (req, res) => {
-    try {
-      const { employeeId, agencyId, type, location, accessPointId } = req.body;
-
-      if (!employeeId || !agencyId || !type) {
-        return res.status(400).json({ error: "Missing required fields (employeeId, agencyId, type)" });
-      }
-
-      const apiKey = process.env.DIDIT_API_KEY;
-      const workflowId = process.env.DIDIT_WORKFLOW_ID;
-
-      if (!apiKey || !workflowId) {
-        console.error("Missing Didit environment variables: DIDIT_API_KEY or DIDIT_WORKFLOW_ID");
-        return res.status(500).json({ error: "Server configuration error: Missing Didit credentials" });
-      }
-
-      const db = admin.firestore();
-      const checkInRef = db.collection("checkIns").doc();
-      const checkInId = checkInRef.id;
-
-      // Create pending check-in
-      await checkInRef.set({
-        id: checkInId,
-        employeeId,
-        agencyId,
-        type,
-        location: location || "N/A",
-        accessPointId: accessPointId || "N/A",
-        timestamp: new Date().toISOString(),
-        status: "PENDING",
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log(`Creating Didit session for check-in: ${checkInId}`);
-
-      const response = await axios.post("https://verification.didit.me/v3/session/", {
-        workflow_id: workflowId,
-        user_id: checkInId, // Use checkInId as user_id to link back in webhook
-        features: {
-          face_verification: true
-        }
-      }, {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      const data = response.data;
-      
-      // Update check-in with session ID
-      await checkInRef.update({
-        diditSessionId: data.id
-      });
-
-      res.json({ url: data.url, checkInId });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-      console.error("Error creating Didit session:", error.response?.data || error.message);
-      res.status(500).json({ error: `Didit API Error: ${errorMessage}` });
-    }
-  });
-
-  app.post("/api/didit/webhook", async (req, res) => {
-    try {
-      const data = req.body;
-      console.log("Received Didit Webhook:", JSON.stringify(data, null, 2));
-
-      // The user_id we passed is the checkInId
-      const checkInId = data.user_id;
-      const status = data.status; // e.g., "approved", "rejected"
-
-      if (!checkInId) {
-        console.warn("Webhook received without user_id");
-        return res.status(200).end();
-      }
-
-      const db = admin.firestore();
-      const checkInRef = db.collection("checkIns").doc(checkInId);
-      const checkInDoc = await checkInRef.get();
-
-      if (!checkInDoc.exists) {
-        console.error(`Check-in document not found: ${checkInId}`);
-        return res.status(200).end();
-      }
-
-      if (status === "approved") {
-        await checkInRef.update({
-          status: "APPROVED",
-          photoUrl: data.face_verification?.image_url || "",
-          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        console.log(`Check-in ${checkInId} APPROVED`);
-
-        // Update Assignment status if it's an OUT punch
-        const checkInData = checkInDoc.data();
-        if (checkInData && checkInData.type === 'OUT') {
-          const today = new Date().toISOString().split('T')[0];
-          const assignmentsRef = db.collection("assignments");
-          const q = assignmentsRef
-            .where('employeeId', '==', checkInData.employeeId)
-            .where('date', '==', today)
-            .where('status', '==', 'SCHEDULED');
-          
-          const snapshot = await q.get();
-          if (!snapshot.empty) {
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => {
-              batch.update(doc.ref, { status: 'COMPLETED' });
-            });
-            await batch.commit();
-            console.log(`Assignments updated to COMPLETED for employee ${checkInData.employeeId}`);
-          }
-        }
-      } else {
-        await checkInRef.update({
-          status: "REJECTED",
-          rejectionReason: data.rejection_reason || "Verification failed",
-          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        console.log(`Check-in ${checkInId} REJECTED`);
-      }
-
-      res.status(200).end();
-    } catch (error: any) {
-      console.error("Error processing Didit webhook:", error.message);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
   });
 
   // 404 handler for API routes (must be before Vite middleware)

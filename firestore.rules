@@ -51,22 +51,6 @@ service cloud.firestore {
     //   - status: string (required, enum: ["PENDING", "CONTACTED"])
     //   - date: string (required)
     //
-    // Collection: accessPoints
-    // Fields:
-    //   - managerName: string (required)
-    //   - location: string (required)
-    //   - qrCodeValue: string (required)
-    //   - createdAt: string (required)
-    //
-    // Collection: checkIns
-    // Fields:
-    //   - employeeId: string (required)
-    //   - accessPointId: string (required)
-    //   - location: string (required)
-    //   - timestamp: string (required)
-    //   - photoUrl: string (required)
-    //   - type: string (required, enum: ["IN", "OUT"])
-    //
     // Collection: companyRequests
     // Fields:
     //   - companyId: string (required)
@@ -296,13 +280,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
-    match /accessPoints/{accessPointId} {
-      allow read: if true;
-      allow create: if isSuperAdmin() || isAgency() || isCompany();
-      allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
-      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
-    }
-
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isAuthenticated();
@@ -322,23 +299,6 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isSuperAdmin() || isAgency() || isOwner(userId);
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId);
-      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
-    }
-
-    function isValidCheckIn(data) {
-      return hasRequiredFields(['employeeId', 'accessPointId', 'timestamp', 'photoUrl', 'type']) &&
-             data.employeeId is string &&
-             data.accessPointId is string &&
-             (!('location' in data) || data.location is string) &&
-             data.timestamp is string &&
-             data.photoUrl is string &&
-             data.type in ["IN", "OUT"];
-    }
-
-    match /checkIns/{checkInId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && isValidCheckIn(request.resource.data);
-      allow update: if (isSuperAdmin() || isAgencyOwner(resource.data) || isCompany()) && isValidCheckIn(request.resource.data);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 

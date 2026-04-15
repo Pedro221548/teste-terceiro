@@ -203,12 +203,6 @@ export interface Assignment {
   
   // New Features
   paymentStatus: 'PENDING' | 'PAID' | 'PROCESSING';
-  checkInLocation?: {
-    lat: number;
-    lng: number;
-    accuracy: number;
-  };
-  checkInPhotoUrl?: string;
 }
 
 export interface Feedback {
@@ -229,31 +223,6 @@ export interface ContactRequest {
   phone: string;
   status: 'PENDING' | 'CONTACTED';
   date: string;
-}
-
-export interface AccessPoint {
-  id: string;
-  agencyId: string;
-  clientId?: string;
-  managerName: string;
-  location: string;
-  qrCodeValue: string;
-  createdAt: string;
-}
-
-export interface CheckIn {
-  id: string;
-  agencyId: string;
-  employeeId: string;
-  accessPointId: string;
-  location: string;
-  timestamp: string;
-  photoUrl?: string;
-  type: 'IN' | 'OUT';
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  diditSessionId?: string;
-  rejectionReason?: string;
-  verifiedAt?: any;
 }
 
 export interface PricingConfig {
