@@ -28,6 +28,7 @@ export async function createServer() {
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
           projectId: config.projectId,
+          storageBucket: config.storageBucket
         });
         console.log("Firebase Admin initialized successfully.");
       } else {
@@ -75,13 +76,35 @@ export async function createServer() {
       const checkInRef = db.collection("checkIns").doc();
       const checkInId = checkInRef.id;
 
-      // Log photo size
-      if (photoUrl && typeof photoUrl === 'string' && photoUrl.includes(',')) {
+      let finalPhotoUrl = photoUrl;
+
+      // Upload to Storage if it's a base64 image
+      if (photoUrl && typeof photoUrl === 'string' && photoUrl.startsWith('data:image')) {
         try {
-          const sizeInBytes = Buffer.from(photoUrl.split(',')[1], 'base64').length;
-          console.log(`Photo size: ${(sizeInBytes / 1024).toFixed(2)} KB`);
-        } catch (e) {
-          console.warn("Could not calculate photo size");
+          const bucket = admin.storage().bucket();
+          const fileName = `checkins/${employeeId}/${checkInId}.jpg`;
+          const file = bucket.file(fileName);
+          const buffer = Buffer.from(photoUrl.split(',')[1], 'base64');
+
+          await file.save(buffer, {
+            metadata: { 
+              contentType: 'image/jpeg',
+              metadata: {
+                employeeId,
+                type,
+                timestamp: new Date().toISOString()
+              }
+            },
+            public: true
+          });
+
+          // Construct public URL
+          finalPhotoUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+          console.log(`Photo uploaded to Storage: ${finalPhotoUrl}`);
+        } catch (storageErr: any) {
+          console.error("Error uploading photo to Storage:", storageErr);
+          // We'll keep the base64 as fallback if storage fails, 
+          // but log the error.
         }
       }
 
@@ -94,7 +117,7 @@ export async function createServer() {
         accessPointId: accessPointId || "N/A",
         timestamp: new Date().toISOString(),
         status: "APPROVED",
-        photoUrl: photoUrl || null,
+        photoUrl: finalPhotoUrl || null,
         method: "MANUAL_PHOTO",
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
