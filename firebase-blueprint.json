@@ -65,9 +65,24 @@
         "managerName": { "type": "string" },
         "location": { "type": "string" },
         "createdAt": { "type": "string" },
-        "favoriteEmployees": { "type": "array", "items": { "type": "string" } }
+        "favoriteEmployees": { "type": "array", "items": { "type": "string" } },
+        "qrCode": { "type": "string" }
       },
       "required": ["companyId", "name", "managerName", "location", "createdAt"]
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "A simple record of an employee clocking in or out.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "unitId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "type": { "type": "string", "enum": ["IN", "OUT"] },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["employeeId", "unitId", "timestamp", "type"]
     },
     "Assignment": {
       "title": "Assignment",
@@ -218,6 +233,7 @@
     "/invoices": { "schema": "Invoice", "description": "Collection of billing records." },
     "/notifications": { "schema": "Notification", "description": "Collection of user notifications." },
     "/agencies": { "schema": "Agency", "description": "Collection of agencies." },
-    "/plans": { "schema": "Plan", "description": "Collection of subscription plans." }
+    "/plans": { "schema": "Plan", "description": "Collection of subscription plans." },
+    "/checkins": { "schema": "CheckIn", "description": "Collection of simple check-in records." }
   }
 }

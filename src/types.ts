@@ -166,6 +166,7 @@ export interface Unit {
   login?: string;
   password?: string;
   createdAt: string;
+  qrCode?: string;
   
   // New Features
   coordinates?: {
@@ -173,6 +174,15 @@ export interface Unit {
     lng: number;
   };
   favoriteEmployees?: string[]; // Array of employee IDs
+}
+
+export interface CheckIn {
+  id: string;
+  employeeId: string;
+  unitId: string;
+  timestamp: string;
+  type: 'IN' | 'OUT';
+  photoUrl: string;
 }
 
 export interface CompanyUser {

@@ -63,6 +63,8 @@ import {
   Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import imageCompression from 'browser-image-compression';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
@@ -70,7 +72,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan, CheckIn } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -190,6 +192,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
+    { id: 'ponto', label: 'Controle de Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
@@ -197,11 +200,13 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
     { id: 'company_diaristas', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
+    { id: 'ponto', label: 'Controle de Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
     { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'ponto', label: 'Bater Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
   ];
 
   return (
@@ -319,6 +324,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
       case 'company_profile': return 'Perfil da Empresa';
       case 'employee_schedule': return 'Minha Agenda';
       case 'employee_profile': return 'Meu Perfil';
+      case 'ponto': return 'Controle de Ponto';
       default: return 'Visão Geral';
     }
   };
@@ -469,6 +475,312 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
   );
 }
 
+function UnitQRManager({ units, companies }: { units: Unit[], companies: Company[] }) {
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {units.map(unit => {
+          const company = companies.find(c => c.id === unit.companyId);
+          return (
+            <div key={unit.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-black text-slate-900">{unit.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{company?.name || 'Empresa'}</p>
+                </div>
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <QrCode size={20} />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mb-6 flex items-center gap-2">
+                <MapPin size={14} />
+                {unit.location}
+              </p>
+              <button 
+                onClick={() => setSelectedUnit(unit)}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+              >
+                <Eye size={14} />
+                Ver QR Code
+              </button>
+            </div>
+          );
+        })}
+        {units.length === 0 && (
+          <div className="col-span-full bg-slate-50 p-12 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
+            <p className="text-slate-400 font-bold italic">Nenhuma unidade cadastrada para gerar QR Code.</p>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {selectedUnit && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 text-center"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">QR Code da Unidade</h3>
+                <button onClick={() => setSelectedUnit(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200 mb-8 flex flex-col items-center justify-center">
+                <QRCodeSVG value={selectedUnit.id} size={200} level="H" includeMargin={true} />
+                <p className="mt-6 font-black text-slate-900 uppercase tracking-widest text-xs">{selectedUnit.name}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {selectedUnit.id}</p>
+              </div>
+
+              <div className="space-y-4">
+                <button 
+                  onClick={() => window.print()}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                >
+                  <Download size={18} />
+                  Imprimir QR Code
+                </button>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Imprima este QR Code e coloque em um local visível na unidade para que os diaristas possam bater o ponto.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function SimplePonto({ user, employees, units, checkins }: { user: any, employees: Employee[], units: Unit[], checkins: CheckIn[] }) {
+  const [scanning, setScanning] = useState(false);
+  const [scannedUnitId, setScannedUnitId] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [type, setType] = useState<'IN' | 'OUT' | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const unit = units.find(u => u.id === scannedUnitId);
+
+  const startCamera = async () => {
+    setIsCapturing(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast.error("Erro ao acessar a câmera.");
+      setIsCapturing(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setPhoto(dataUrl);
+        
+        // Stop camera
+        const stream = videoRef.current.srcObject as MediaStream;
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        setIsCapturing(false);
+      }
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!user || !scannedUnitId || !photo || !type) return;
+
+    const loadingToast = toast.loading('Registrando ponto...');
+    try {
+      const checkinData: Partial<CheckIn> = {
+        employeeId: user.uid,
+        unitId: scannedUnitId,
+        timestamp: new Date().toISOString(),
+        type: type,
+        photoUrl: photo
+      };
+
+      await createDocument('checkins', checkinData);
+      toast.success('Ponto registrado com sucesso!', { id: loadingToast });
+      
+      // Reset state
+      setScanning(false);
+      setScannedUnitId(null);
+      setPhoto(null);
+      setType(null);
+    } catch (err) {
+      console.error("Error registering check-in:", err);
+      toast.error("Erro ao registrar ponto.", { id: loadingToast });
+    }
+  };
+
+  const myCheckins = checkins.filter(ci => ci.employeeId === user?.uid).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      {!scanning && !scannedUnitId ? (
+        <div className="space-y-8">
+          <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-sm text-center">
+            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+              <QrCode size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Registro de Ponto</h3>
+            <p className="text-slate-500 mb-10 max-w-md mx-auto">
+              Escaneie o QR Code da unidade para registrar sua entrada ou saída.
+            </p>
+            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+              <button 
+                onClick={() => { setType('IN'); setScanning(true); }}
+                className="py-6 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex flex-col items-center gap-3"
+              >
+                <ArrowUpRight size={24} />
+                Entrada
+              </button>
+              <button 
+                onClick={() => { setType('OUT'); setScanning(true); }}
+                className="py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-xl shadow-rose-100 flex flex-col items-center gap-3"
+              >
+                <ArrowRight size={24} className="rotate-45" />
+                Saída
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-4">Meus Últimos Registros</h4>
+            <div className="space-y-3">
+              {myCheckins.slice(0, 5).map(ci => {
+                const ciUnit = units.find(u => u.id === ci.unitId);
+                return (
+                  <div key={ci.id} className="bg-white p-5 rounded-[1.5rem] border border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                        {ci.type === 'IN' ? <ArrowUpRight size={20} /> : <ArrowRight size={20} className="rotate-45" />}
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900 text-sm">{ci.type === 'IN' ? 'Entrada' : 'Saída'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ciUnit?.name || 'Unidade'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-slate-900 text-sm">{formatTime(ci.timestamp)}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDateBR(ci.timestamp)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {myCheckins.length === 0 && (
+                <div className="bg-slate-50 p-10 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
+                  <p className="text-slate-400 font-bold text-sm italic">Nenhum registro encontrado.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : scanning ? (
+        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden relative">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">Escaneie o QR Code</h3>
+            <button onClick={() => { setScanning(false); setType(null); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-900 relative">
+            <Scanner
+              onScan={(result) => {
+                if (result && result[0]?.rawValue) {
+                  setScannedUnitId(result[0].rawValue);
+                  setScanning(false);
+                  startCamera();
+                }
+              }}
+              onError={(error) => console.error(error)}
+              styles={{ container: { width: '100%', height: '100%' } }}
+            />
+            <div className="absolute inset-0 border-[40px] border-slate-900/40 pointer-events-none">
+              <div className="w-full h-full border-2 border-emerald-500 rounded-2xl animate-pulse"></div>
+            </div>
+          </div>
+          <p className="text-center text-slate-500 text-xs mt-6 font-medium">
+            Posicione o QR Code da unidade dentro do quadrado para escanear.
+          </p>
+        </div>
+      ) : scannedUnitId && !photo ? (
+        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Tirar Foto</h3>
+              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{unit?.name || 'Unidade'}</p>
+            </div>
+            <button onClick={() => { setScannedUnitId(null); setType(null); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-900 relative">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover mirror" />
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+              <button 
+                onClick={capturePhoto}
+                className="w-16 h-16 bg-white rounded-full border-4 border-slate-200 flex items-center justify-center shadow-xl active:scale-90 transition-all"
+              >
+                <div className="w-12 h-12 bg-slate-900 rounded-full"></div>
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-slate-500 text-xs mt-6 font-medium">
+            Tire uma foto sua no local para confirmar o registro.
+          </p>
+        </div>
+      ) : scannedUnitId && photo ? (
+        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Confirmar Registro</h3>
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{type === 'IN' ? 'Entrada' : 'Saída'} em {unit?.name}</p>
+            </div>
+            <button onClick={() => { setPhoto(null); startCamera(); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-50 border border-slate-200 mb-8">
+            <img src={photo} alt="Captured" className="w-full h-full object-cover" />
+          </div>
+          <div className="space-y-4">
+            <button 
+              onClick={handleRegister}
+              className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-3"
+            >
+              <CheckCircle size={18} />
+              Confirmar e Salvar
+            </button>
+            <button 
+              onClick={() => { setPhoto(null); startCamera(); }}
+              className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+            >
+              Tirar outra foto
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<User | any | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -555,6 +867,7 @@ export default function App() {
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [ratingLabel, setRatingLabel] = useState('Estrelas');
@@ -837,6 +1150,8 @@ export default function App() {
         unsubs.forEach(unsub => unsub());
       };
     }
+
+    unsubs.push(subscribeToCollection<CheckIn>('checkins', setCheckins));
 
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
@@ -1325,6 +1640,15 @@ export default function App() {
                     <Feed />
                   </div>
                 )}
+                {activeTab === 'ponto' && (
+                  <div key="ponto">
+                    {role === 'EMPLOYEE' ? (
+                      <SimplePonto user={user} employees={employees} units={units} checkins={checkins} />
+                    ) : (
+                      <UnitQRManager units={units} companies={companies} />
+                    )}
+                  </div>
+                )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'dashboard' && (
                   <div key="agency-dashboard">
                     <AgencyDashboard 
@@ -1387,6 +1711,7 @@ export default function App() {
                       units={units}
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       selectedAgencyId={selectedAgencyId}
+                      checkins={checkins}
                     />
                   </div>
                 )}
@@ -5237,7 +5562,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null }) {
+function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[] }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
@@ -5874,12 +6199,21 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                                             </div>
                                           </div>
                                           <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
-                                            <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
-                                              <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                                              <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
-                                                Presença Confirmada
-                                              </span>
-                                            </div>
+                                            {checkins.some(ci => ci.employeeId === as.employeeId && formatDateBR(ci.timestamp) === formatDateBR(as.date)) ? (
+                                              <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
+                                                <CheckCircle size={14} className="sm:w-4 sm:h-4" />
+                                                <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
+                                                  Presente
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400">
+                                                <Clock size={14} className="sm:w-4 sm:h-4" />
+                                                <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
+                                                  Aguardando
+                                                </span>
+                                              </div>
+                                            )}
                                             <div className="flex items-center gap-1 text-slate-400">
                                               <Clock size={10} />
                                               <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">

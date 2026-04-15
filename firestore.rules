@@ -362,6 +362,13 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isAgency();
     }
 
+    match /checkins/{checkinId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isSuperAdmin() || isAgency();
+      allow delete: if isSuperAdmin() || isAgency();
+    }
+
     match /settings/{document=**} {
       allow read: if true;
       allow write: if isSuperAdmin();
