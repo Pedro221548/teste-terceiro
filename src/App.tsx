@@ -65,7 +65,7 @@ import {
   Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import imageCompression from 'browser-image-compression';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -272,7 +272,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
+                  <p className="text-[14px] font-black text-slate-900 leading-tight">{userName || 'Usuário'}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -345,7 +345,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
             <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-14 w-auto" referrerPolicy="no-referrer" />
           </div>
           <div className="hidden sm:block">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display truncate max-w-[180px] sm:max-w-none">{getTitle()}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display sm:max-w-none">{getTitle()}</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ProStaff Brasil Platform</p>
           </div>
         </div>
@@ -532,6 +532,19 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
     }
   };
 
+  const handleDownloadQR = () => {
+    const canvas = document.getElementById('unit-qr-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `qrcode-${selectedUnit?.name || 'unidade'}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -596,21 +609,37 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
               </div>
               
               <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200 mb-8 flex flex-col items-center justify-center">
+                <div className="hidden">
+                  <QRCodeCanvas 
+                    id="unit-qr-canvas"
+                    value={selectedUnit.id} 
+                    size={1024} 
+                    level="H" 
+                    includeMargin={true} 
+                  />
+                </div>
                 <QRCodeSVG value={selectedUnit.id} size={200} level="H" includeMargin={true} />
                 <p className="mt-6 font-black text-slate-900 uppercase tracking-widest text-xs">{selectedUnit.name}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {selectedUnit.id}</p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button 
-                  onClick={() => window.print()}
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                  onClick={handleDownloadQR}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-3 active:scale-95"
                 >
                   <Download size={18} />
+                  Baixar QR Code (PNG)
+                </button>
+                <button 
+                  onClick={() => window.print()}
+                  className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-3 active:scale-95 border border-slate-200"
+                >
+                  <FileText size={18} />
                   Imprimir QR Code
                 </button>
                 <p className="text-[10px] text-slate-400 font-medium">
-                  Imprima este QR Code e coloque em um local visível na unidade para que os diaristas possam bater o ponto.
+                  Baixe a imagem para enviar via WhatsApp ou imprima para fixar na unidade.
                 </p>
               </div>
             </motion.div>
@@ -1269,29 +1298,49 @@ export default function App() {
         const defaultPlans: Plan[] = [
           {
             id: 'STARTER',
-            name: 'Plano Starter',
+            name: 'Plano Trial (1 Mês)',
             price: 0,
-            maxEmployees: 10,
-            maxCompanies: 3,
-            features: ['Gestão de até 3 Empresas Parceiras', 'Dashboard Geral de Operações', 'Escala de Trabalho (Agenda)'],
+            maxEmployees: 50,
+            maxCompanies: 10,
+            features: [
+              '1 Mês de Acesso Completo',
+              'Gestão de até 10 Empresas Parceiras',
+              'Até 50 Colaboradores Cadastrados',
+              'Dashboard Geral de Operações',
+              'Escala de Trabalho (Agenda)'
+            ],
             updatedAt: new Date().toISOString()
           },
           {
             id: 'PROFESSIONAL',
             name: 'Plano Professional',
-            price: 0,
-            maxEmployees: 50,
+            price: 299,
+            maxEmployees: 150,
             maxCompanies: 9999,
-            features: ['Tudo do Starter', 'Empresas Parceiras ilimitadas', 'Controle de Acesso via QR Code (PONTO)', 'Gestão de Feedbacks e Avaliações', 'Configuração de Precificação customizada', 'Relatórios de Produtividade'],
+            features: [
+              'Empresas Parceiras ilimitadas',
+              'Até 150 Colaboradores',
+              'Controle de Acesso via QR Code (PONTO)',
+              'Gestão de Feedbacks e Avaliações',
+              'Configuração de Precificação customizada',
+              'Relatórios de Produtividade'
+            ],
             updatedAt: new Date().toISOString()
           },
           {
             id: 'ENTERPRISE',
             name: 'Plano Enterprise',
-            price: 0,
+            price: 599,
             maxEmployees: 9999,
             maxCompanies: 9999,
-            features: ['Tudo do Professional', 'White-label parcial', 'Módulo de Faturamento Automático', 'Suporte Prioritário', 'Dashboard de Auditoria'],
+            features: [
+              'Tudo do Professional',
+              'Colaboradores Ilimitados',
+              'White-label parcial',
+              'Módulo de Faturamento Automático',
+              'Suporte Prioritário',
+              'Dashboard de Auditoria'
+            ],
             updatedAt: new Date().toISOString()
           }
         ];
@@ -4535,7 +4584,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                             <Building2 size={24} className="sm:w-9 sm:h-9" />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
+                            <h4 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors">{cli?.name || unitName}</h4>
                             <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Empresa: {companyName}</p>
                             <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Unidade: {unitName}</p>
                             <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Responsável: {responsibleName}</p>
@@ -6881,7 +6930,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                     }`}
                   >
                     <div className="text-left">
-                      <p className="font-black text-[10px] uppercase tracking-tight truncate max-w-[150px]">{cli.name}</p>
+                      <p className="font-black text-[10px] uppercase tracking-tight leading-tight">{cli.name}</p>
                     </div>
                     {selectedClientId === cli.id && <CheckCircle size={14} className="text-white" />}
                   </button>
@@ -7075,7 +7124,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                           <Building2 size={20} />
                         </div>
                         <div className="text-left flex-1">
-                          <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase truncate max-w-[150px] sm:max-w-none">{formatDateBR(date)}</h4>
+                          <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase sm:max-w-none">{formatDateBR(date)}</h4>
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{dateData.assignments.length} Profissionais</p>
                         </div>
                       </div>
@@ -11005,7 +11054,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                                   )}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-black text-slate-900 text-xs truncate uppercase tracking-tight">{emp.firstName} {emp.lastName}</p>
+                                  <p className="font-black text-slate-900 text-xs uppercase tracking-tight leading-tight">{emp.firstName} {emp.lastName}</p>
                                   <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">{emp.phone}</p>
                                 </div>
                               </div>

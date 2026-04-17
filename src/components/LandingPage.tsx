@@ -90,10 +90,15 @@ export function LandingPage({
                 transition={{ delay: 0.4 }}
                 className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start"
               >
-                <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-[#10A34A] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-xl shadow-emerald-500/20 w-full sm:w-auto text-center">
-                  Comece Gratuitamente
-                </a>
-                <button onClick={() => setShowDemoModal(true)} className="px-8 py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all border border-slate-200 w-full sm:w-auto flex items-center justify-center gap-2">
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-[#10A34A] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-xl shadow-emerald-500/20 w-full text-center">
+                    Comece Gratuitamente
+                  </a>
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest text-center">
+                    1 Mês Grátis • 10 Empresas • 50 Colaboradores
+                  </p>
+                </div>
+                <button onClick={() => setShowDemoModal(true)} className="px-8 py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all border border-slate-200 w-full sm:w-auto flex items-center justify-center gap-2 h-[52px]">
                   <Play size={16} className="text-[#10A34A]" />
                   Ver Demonstração
                 </button>
