@@ -183,6 +183,11 @@ export interface CheckIn {
   timestamp: string;
   type: 'IN' | 'OUT';
   photoUrl: string;
+  status?: 'APPROVED' | 'PENDING' | 'REJECTED';
+  isAdjustment?: boolean;
+  adjustmentReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 export interface CompanyUser {

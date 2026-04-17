@@ -38,11 +38,13 @@ import {
   Search,
   Settings,
   Filter,
+  FileSpreadsheet,
   Send,
   Cake,
   Database,
   Bell,
   ArrowUpRight,
+  ArrowDownLeft,
   ArrowRight,
   TrendingUp as TrendingUpIcon,
   Volume2,
@@ -183,30 +185,30 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'dashboard', label: 'Painel de controle', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'staffing', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
-    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
+    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
     { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
-    { id: 'ponto', label: 'Controle de Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
     { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
-    { id: 'company_diaristas', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-    { id: 'ponto', label: 'Controle de Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
     { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
-    { id: 'ponto', label: 'Bater Ponto', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
   ];
 
   return (
@@ -270,7 +272,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-2xl font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
+                  <p className="text-base font-black text-slate-900 truncate">{userName || 'Usuário'}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -309,8 +311,8 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
       case 'admin_companies': return 'Gestão de Empresas';
       case 'admin_users': return 'Gestão de Usuários';
       case 'admin_documents': return 'Controle de Documentos';
-      case 'dashboard': return 'Dashboard Geral';
-      case 'staffing': return 'Gestão de Diaristas';
+      case 'dashboard': return 'Painel de controle';
+      case 'staffing': return 'Solicitação';
       case 'companies': return 'Empresas Parceiras';
       case 'registrations': return 'Cadastros Pendentes';
       case 'access_control': return 'Controle de Acesso';
@@ -320,11 +322,11 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
       case 'profile': return 'Meu Perfil Profissional';
       case 'manager_dashboard': return 'Minhas Diarias';
       case 'evaluate_team': return 'Avaliação de Equipe';
-      case 'company_diaristas': return 'Equipe de Diaristas';
+      case 'company_diaristas': return 'Equipe de Solicitação';
       case 'company_profile': return 'Perfil da Empresa';
       case 'employee_schedule': return 'Minha Agenda';
       case 'employee_profile': return 'Meu Perfil';
-      case 'ponto': return 'Controle de Ponto';
+      case 'ponto': return 'Ponto de controle';
       default: return 'Visão Geral';
     }
   };
@@ -475,11 +477,73 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
   );
 }
 
-function UnitQRManager({ units, companies }: { units: Unit[], companies: Company[] }) {
+function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units: Unit[], companies: Company[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [showAddUnitModal, setShowAddUnitModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newUnitData, setNewUnitData] = useState({
+    name: '',
+    companyId: '',
+    location: ''
+  });
+
+  const handleCreateUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUnitData.name || !newUnitData.companyId || !newUnitData.location) {
+      toast('Por favor, preencha todos os campos.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const targetAgencyId = selectedAgencyId || agencyId;
+      const unitId = Math.random().toString(36).substr(2, 9);
+      const clientId = Math.random().toString(36).substr(2, 9);
+
+      // Create internal client for the unit
+      await createDocument('clients', {
+        id: clientId,
+        agencyId: targetAgencyId,
+        name: newUnitData.name,
+        location: newUnitData.location,
+        type: 'UNIT',
+        createdAt: new Date().toISOString()
+      });
+
+      // Create unit
+      await createDocument('units', {
+        id: unitId,
+        agencyId: targetAgencyId,
+        companyId: newUnitData.companyId,
+        name: newUnitData.name,
+        location: newUnitData.location,
+        clientId: clientId,
+        createdAt: new Date().toISOString()
+      });
+
+      setShowAddUnitModal(false);
+      setNewUnitData({ name: '', companyId: '', location: '' });
+      toast.success('Unidade e QR Code gerados com sucesso!');
+    } catch (error) {
+      console.error('Error creating unit:', error);
+      toast.error('Erro ao gerar nova unidade.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button 
+          onClick={() => setShowAddUnitModal(true)}
+          className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 active:scale-95 group"
+        >
+          <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+          Gerar Novo QR Code (Nova Unidade)
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {units.map(unit => {
           const company = companies.find(c => c.id === unit.companyId);
@@ -553,6 +617,92 @@ function UnitQRManager({ units, companies }: { units: Unit[], companies: Company
           </div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddUnitModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Nova Unidade / QR Code</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Cadastre uma nova unidade para gerar o ponto</p>
+                </div>
+                <button onClick={() => setShowAddUnitModal(false)} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
+                  <X size={24} className="text-slate-400" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateUnit} className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Unidade</label>
+                    <input 
+                      required
+                      type="text"
+                      placeholder="Ex: Unidade Centro, Filial SP..."
+                      value={newUnitData.name}
+                      onChange={e => setNewUnitData({...newUnitData, name: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Empresa Parceira</label>
+                    <select 
+                      required
+                      value={newUnitData.companyId}
+                      onChange={e => setNewUnitData({...newUnitData, companyId: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                    >
+                      <option value="">Selecione a empresa...</option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Localização / Endereço</label>
+                    <div className="relative">
+                      <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                      <input 
+                        required
+                        type="text"
+                        placeholder="Rua, Número, Bairro, Cidade..."
+                        value={newUnitData.location}
+                        onChange={e => setNewUnitData({...newUnitData, location: e.target.value})}
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-4">
+                  <button 
+                    type="button"
+                    onClick={() => setShowAddUnitModal(false)}
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Gerando...' : 'Gerar QR Code'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -563,6 +713,13 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
   const [photo, setPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [type, setType] = useState<'IN' | 'OUT' | null>(null);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [adjType, setAdjType] = useState<'IN' | 'OUT'>('IN');
+  const [adjTime, setAdjTime] = useState('');
+  const [adjReason, setAdjReason] = useState('');
+  const [adjUnitId, setAdjUnitId] = useState('');
+  const [adjDate, setAdjDate] = useState('');
+  const [isSubmittingAdj, setIsSubmittingAdj] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const unit = units.find(u => u.id === scannedUnitId);
@@ -631,10 +788,107 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
 
   const myCheckins = checkins.filter(ci => ci.employeeId === user?.uid).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  const handleAdjustmentSubmit = async () => {
+    if (!user || !adjUnitId || !adjTime || !adjReason) {
+      toast.error('Preencha todos os campos do ajuste.');
+      return;
+    }
+
+    setIsSubmittingAdj(true);
+    const loadingToast = toast.loading('Enviando solicitação...');
+    try {
+      // Use the provided adjDate for the adjustment
+      const dateToUse = adjDate || new Date().toISOString().split('T')[0];
+      const adjustmentTimestamp = new Date(dateToUse + 'T' + adjTime).toISOString();
+
+      const adjData: Partial<CheckIn> = {
+        employeeId: user.uid,
+        unitId: adjUnitId,
+        timestamp: adjustmentTimestamp,
+        type: adjType,
+        photoUrl: '', // No photo for manual adjustments
+        isAdjustment: true,
+        status: 'PENDING',
+        adjustmentReason: adjReason,
+        createdAt: new Date().toISOString()
+      } as any;
+
+      await createDocument('checkins', adjData);
+      toast.success('Solicitação de ajuste enviada!', { id: loadingToast });
+      setShowAdjustmentModal(false);
+      setAdjReason('');
+      setAdjTime('');
+    } catch (err) {
+      console.error("Error submitting adjustment:", err);
+      toast.error("Erro ao enviar solicitação.", { id: loadingToast });
+    } finally {
+      setIsSubmittingAdj(false);
+    }
+  };
+
+  // Logic to identify inconsistencies (12h after the only punch)
+  const getInconsistencies = () => {
+    if (!user) return [];
+    
+    // Group by date
+    const checkinsByDate: Record<string, CheckIn[]> = {};
+    myCheckins.forEach(ci => {
+      const date = formatDateBR(ci.timestamp);
+      if (!checkinsByDate[date]) checkinsByDate[date] = [];
+      checkinsByDate[date].push(ci);
+    });
+
+    const inconsistencies: { date: string, lastPunch: CheckIn }[] = [];
+    const now = new Date().getTime();
+
+    Object.entries(checkinsByDate).forEach(([date, cis]) => {
+      if (cis.length === 1) {
+        const lastPunch = cis[0];
+        const punchTime = new Date(lastPunch.timestamp).getTime();
+        const diffHours = (now - punchTime) / (1000 * 60 * 60);
+        
+        if (diffHours >= 12) {
+          inconsistencies.push({ date, lastPunch });
+        }
+      }
+    });
+
+    return inconsistencies;
+  };
+
+  const myInconsistencies = getInconsistencies();
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 pb-20">
       {!scanning && !scannedUnitId ? (
         <div className="space-y-8">
+          {/* Inconsistency Notification */}
+          {myInconsistencies.length > 0 && (
+            <div className="bg-rose-50 border border-rose-100 p-6 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-4 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-rose-900 uppercase tracking-tight">Inconsistência Identificada</h4>
+                  <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">Você possui {myInconsistencies.length} ponto(s) aguardando ajuste</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  const inc = myInconsistencies[0];
+                  setAdjUnitId(inc.lastPunch.unitId);
+                  setAdjType(inc.lastPunch.type === 'IN' ? 'OUT' : 'IN');
+                  // Extract YYYY-MM-DD from the timestamp
+                  setAdjDate(new Date(inc.lastPunch.timestamp).toISOString().split('T')[0]);
+                  setShowAdjustmentModal(true);
+                }}
+                className="w-full sm:w-auto px-6 py-3 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+              >
+                Ajustar Agora
+              </button>
+            </div>
+          )}
           <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-sm text-center">
             <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
               <QrCode size={40} />
@@ -777,6 +1031,103 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
           </div>
         </div>
       ) : null}
+
+      <AnimatePresence>
+        {showAdjustmentModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              onClick={() => setShowAdjustmentModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 sm:p-10 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Solicitar Ajuste Manual</h3>
+                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">Ajuste de ponto pendente</p>
+                  </div>
+                  <button onClick={() => setShowAdjustmentModal(false)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-2xl transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 font-display">Tipo de Batida</label>
+                      <select 
+                        value={adjType}
+                        onChange={(e) => setAdjType(e.target.value as 'IN' | 'OUT')}
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                      >
+                        <option value="IN">Entrada</option>
+                        <option value="OUT">Saída</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 font-display">Horário</label>
+                      <input 
+                        type="time"
+                        value={adjTime}
+                        onChange={(e) => setAdjTime(e.target.value)}
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 font-display">Unidade</label>
+                    <select 
+                      value={adjUnitId}
+                      onChange={(e) => setAdjUnitId(e.target.value)}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                    >
+                      <option value="">Selecione a Unidade</option>
+                      {units.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 font-display">Motivo do Ajuste</label>
+                    <textarea 
+                      value={adjReason}
+                      onChange={(e) => setAdjReason(e.target.value)}
+                      placeholder="Descreva o motivo da falta de batida..."
+                      className="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 transition-all resize-none h-32"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => setShowAdjustmentModal(false)}
+                    className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all active:scale-95"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleAdjustmentSubmit}
+                    disabled={isSubmittingAdj}
+                    className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-50"
+                  >
+                    {isSubmittingAdj ? 'Enviando...' : 'Enviar para Aprovação'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1640,13 +1991,27 @@ export default function App() {
                     <Feed />
                   </div>
                 )}
-                {activeTab === 'ponto' && (
+                {role === 'AGENCY' && activeTab === 'ponto' && (
                   <div key="ponto">
-                    {role === 'EMPLOYEE' ? (
-                      <SimplePonto user={user} employees={employees} units={units} checkins={checkins} />
-                    ) : (
-                      <UnitQRManager units={units} companies={companies} />
-                    )}
+                    <UnitQRManager 
+                      units={units} 
+                      companies={companies} 
+                      agencyId={currentAgencyId}
+                      selectedAgencyId={selectedAgencyId}
+                    />
+                  </div>
+                )}
+                {activeTab === 'access_flow' && (
+                  <div key="access_flow">
+                    <AccessFlow 
+                      checkins={checkins}
+                      employees={employees}
+                      units={units}
+                      companies={companies}
+                      clients={clients}
+                      formatDateBR={formatDateBR}
+                      forcedUnitId={role === 'COMPANY' ? (currentUnitId || companyUsers.find(cu => cu.email === user?.email)?.unitId) : undefined}
+                    />
                   </div>
                 )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'dashboard' && (
@@ -1702,6 +2067,7 @@ export default function App() {
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'staffing' && (
                   <div key="agency-staffing">
                     <AgencyStaffing 
+                      user={user}
                       employees={employees}
                       assignments={assignments}
                       clients={clients}
@@ -1844,6 +2210,7 @@ export default function App() {
                       agencies={agencies}
                       bulletins={bulletins}
                       invoices={invoices}
+                      checkins={checkins}
                     />
                   </div>
                 )}
@@ -1993,15 +2360,16 @@ function BottomNav({ role, activeTab, setActiveTab }: {
     { id: 'admin_plans', label: 'Planos', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'profile', label: 'Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'staffing', label: 'Diaristas', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
-    { id: 'access_control', label: 'Acesso', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
+    { id: 'access_flow', label: 'Fluxo', icon: Activity, color: 'text-accent-rose bg-rose-50' },
+    { id: 'access_control', label: 'Ponto', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
     { id: 'profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'evaluate_team', label: 'Avaliar', icon: Star, color: 'text-accent-amber bg-amber-50' },
-    { id: 'company_diaristas', label: 'Equipe', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'company_profile', label: 'Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : [
     { id: 'employee_profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
@@ -3180,7 +3548,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
 
             <div className="flex flex-wrap items-center gap-8">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Solicitação</span>
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
                     <div 
@@ -3879,20 +4247,42 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[] }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[] }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
-  const scheduledAssignments = myAssignments.filter(a => a.status === 'SCHEDULED');
-  const completedAssignments = myAssignments.filter(a => a.status === 'COMPLETED');
+  const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  const scheduledAssignments = myAssignments
+    .filter(a => a.status === 'SCHEDULED' && a.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const completedAssignments = myAssignments
+    .filter(a => a.status === 'COMPLETED')
+    .sort((a, b) => b.date.localeCompare(a.date));
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
   const myBulletins = bulletins.filter(b => b.targetRoles.includes('EMPLOYEE'));
 
-  const totalEarnings = completedAssignments.reduce((acc, curr) => acc + curr.value, 0);
-  const pendingEarnings = myAssignments.filter(a => a.status === 'COMPLETED' && a.paymentStatus === 'PENDING').reduce((acc, curr) => acc + curr.value, 0);
+  const getDayCheckins = (date: string) => {
+    return checkins.filter(ci => 
+      ci.employeeId === employeeId && 
+      formatDateBR(ci.timestamp) === formatDateBR(date)
+    );
+  };
+
+  const financeAssignments = myAssignments
+    .filter(a => a.status !== 'CANCELLED')
+    .filter(a => a.status === 'COMPLETED' || getDayCheckins(a.date).length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const totalEarnings = financeAssignments
+    .filter(a => a.status === 'COMPLETED' && getDayCheckins(a.date).length >= 2)
+    .reduce((acc, curr) => acc + curr.value, 0);
+
+  const pendingEarnings = financeAssignments
+    .filter(a => (a.status === 'COMPLETED' || getDayCheckins(a.date).length >= 2) && a.paymentStatus === 'PENDING')
+    .reduce((acc, curr) => acc + curr.value, 0);
 
   const handleConfirm = async (assignmentId: string) => {
     await updateDocument('assignments', assignmentId, { confirmed: true });
@@ -4105,62 +4495,85 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               <p className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em]">Você não tem diarias agendadas no momento.</p>
             </div>
           ) : (
-            scheduledAssignments.map(as => {
-              const cli = clients.find(c => c.id === as.clientId);
-              const unit = as.unitId ? units.find(u => u.id === as.unitId) : units.find(u => u.clientId === as.clientId);
-              const company = as.companyId ? companies.find(c => c.id === as.companyId) : (unit ? companies.find(c => c.id === unit.companyId) : companies.find(c => c.id === as.clientId));
-              const agency = agencies.find(a => a.id === as.agencyId);
-              
-              // Fallback for responsible name if unit is missing but client has managerName
-              const responsibleName = unit?.managerName || cli?.managerName || 'Responsável não definido';
-              const unitName = unit?.name || 'Matriz';
-              const companyName = company?.name || cli?.name || 'Empresa não identificada';
-
-              return (
-                <div key={as.id} className="bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
-                  <div className="flex items-center gap-4 sm:gap-8 relative z-10">
-                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-slate-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner shrink-0">
-                      <Building2 size={24} className="sm:w-9 sm:h-9" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
-                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Empresa: {companyName}</p>
-                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Unidade: {unitName}</p>
-                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Responsável: {responsibleName}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4">
-                        {cli?.location?.startsWith('http') ? (
-                          <a href={cli.location} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-                            <MapPin size={10} className="sm:w-3 sm:h-3" /> Ver no Mapa
-                          </a>
-                        ) : (
-                          <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest">
-                            <MapPin size={10} className="sm:w-3 sm:h-3" /> {cli?.location || 'Localização não definida'}
-                          </span>
-                        )}
-                        {agency?.phone && (
-                          <a href={`https://wa.me/${agency.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-emerald-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
-                            <Phone size={10} className="sm:w-3 sm:h-3" /> Suporte
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-6 gap-y-1.5 sm:gap-y-3 text-[8px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
-                        <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Calendar size={10} className="text-blue-600 sm:w-3 sm:h-3" /> {formatDateBR(as.date)}</span>
-                        <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={10} className="text-blue-600 sm:w-3 sm:h-3" /> 08:00 - 17:00</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-4 pt-6 sm:pt-0 border-t sm:border-t-0 border-slate-50 relative z-10">
-                    <div className="text-left sm:text-right">
-                      <p className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
-                      <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">Valor Líquido</p>
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
-                  </div>
+            Object.entries(
+              scheduledAssignments.reduce((acc, as) => {
+                if (!acc[as.date]) acc[as.date] = [];
+                acc[as.date].push(as);
+                return acc;
+              }, {} as Record<string, Assignment[]>)
+            )
+            .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+            .map(([date, dateAssignments]) => (
+              <div key={date} className="space-y-6">
+                <div className="flex items-center gap-4 px-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-600 shadow-xl shadow-blue-500/40"></div>
+                  <h3 className="text-sm sm:text-lg font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                    {formatDateBR(date)}
+                    <span className="px-3 py-1 bg-slate-100 text-slate-400 rounded-full text-[10px] font-bold tracking-normal italic">
+                      {dateAssignments.length} {dateAssignments.length === 1 ? 'Diária' : 'Diárias'}
+                    </span>
+                  </h3>
                 </div>
-              );
-            })
+                
+                <div className="grid grid-cols-1 gap-6">
+                  {dateAssignments.map(as => {
+                    const cli = clients.find(c => c.id === as.clientId);
+                    const unit = as.unitId ? units.find(u => u.id === as.unitId) : units.find(u => u.clientId === as.clientId);
+                    const company = as.companyId ? companies.find(c => c.id === as.companyId) : (unit ? companies.find(c => c.id === unit.companyId) : companies.find(c => c.id === as.clientId));
+                    const agency = agencies.find(a => a.id === as.agencyId);
+                    
+                    // Fallback for responsible name if unit is missing but client has managerName
+                    const responsibleName = unit?.managerName || cli?.managerName || 'Responsável não definido';
+                    const unitName = unit?.name || 'Matriz';
+                    const companyName = company?.name || cli?.name || 'Empresa não identificada';
+
+                    return (
+                      <div key={as.id} className="bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-8 hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
+                        <div className="flex items-center gap-4 sm:gap-8 relative z-10">
+                          <div className="w-12 h-12 sm:w-20 sm:h-20 bg-slate-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner shrink-0">
+                            <Building2 size={24} className="sm:w-9 sm:h-9" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight uppercase group-hover:text-blue-600 transition-colors truncate">{cli?.name || unitName}</h4>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Empresa: {companyName}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Unidade: {unitName}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Responsável: {responsibleName}</p>
+                            
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4">
+                              {cli?.location?.startsWith('http') ? (
+                                <a href={cli.location} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+                                  <MapPin size={10} className="sm:w-3 sm:h-3" /> Ver no Mapa
+                                </a>
+                              ) : (
+                                <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest">
+                                  <MapPin size={10} className="sm:w-3 sm:h-3" /> {cli?.location || 'Localização não definida'}
+                                </span>
+                              )}
+                              {agency?.phone && (
+                                <a href={`https://wa.me/${agency.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 sm:gap-2 bg-emerald-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+                                  <Phone size={10} className="sm:w-3 sm:h-3" /> Suporte
+                                </a>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-6 gap-y-1.5 sm:gap-y-3 text-[8px] sm:text-[10px] font-black text-slate-400 mt-2 sm:mt-3 uppercase tracking-widest">
+                              <span className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-slate-100 group-hover:bg-white transition-colors shadow-sm"><Clock size={10} className="text-blue-600 sm:w-3 sm:h-3" /> 08:00 - 17:00</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-4 pt-6 sm:pt-0 border-t sm:border-t-0 border-slate-50 relative z-10">
+                          <div className="text-left sm:text-right">
+                            <p className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">Valor Líquido</p>
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
         </div>
       ) : activeTab === 'FINANCE' ? (
@@ -4219,17 +4632,26 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {completedAssignments.map(as => {
+                  {financeAssignments.map(as => {
                     const cli = clients.find(c => c.id === as.clientId);
+                    const dayCi = getDayCheckins(as.date);
+                    const isInconsistent = dayCi.length === 1;
+                    
                     return (
                       <tr key={as.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="p-6 font-medium text-slate-600">{formatDateBR(as.date)}</td>
                         <td className="p-6 font-black text-slate-950">{cli?.name || 'Unidade não identificada'}</td>
                         <td className="p-6 font-black text-slate-950">R$ {as.value.toFixed(2)}</td>
                         <td className="p-6">
-                          <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${as.paymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                            {as.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
-                          </span>
+                          {isInconsistent ? (
+                            <span className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100">
+                              Inconsistência de Ponto
+                            </span>
+                          ) : (
+                            <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${as.paymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                              {as.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -5473,7 +5895,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
                     <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
                       <span className={`text-[8px] sm:text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest ${selectedEmployee.category === 'CONTRATADO' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                        {selectedEmployee.category === 'CONTRATADO' ? 'Contratado CLT' : 'Diarista'}
+                        {selectedEmployee.category === 'CONTRATADO' ? 'Contratado CLT' : 'Solicitação'}
                       </span>
                       <div className="flex gap-0.5 bg-slate-50 px-1.5 py-0.5 rounded-lg">
                         {[...Array(5)].map((_, i) => (
@@ -5562,16 +5984,472 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   );
 }
 
-function AgencyStaffing({ employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins }: { employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[] }) {
+function AccessFlow({ 
+  checkins, 
+  employees, 
+  units, 
+  companies, 
+  clients,
+  formatDateBR,
+  forcedUnitId
+}: { 
+  checkins: CheckIn[], 
+  employees: Employee[], 
+  units: Unit[], 
+  companies: Company[], 
+  clients: Client[],
+  formatDateBR: (date: string | Date) => string,
+  forcedUnitId?: string
+}) {
+  const [filters, setFilters] = useState({
+    companyId: '',
+    unitId: forcedUnitId || '',
+    startDate: '',
+    endDate: '',
+    searchTerm: '',
+    category: ''
+  });
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  const filteredCheckins = checkins.filter(ci => {
+    const unit = units.find(u => u.id === ci.unitId);
+    const emp = employees.find(e => e.id === ci.employeeId);
+    const checkinDate = ci.timestamp.split('T')[0];
+
+    if (filters.companyId && unit?.companyId !== filters.companyId) return false;
+    if (filters.unitId && ci.unitId !== filters.unitId) return false;
+    if (filters.startDate && checkinDate < filters.startDate) return false;
+    if (filters.endDate && checkinDate > filters.endDate) return false;
+    if (filters.category && emp?.category !== filters.category) return false;
+    if (filters.searchTerm) {
+      const fullName = `${emp?.firstName || ''} ${emp?.lastName || ''}`.toLowerCase();
+      if (!fullName.includes(filters.searchTerm.toLowerCase())) return false;
+    }
+
+    return true;
+  }).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+  const exportToExcel = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const { saveAs } = await import('file-saver');
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Fluxo de Acesso');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'Funcionário', key: 'employee', width: 35 },
+        { header: 'Contato', key: 'contact', width: 20 },
+        { header: 'Data', key: 'date', width: 15 },
+        { header: 'Entradas', key: 'entries', width: 25 },
+        { header: 'Saídas', key: 'exits', width: 25 },
+        { header: 'Unidade', key: 'unit', width: 35 },
+      ];
+
+      // Group checkins by employee and date
+      const grouped = filteredCheckins.reduce((acc, ci) => {
+        const date = ci.timestamp.split('T')[0];
+        const key = `${ci.employeeId}_${date}_${ci.unitId}`;
+        if (!acc[key]) {
+          const emp = employees.find(e => e.id === ci.employeeId);
+          const unit = units.find(u => u.id === ci.unitId);
+          acc[key] = {
+            employee: emp ? `${emp.firstName} ${emp.lastName}` : 'N/A',
+            contact: emp?.phone || 'N/A',
+            date: formatDateBR(date),
+            entries: [],
+            exits: [],
+            unit: unit?.name || 'N/A'
+          };
+        }
+        const time = new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        if (ci.type === 'IN') acc[key].entries.push(time);
+        else acc[key].exits.push(time);
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Add rows
+      Object.values(grouped).forEach(data => {
+        worksheet.addRow({
+          ...data,
+          entries: data.entries.sort().join(', '),
+          exits: data.exits.sort().join(', ')
+        });
+      });
+
+      // Apply styling: Centered, Borders, and Header styling
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          if (rowNumber === 1) {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF1E293B' } // slate-800
+            };
+          }
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `fluxo_acesso_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Relatório exportado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar Excel:', error);
+      toast.error('Erro ao gerar o relatório Excel.');
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="space-y-6 sm:space-y-8"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-600 shadow-inner">
+            <Activity size={32} />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Fluxo de Acesso</h2>
+            <p className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-[0.2em] mt-1">Gestão de Entradas e Saídas</p>
+          </div>
+        </div>
+        <button 
+          onClick={exportToExcel}
+          className="flex items-center justify-center gap-3 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
+        >
+          <FileSpreadsheet size={20} className="group-hover:rotate-12 transition-transform" /> 
+          Relatório Excel
+        </button>
+      </div>
+
+      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Briefcase size={12} className="text-indigo-600" /> Tipo / Categoria
+            </label>
+            <select 
+              value={filters.category}
+              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner cursor-pointer"
+            >
+              <option value="">Todos os Tipos</option>
+              <option value="DIARISTA">Diarista</option>
+              <option value="CONTRATADO">Funcionário / CLT</option>
+            </select>
+          </div>
+          {!forcedUnitId && (
+            <>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+                  <Building2 size={12} className="text-blue-600" /> Empresa Parceira
+                </label>
+                <select 
+                  value={filters.companyId}
+                  onChange={(e) => setFilters({ ...filters, companyId: e.target.value })}
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner cursor-pointer"
+                >
+                  <option value="">Todas as Empresas</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+                  <QrCode size={12} className="text-rose-600" /> Unidade
+                </label>
+                <select 
+                  value={filters.unitId}
+                  onChange={(e) => setFilters({ ...filters, unitId: e.target.value })}
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner cursor-pointer"
+                >
+                  <option value="">Todas as Unidades</option>
+                  {units
+                    .filter(u => !filters.companyId || u.companyId === filters.companyId)
+                    .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            </>
+          )}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Calendar size={12} className="text-emerald-600" /> Início
+            </label>
+            <input 
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+            />
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Calendar size={12} className="text-emerald-600" /> Fim
+            </label>
+            <input 
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+            />
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-slate-50">
+          <div className="space-y-3 max-w-2xl mx-auto">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
+              <Search size={12} className="text-blue-600" /> Pesquisar Nome do Profissional
+            </label>
+            <div className="relative group">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={20} />
+              <input 
+                type="text"
+                placeholder="Digite o nome para filtrar a lista abaixo..."
+                value={filters.searchTerm}
+                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                className="w-full pl-16 pr-6 py-5 bg-slate-50 border-2 border-transparent rounded-[2rem] focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-base shadow-inner text-center sm:text-left"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {(() => {
+          // Group by employeeId only
+          const grouped = filteredCheckins.reduce((acc, ci) => {
+            const key = ci.employeeId;
+            if (!acc[key]) {
+              acc[key] = {
+                key,
+                employeeId: ci.employeeId,
+                punches: []
+              };
+            }
+            acc[key].punches.push(ci);
+            return acc;
+          }, {} as Record<string, { key: string, employeeId: string, punches: CheckIn[] }>);
+
+          // Sort professionals by their latest punch timestamp
+          const finalGroups = Object.values(grouped).sort((a, b) => {
+            const latestA = [...a.punches].sort((x, y) => y.timestamp.localeCompare(x.timestamp))[0].timestamp;
+            const latestB = [...b.punches].sort((x, y) => y.timestamp.localeCompare(x.timestamp))[0].timestamp;
+            return latestB.localeCompare(latestA);
+          });
+
+          if (finalGroups.length === 0) {
+            return (
+              <div className="bg-white rounded-[3rem] p-20 text-center space-y-4 border border-slate-100 shadow-xl shadow-slate-200/50">
+                <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-200 ring-4 ring-emerald-50/50">
+                  <Activity size={40} />
+                </div>
+                <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">Nenhum fluxo registrado para este período.</p>
+              </div>
+            );
+          }
+
+          return finalGroups.map(group => {
+            const emp = employees.find(e => e.id === group.employeeId);
+            const isExpanded = expandedRow === group.key;
+            const sortedPunches = [...group.punches].sort((a,b) => b.timestamp.localeCompare(a.timestamp));
+
+            return (
+              <div key={group.key} className={`rounded-[2.5rem] transition-all duration-500 overflow-hidden ${
+                isExpanded 
+                  ? 'bg-white shadow-2xl shadow-emerald-900/10 ring-2 ring-emerald-500/20' 
+                  : 'bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-emerald-100'
+              }`}>
+                {/* Header Row */}
+                <button 
+                  onClick={() => setExpandedRow(isExpanded ? null : group.key)}
+                  className={`w-full px-8 py-7 flex items-center justify-between transition-all text-left ${
+                    isExpanded ? 'bg-emerald-50/30' : 'hover:bg-slate-50/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden border-2 transition-all ${
+                        isExpanded ? 'border-emerald-500 shadow-lg scale-110' : 'border-white shadow-sm'
+                      }`}>
+                        {emp?.photoUrl ? (
+                          <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full bg-emerald-600 flex items-center justify-center text-white font-black text-xl">
+                            {emp?.firstName?.charAt(0) || 'P'}
+                          </div>
+                        )}
+                      </div>
+                      {isExpanded && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className={`font-black uppercase tracking-tight leading-none mb-2 transition-all ${
+                        isExpanded ? 'text-emerald-900 text-xl' : 'text-slate-900 text-lg'
+                      }`}>
+                        {emp ? `${emp.firstName} ${emp.lastName}` : 'N/A'}
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
+                          {emp?.phone || 'PROFISSIONAL'}
+                        </span>
+                        {isExpanded && (
+                          <motion.span 
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-[10px] text-emerald-600 font-black uppercase tracking-widest flex items-center gap-1"
+                          >
+                            <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                            Visualizando Histórico
+                          </motion.span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-10">
+                    <div className="hidden sm:flex flex-col items-end">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Total de Registros</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-black text-emerald-600 leading-none">{group.punches.length}</span>
+                        <div className="h-4 w-px bg-slate-100" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">Punches</span>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm ${
+                      isExpanded 
+                        ? 'bg-emerald-600 text-white rotate-180 shadow-emerald-200' 
+                        : 'bg-white text-slate-300 rotate-0'
+                    }`}>
+                      <ChevronDown size={22} />
+                    </div>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-8 pb-10">
+                        <div className="overflow-hidden rounded-[2rem] border border-emerald-100/50 bg-white shadow-sm">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-emerald-50/50">
+                                <th className="px-8 py-5 text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Data</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Horário</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Unidade</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Ponto de Acesso</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em] text-right">Ação</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-emerald-50/30">
+                              {sortedPunches.map((p, idx) => {
+                                const unit = units.find(u => u.id === p.unitId);
+                                const isEntry = p.type === 'IN';
+                                return (
+                                  <motion.tr 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    key={idx} 
+                                    className="group/row hover:bg-emerald-50/20 transition-colors"
+                                  >
+                                    <td className="px-8 py-5">
+                                      <div className="flex flex-col">
+                                        <span className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                          {formatDateBR(p.timestamp.split('T')[0])}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                          Calendário
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                      <span className="text-sm font-black text-emerald-600 tabular-nums bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100/50">
+                                        {new Date(p.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                      </span>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                      <div className="flex flex-col">
+                                        <span className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                          {unit?.name || 'N/A'}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                          PROSTAFF UNIT
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                      <div className="flex items-center gap-2 group-hover/row:translate-x-1 transition-transform">
+                                        <div className="w-1 h-3 rounded-full bg-slate-200 group-hover/row:bg-emerald-500 transition-colors" />
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                                          {p.isAdjustment ? 'Registro Manual / Sistema' : `Acesso Físico - Unidade ${unit?.name}`}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-5 text-right">
+                                      <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-sm transition-all group-hover/row:shadow-md ${
+                                        isEntry 
+                                          ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                                          : 'bg-rose-600 text-white hover:bg-rose-700'
+                                      }`}>
+                                        {isEntry ? (
+                                          <>
+                                            <ArrowDownLeft size={16} />
+                                            <span>Entrada</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ArrowUpRight size={16} />
+                                            <span>Saída</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </motion.tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          });
+        })()}
+      </div>
+    </motion.div>
+  );
+}
+
+function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins }: { user: any, employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[] }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
-  const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS'>('STAFFING');
+  const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>('STAFFING');
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
   const [rejectingRequest, setRejectingRequest] = useState<CompanyRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
+  const [expandedInconsistencyEmpId, setExpandedInconsistencyEmpId] = useState<string | null>(null);
   const [selectedAssignmentForDetails, setSelectedAssignmentForDetails] = useState<Assignment | null>(null);
   const selectedAssignmentEmployee = selectedAssignmentForDetails ? employees.find(e => e.id === selectedAssignmentForDetails.employeeId) : null;
 
@@ -5579,7 +6457,8 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
     setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const confirmedAssignments = assignments.filter(a => a.confirmed).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  const confirmedAssignments = assignments.filter(a => a.confirmed && a.date >= today).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Grouping logic for AgencyStaffing
   const groupedConfirmedByDate = confirmedAssignments.reduce((acc, as) => {
@@ -5613,6 +6492,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
   };
 
   const sortedEmployees = [...employees]
+    .filter(e => e.status !== 'INACTIVE')
     .filter(e => (e.firstName + ' ' + e.lastName).toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
       const unit = units.find(u => u.clientId === selectedClientId);
@@ -5623,6 +6503,34 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
       if (filterType === 'RATING') return b.rating - a.rating;
       return a.complaints - b.complaints;
     });
+
+  const handleApproveAdjustment = async (ci: CheckIn) => {
+    try {
+      await updateDocument('checkins', ci.id, { 
+        status: 'APPROVED',
+        approvedBy: user.uid,
+        approvedAt: new Date().toISOString()
+      });
+      toast.success('Ajuste aprovado!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao aprovar ajuste.');
+    }
+  };
+
+  const handleRejectAdjustment = async (ci: CheckIn) => {
+    try {
+      await updateDocument('checkins', ci.id, { 
+        status: 'REJECTED',
+        approvedBy: user.uid,
+        approvedAt: new Date().toISOString()
+      });
+      toast.success('Ajuste recusado!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao recusar ajuste.');
+    }
+  };
 
   const handleAttendRequest = async (req: CompanyRequest) => {
     setActiveRequest(req);
@@ -5904,7 +6812,7 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
         <div className="flex flex-col gap-1">
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Diaria Inteligente</h2>
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Solicitação</h2>
           <p className="text-slate-500 font-medium text-[10px] sm:text-base">Distribua sua equipe com base em performance e disponibilidade.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-xl sm:rounded-[1.5rem] border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
@@ -5924,116 +6832,123 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             onClick={() => setActiveSubTab('REQUESTS')}
             className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'REQUESTS' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            Solicitações
+            Pedidos
+          </button>
+          <button 
+            onClick={() => setActiveSubTab('INCONSISTENCIES')}
+            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSubTab === 'INCONSISTENCIES' ? 'bg-white text-blue-600 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Inconsistência de Ponto
           </button>
         </div>
       </div>
 
       {activeSubTab === 'STAFFING' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-1 space-y-6 sm:space-y-8">
-            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
+        <div className="flex flex-col gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">1</div>
-                  Buscar Profissional
+                  Data da Diaria
                 </h3>
-                {searchTerm && (
-                  <button 
-                    onClick={() => setSearchTerm('')}
-                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
-                  >
-                    Limpar
-                  </button>
-                )}
-              </div>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
-                  <Search size={16} />
-                </div>
                 <input 
-                  type="text" 
-                  placeholder="Nome do profissional..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full p-4 sm:p-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm h-[60px]"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
-                Data da Diaria
-              </h3>
-              <input 
-                type="date" 
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-4 sm:p-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-              />
-            </div>
-
-            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group h-full">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">2</div>
                 Selecionar Parceiro
               </h3>
-              <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
                 {clients
                   .filter(cli => units.some(u => u.clientId === cli.id))
                   .map(cli => (
                   <button 
                     key={cli.id}
                     onClick={() => setSelectedClientId(cli.id)}
-                    className={`w-full p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-all border-2 ${
+                    className={`w-full p-3 rounded-xl flex items-center justify-between transition-all border-2 ${
                       selectedClientId === cli.id 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 translate-x-1' 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200' 
                         : 'bg-slate-50 border-transparent text-slate-600 hover:bg-white hover:border-blue-100'
                     }`}
                   >
                     <div className="text-left">
-                      <p className="font-black text-xs sm:text-sm uppercase tracking-tight">{cli.name}</p>
-                      <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedClientId === cli.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                        Responsável: {cli.managerName}
-                      </p>
+                      <p className="font-black text-[10px] uppercase tracking-tight truncate max-w-[150px]">{cli.name}</p>
                     </div>
-                    {selectedClientId === cli.id && <CheckCircle size={18} className="text-white" />}
+                    {selectedClientId === cli.id && <CheckCircle size={14} className="text-white" />}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
-                Critério de Filtro
-              </h3>
-              <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
-                <button 
-                  onClick={() => setFilterType('RATING')}
-                  className={`flex flex-col items-center justify-center gap-2 py-3 sm:py-4 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
-                    filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <Star size={16} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
-                  Estrelas
-                </button>
-                <button 
-                  onClick={() => setFilterType('COMPLAINTS')}
-                  className={`flex flex-col items-center justify-center gap-2 py-3 sm:py-4 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
-                    filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <AlertCircle size={16} />
-                  Queixas
-                </button>
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
+                  Critério de Filtro
+                </h3>
+                <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
+                  <button 
+                    onClick={() => setFilterType('RATING')}
+                    className={`flex flex-col items-center justify-center gap-2 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                      filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <Star size={16} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
+                    Estrelas
+                  </button>
+                  <button 
+                    onClick={() => setFilterType('COMPLAINTS')}
+                    className={`flex flex-col items-center justify-center gap-2 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                      filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <AlertCircle size={16} />
+                    Queixas
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-        <div className="lg:col-span-2 bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
+          <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
+                Buscar Profissional
+              </h3>
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                <Search size={16} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Nome do profissional..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+              />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">5</div>
@@ -6239,56 +7154,84 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
                                   <h5 className="text-sm font-black text-slate-900 uppercase tracking-widest">{companyName}</h5>
                                   <span className="text-[10px] font-bold text-slate-400">({companyAssignments.length})</span>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                    {companyAssignments.map(as => {
-                                      const emp = employees.find(e => e.id === as.employeeId);
-                                      if (!emp) return null;
+                                <div className="flex flex-col gap-3">
+                                  {companyAssignments.map(as => {
+                                    const emp = employees.find(e => e.id === as.employeeId);
+                                    if (!emp) return null;
 
-                                      return (
-                                        <button 
-                                          key={as.id} 
-                                          onClick={() => setSelectedAssignmentForDetails(as)}
-                                          className="w-full p-5 sm:p-6 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 flex flex-col gap-4 hover:border-emerald-200 hover:bg-white transition-all group text-left"
-                                        >
-                                          <div className="flex items-center gap-3 sm:gap-4">
-                                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
-                                              {emp.photoUrl ? (
-                                                <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                              ) : (
-                                                <UserIcon size={20} className="text-slate-300" />
-                                              )}
-                                            </div>
-                                            <div>
-                                              <p className="font-black text-slate-900 text-sm sm:text-base">{emp.firstName} {emp.lastName}</p>
-                                              <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-widest">Confirmado para {formatDateBR(as.date)}</p>
+                                    const empCi = checkins.filter(ci => ci.employeeId === as.employeeId && formatDateBR(ci.timestamp) === formatDateBR(as.date));
+                                    const dayPunches = [...empCi].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+
+                                    return (
+                                      <button 
+                                        key={as.id} 
+                                        onClick={() => setSelectedAssignmentForDetails(as)}
+                                        className="flex items-center justify-between p-4 sm:p-5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-blue-200 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all text-left group"
+                                      >
+                                        <div className="flex items-center gap-4">
+                                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center bg-white shrink-0">
+                                            {emp.photoUrl ? (
+                                              <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                              <UserIcon size={20} className="text-slate-300" />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <p className="font-black text-slate-900 text-sm sm:text-base leading-tight">
+                                              {emp.firstName} {emp.lastName}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <span className="text-[9px] font-black text-slate-400">CPF: {emp.cpf || 'N/A'}</span>
+                                              <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                              <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{emp.phone}</span>
                                             </div>
                                           </div>
-                                          <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
-                                            {checkins.some(ci => ci.employeeId === as.employeeId && formatDateBR(ci.timestamp) === formatDateBR(as.date)) ? (
-                                              <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600">
-                                                <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                                                <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
-                                                  Presente
-                                                </span>
-                                              </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4 sm:gap-8">
+                                          <div className="hidden md:flex flex-col items-end">
+                                            {dayPunches.length === 0 ? (
+                                              <span className="text-[10px] text-slate-300 font-black uppercase">Sem registros</span>
                                             ) : (
-                                              <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400">
-                                                <Clock size={14} className="sm:w-4 sm:h-4" />
-                                                <span className="text-[9px] sm:text-xs font-black uppercase tracking-widest">
-                                                  Aguardando
-                                                </span>
+                                              <div className="flex gap-2">
+                                                {dayPunches.map((p, pidx) => (
+                                                  <span key={pidx} className={`px-2 py-0.5 rounded-lg text-[9px] font-black border ${
+                                                    p.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                  }`}>
+                                                    {new Date(p.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                  </span>
+                                                ))}
                                               </div>
                                             )}
-                                            <div className="flex items-center gap-1 text-slate-400">
-                                              <Clock size={10} />
-                                              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
-                                                08:00 - 17:00
-                                              </span>
+                                          </div>
+
+                                          <div className="flex items-center gap-3">
+                                            {dayPunches.length === 1 && (
+                                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg border border-rose-100">
+                                                <AlertCircle size={14} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">Incompleto</span>
+                                              </div>
+                                            )}
+                                            {dayPunches.length >= 2 && (
+                                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                                                <CheckCircle size={14} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">Presente</span>
+                                              </div>
+                                            )}
+                                            {dayPunches.length === 0 && (
+                                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200">
+                                                <Clock size={14} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">Aguardando</span>
+                                              </div>
+                                            )}
+                                            <div className="p-2 bg-white rounded-xl text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                                              <ChevronRight size={16} />
                                             </div>
                                           </div>
-                                        </button>
-                                      );
-                                    })}
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
@@ -6302,6 +7245,253 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
             </div>
           )}
         </div>
+      ) : activeSubTab === 'INCONSISTENCIES' ? (
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm space-y-12">
+          {/* Section for Manual Adjustments pending approval */}
+          <div className="space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
+                <Clock size={20} />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Solicitações de Ajuste</h3>
+                <p className="text-slate-400 text-[9px] sm:text-xs font-black uppercase tracking-widest">Colaboradores solicitando correção de ponto manual</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {(() => {
+                const pendingAdjustments = checkins.filter(ci => ci.isAdjustment && ci.status === 'PENDING');
+                const groupedByEmployee = pendingAdjustments.reduce((acc, ci) => {
+                  if (!acc[ci.employeeId]) acc[ci.employeeId] = [];
+                  acc[ci.employeeId].push(ci);
+                  return acc;
+                }, {} as Record<string, CheckIn[]>);
+
+                const employeeIds = Object.keys(groupedByEmployee);
+
+                if (employeeIds.length === 0) {
+                  return (
+                    <div className="col-span-full py-10 text-center font-bold text-slate-300 italic">
+                      Nenhuma solicitação de ajuste pendente.
+                    </div>
+                  );
+                }
+
+                return employeeIds.map(empId => {
+                  const emp = employees.find(e => e.id === empId);
+                  const items = groupedByEmployee[empId];
+                  return (
+                    <div key={empId} className="p-6 sm:p-8 bg-white rounded-[2rem] border border-slate-200 space-y-6 shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+                          {emp?.photoUrl ? (
+                            <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <UserIcon size={24} className="text-slate-300" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-900 text-lg">{emp?.firstName} {emp?.lastName}</p>
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{items.length} {items.length === 1 ? 'Solicitação' : 'Solicitações'}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {items.map(ci => {
+                          const unit = units.find(u => u.id === ci.unitId);
+                          return (
+                            <div key={ci.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tight ${
+                                      ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                                    }`}>
+                                      Aju. {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                    </span>
+                                    <span className="font-black text-slate-900 text-sm">{formatTime(ci.timestamp)} - {formatDateBR(ci.timestamp)}</span>
+                                  </div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{unit?.name}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => handleApproveAdjustment(ci)}
+                                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-emerald-700 transition-all active:scale-95"
+                                  >
+                                    Aprovar
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRejectAdjustment(ci)}
+                                    className="px-6 py-2.5 bg-white text-rose-600 border border-rose-100 rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-rose-50 transition-all active:scale-95"
+                                  >
+                                    Recusar
+                                  </button>
+                                </div>
+                              </div>
+                              {ci.adjustmentReason && (
+                                <div className="bg-white/50 p-3 rounded-lg border border-slate-100">
+                                  <p className="text-xs text-slate-600 italic">" {ci.adjustmentReason} "</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          <div className="space-y-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Inconsistências de Ponto</h3>
+                <p className="text-slate-400 text-[10px] sm:text-sm font-medium">Escalações com registros incompletos (apenas entrada ou apenas saída).</p>
+              </div>
+              <div className="px-4 py-2 bg-rose-50 rounded-2xl border border-rose-100 w-fit">
+                <span className="text-[9px] sm:text-[10px] font-black text-rose-600 uppercase tracking-widest">
+                  Ações Necessárias
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+            {(() => {
+              const currentAgencyIdValue = selectedAgencyId || agencyId;
+              const inconsistenciesByEmployee = assignments
+                .filter(as => as.agencyId === currentAgencyIdValue)
+                .reduce((acc, as) => {
+                  const dayCi = checkins.filter(ci => 
+                    ci.employeeId === as.employeeId && 
+                    formatDateBR(ci.timestamp) === formatDateBR(as.date)
+                  );
+                  if (dayCi.length === 1) {
+                    if (!acc[as.employeeId]) acc[as.employeeId] = [];
+                    acc[as.employeeId].push({ as, ci: dayCi[0] });
+                  }
+                  return acc;
+                }, {} as Record<string, { as: Assignment, ci: CheckIn }[]>);
+
+              const employeeIds = Object.keys(inconsistenciesByEmployee);
+
+              if (employeeIds.length === 0) {
+                return (
+                  <div className="py-20 text-center space-y-4">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                      <CheckCircle size={40} />
+                    </div>
+                    <p className="text-slate-400 font-medium">Nenhuma inconsistência detectada no momento.</p>
+                  </div>
+                );
+              }
+
+              return employeeIds.map(empId => {
+                const emp = employees.find(e => e.id === empId);
+                const incidents = inconsistenciesByEmployee[empId].sort((a, b) => new Date(b.as.date).getTime() - new Date(a.as.date).getTime());
+                const isExpanded = expandedInconsistencyEmpId === empId;
+
+                return (
+                  <div key={empId} className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm transition-all mb-4 last:mb-0">
+                    <button 
+                      onClick={() => setExpandedInconsistencyEmpId(isExpanded ? null : empId)}
+                      className="w-full p-6 sm:p-8 flex items-center justify-between hover:bg-slate-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-4 sm:gap-6">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center bg-slate-100 shrink-0">
+                          {emp?.photoUrl ? (
+                            <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <UserIcon size={24} className="text-slate-300" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{emp?.firstName} {emp?.lastName}</h4>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 mt-1">
+                            {incidents.length} {incidents.length === 1 ? 'Inconsistência' : 'Inconsistências'} detectada(s)
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`p-3 rounded-xl transition-all ${isExpanded ? 'bg-slate-900 text-white shadow-lg rotate-180' : 'bg-slate-100 text-slate-400 rotate-0'}`}>
+                        <ChevronDown size={20} />
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-slate-50/50 border-t border-slate-100"
+                        >
+                          <div className="p-4 sm:p-8 space-y-6">
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário / Data</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidade</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Operação</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ações</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {incidents.map((inc, idx) => {
+                                    const client = clients.find(c => c.id === inc.as.clientId);
+                                    return (
+                                      <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                        <td className="p-4 sm:p-6">
+                                          <div className="flex flex-col">
+                                            <span className="font-black text-slate-900 text-sm">{new Date(inc.ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDateBR(inc.as.date)}</span>
+                                          </div>
+                                        </td>
+                                        <td className="p-4 sm:p-6">
+                                          <p className="font-black text-slate-900 text-sm">{client?.name}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {inc.ci.unitId}</p>
+                                        </td>
+                                        <td className="p-4 sm:p-6 text-center">
+                                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tight ${
+                                            inc.ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                                          }`}>
+                                            {inc.ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                          </span>
+                                        </td>
+                                        <td className="p-4 sm:p-6 text-center">
+                                          <button 
+                                            onClick={() => {
+                                              const message = `Olá ${emp?.firstName}! Notamos que seu ponto do dia ${formatDateBR(inc.as.date)} está incompleto. Por favor, acesse o app e solicite o ajuste do ponto para que possamos processar seu pagamento.`;
+                                              const whatsappUrl = `https://wa.me/55${emp?.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                                              window.open(whatsappUrl, '_blank');
+                                            }}
+                                            className="px-4 py-2.5 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-rose-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 mx-auto"
+                                          >
+                                            <AlertTriangle size={14} />
+                                            Solicitar Ajuste
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      </div>
       ) : (
         <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm">
           <div className="flex items-center gap-4 mb-10">
@@ -7932,7 +9122,7 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
     >
       <div className="flex flex-col gap-2">
         <h2 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          Diaristas <Star size={32} className="fill-yellow-400 text-yellow-400" />
+          Solicitação <Star size={32} className="fill-yellow-400 text-yellow-400" />
         </h2>
         <p className="text-slate-500 font-medium">Selecione os profissionais preferidos ou solicite reforço para suas unidades.</p>
       </div>
@@ -8663,7 +9853,7 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
               <Users size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Diaristas</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Relatório de Solicitação</h3>
               <p className="text-sm text-slate-500 mt-1">Exporta nome, CPF, telefone, dias trabalhados e valor total.</p>
             </div>
             <div className="flex gap-3 w-full">
@@ -9277,34 +10467,44 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
   const [isSubmittingEval, setIsSubmittingEval] = useState(false);
+  
+  const [editingRequest, setEditingRequest] = useState<CompanyRequest | null>(null);
+  const [editQuantity, setEditQuantity] = useState(1);
+  const [editDate, setEditDate] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-  const myAssignments = assignments.filter(a => {
+  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+  const allAssignments = assignments.filter(a => {
     if (unitId) {
       return a.unitId === unitId || (!a.unitId && units.find(u => u.id === unitId)?.clientId === a.clientId);
     }
     return units.some(u => (a.unitId ? u.id === a.unitId : u.clientId === a.clientId) && u.companyId === companyId);
   });
 
-  const myRequests = companyRequests.filter(r => {
+  const allRequests = companyRequests.filter(r => {
     if (unitId) {
       return units.find(u => u.id === unitId)?.clientId === r.clientId;
     }
     return r.companyId === companyId;
   });
 
+  const myAssignments = allAssignments.filter(a => a.date >= today);
+  const myRequests = allRequests.filter(r => r.date >= today);
+
   const allDates = Array.from(new Set([
     ...myAssignments.map(a => a.date),
     ...myRequests.map(r => r.date)
-  ])).sort((a, b) => b.localeCompare(a));
+  ]))
+    .sort((a, b) => b.localeCompare(a));
 
   const totalPages = Math.ceil(allDates.length / itemsPerPage);
   const paginatedDates = allDates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   
-  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayStaff = myAssignments.filter(a => a.date === today);
 
   // Chart Data Preparation
-  const statusCounts = myAssignments.reduce((acc, curr) => {
+  const statusCounts = allAssignments.reduce((acc, curr) => {
     acc[curr.status] = (acc[curr.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -9323,7 +10523,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
   }).reverse();
 
   const barData = last6Months.map(month => {
-    const monthAssignments = myAssignments.filter(a => a.date.startsWith(month) && a.status === 'COMPLETED');
+    const monthAssignments = allAssignments.filter(a => a.date.startsWith(month) && a.status === 'COMPLETED');
     const expenses = monthAssignments.reduce((acc, curr) => acc + curr.value, 0);
     return {
       name: month.split('-').reverse().join('/'),
@@ -9335,7 +10535,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
     if (!evaluatingEmployee) return;
     setIsSubmittingEval(true);
     try {
-      const assignment = myAssignments.find(a => a.employeeId === evaluatingEmployee.id && a.status === 'COMPLETED');
+      const assignment = allAssignments.find(a => a.employeeId === evaluatingEmployee.id && a.status === 'COMPLETED');
       const newFeedback: Omit<Feedback, 'id'> = {
         agencyId: evaluatingEmployee.agencyId,
         employeeId: evaluatingEmployee.id,
@@ -9370,6 +10570,34 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
         console.error('Error cancelling request:', error);
         toast.error('Erro ao cancelar solicitação.');
       }
+    }
+  };
+
+  const handleOpenEdit = (req: CompanyRequest) => {
+    setEditingRequest(req);
+    setEditQuantity(req.quantity);
+    setEditDate(req.date);
+  };
+
+  const handleUpdateItems = async () => {
+    if (!editingRequest) return;
+    if (editDate < today) {
+      toast.error('A data não pode ser anterior a hoje.');
+      return;
+    }
+    setIsSubmittingEdit(true);
+    try {
+      await updateDocument('companyRequests', editingRequest.id, {
+        quantity: editQuantity,
+        date: editDate
+      });
+      toast.success('Solicitação atualizada com sucesso!');
+      setEditingRequest(null);
+    } catch (error) {
+      console.error('Error updating request:', error);
+      toast.error('Erro ao atualizar solicitação.');
+    } finally {
+      setIsSubmittingEdit(false);
     }
   };
 
@@ -9706,31 +10934,89 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             ) : (
               myRequests.map(req => {
                 const unit = units.find(u => u.clientId === req.clientId);
+                const assignedStaff = allAssignments.filter(a => a.date === req.date && a.clientId === req.clientId && a.status !== 'CANCELLED');
+                
                 return (
-                  <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
-                    <div>
-                      <p className="font-black text-slate-900 text-sm">Solicitação para {unit?.name || 'Unidade'}</p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                        {req.quantity} Profissionais {req.employeeIds?.length > 0 ? '(Específicos)' : '(Qualquer)'} - {formatDateBR(req.date)}
-                      </p>
+                  <div key={req.id} className="flex flex-col gap-4 p-6 rounded-3xl border border-slate-100 bg-white shadow-sm hover:shadow-xl hover:shadow-slate-900/5 transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all ${
+                          req.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          req.status === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                          'bg-red-50 text-red-600 border-rose-100'
+                        }`}>
+                          <Users size={24} />
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-900 text-base uppercase tracking-tight">Solicitação para {unit?.name || 'Unidade'}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            {req.quantity} Profissionais {req.employeeIds?.length > 0 ? '(Específicos)' : '(Qualquer)'} - {formatDateBR(req.date)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[9px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest border transition-all ${
+                          req.status === 'PENDING' ? 'bg-amber-100/50 text-amber-700 border-amber-200' :
+                          req.status === 'ACCEPTED' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
+                          'bg-red-100/50 text-rose-700 border-rose-200'
+                        }`}>
+                          {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
+                        </span>
+                        
+                        {req.status === 'PENDING' && (
+                          <>
+                            <button 
+                              onClick={() => handleOpenEdit(req)}
+                              className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                            >
+                              Editar
+                            </button>
+                            <button 
+                              onClick={() => handleCancelRequest(req.id)}
+                              className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100"
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-[10px] px-4 py-1.5 rounded-lg font-black uppercase tracking-widest ${
-                        req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                        req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
-                      </span>
-                      {req.status === 'PENDING' && (
-                        <button 
-                          onClick={() => handleCancelRequest(req.id)}
-                          className="text-[10px] font-black text-red-600 hover:text-red-800 uppercase tracking-widest transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                    </div>
+
+                    {/* Assigned Staff Section */}
+                    {req.status === 'ACCEPTED' && (
+                      <div className="mt-4 pt-6 border-t border-slate-50 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Pessoas Escaladas ({assignedStaff.length}/{req.quantity})</h5>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {assignedStaff.map(as => {
+                            const emp = employees.find(e => e.id === as.employeeId);
+                            if (!emp) return null;
+                            return (
+                              <div key={as.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-md transition-all">
+                                <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center bg-white group-hover:scale-105 transition-transform">
+                                  {emp.photoUrl ? (
+                                    <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white font-black text-xs">
+                                      {emp.firstName?.charAt(0)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-black text-slate-900 text-xs truncate uppercase tracking-tight">{emp.firstName} {emp.lastName}</p>
+                                  <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">{emp.phone}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {assignedStaff.length === 0 && (
+                            <p className="text-xs font-medium text-slate-400 italic py-2">Aguardando definição da agência...</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -9813,6 +11099,82 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
       </motion.div>
 
       <AnimatePresence>
+        {editingRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Edit2 size={20} />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Editar Solicitação</h3>
+                  </div>
+                  <button onClick={() => setEditingRequest(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X size={24} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Quantidade de Profissionais</label>
+                    <div className="relative group">
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={20} />
+                      <input 
+                        type="number"
+                        min="1"
+                        value={editQuantity}
+                        onChange={(e) => setEditQuantity(parseInt(e.target.value))}
+                        className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Data da Diária</label>
+                    <div className="relative group">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={20} />
+                      <input 
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        min={today}
+                        className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => setEditingRequest(null)}
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                  >
+                    Descartar
+                  </button>
+                  <button 
+                    onClick={handleUpdateItems}
+                    disabled={isSubmittingEdit}
+                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingEdit ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={16} />
+                    )}
+                    <span>Salvar Alterações</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {evaluatingEmployee && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
