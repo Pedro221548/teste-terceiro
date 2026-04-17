@@ -201,20 +201,6 @@ export function LandingPage({
                 <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/10 blur-3xl" />
               </div>
 
-              {/* Float Badge */}
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-3"
-              >
-                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                  <Activity size={20} />
-                </div>
-                <div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Status em Tempo Real</div>
-                  <div className="text-sm font-black text-slate-800">98.2% de Assiduidade</div>
-                </div>
-              </motion.div>
             </motion.div>
           </div>
         </section>
