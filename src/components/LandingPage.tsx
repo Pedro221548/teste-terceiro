@@ -43,7 +43,7 @@ export function LandingPage({
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F4FBF7] border-b border-emerald-100/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)} translate="no">
             <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="w-[200px] h-[140px] object-contain" />
           </div>
           <nav className="hidden md:flex items-center gap-8">
@@ -75,7 +75,7 @@ export function LandingPage({
               >
                 <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight font-display mb-6">
                   Gestão <br className="hidden lg:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-mono">Inteligente</span> <br className="hidden lg:block" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-mono" translate="no">Inteligente</span> <br className="hidden lg:block" />
                   de Diaristas.
                 </h1>
                 <div className="h-1.5 w-24 bg-[#10A34A] rounded-full mx-auto lg:mx-0 mb-6" />
@@ -509,7 +509,7 @@ export function LandingPage({
       {/* Footer */}
       <footer className="bg-slate-900 py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" translate="no">
             <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-8 w-auto brightness-0 invert opacity-50" />
           </div>
           <div className="flex items-center gap-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">
