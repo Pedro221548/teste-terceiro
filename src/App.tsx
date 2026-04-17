@@ -5781,12 +5781,77 @@ function AgencyStaffing({ employees, assignments, clients, getScaleValue, compan
 
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8">
-                <div className="py-12 text-center space-y-4">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                    <Calendar size={32} />
-                  </div>
-                  <p className="text-slate-400 font-medium">Informações da escala confirmada.</p>
-                </div>
+                {(() => {
+                  const dayCheckins = checkins.filter(ci => {
+                    const isSameEmployee = ci.employeeId === selectedAssignmentForDetails.employeeId;
+                    const ciDate = formatDateBR(ci.timestamp);
+                    const assignmentDate = formatDateBR(selectedAssignmentForDetails.date);
+                    const isSameDay = ciDate === assignmentDate;
+                    
+                    if (isSameEmployee && !isSameDay) {
+                      console.log('Check-in found for employee but different day:', { ciDate, assignmentDate, ciTimestamp: ci.timestamp });
+                    }
+                    
+                    return isSameEmployee && isSameDay;
+                  });
+
+                  if (dayCheckins.length > 0) {
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {dayCheckins
+                          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                          .map((ci, idx) => (
+                            <div key={ci.id || idx} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                  ci.type === 'IN' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                                }`}>
+                                  {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                </div>
+                                <span className="text-xs font-bold text-slate-400">
+                                  {new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              
+                              <div className="aspect-square rounded-2xl overflow-hidden bg-slate-200 shadow-inner border-2 border-white">
+                                {ci.photoUrl ? (
+                                  <img 
+                                    src={ci.photoUrl} 
+                                    alt={`Foto de ${ci.type === 'IN' ? 'Entrada' : 'Saída'}`}
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                    <Camera size={32} />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 text-slate-500">
+                                <MapPin size={14} />
+                                <span className="text-[10px] font-bold uppercase tracking-tight truncate">
+                                  {units.find(u => u.id === ci.unitId)?.name || 'Unidade não identificada'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="py-12 text-center space-y-4">
+                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                        <Calendar size={32} />
+                      </div>
+                      <p className="text-slate-400 font-medium">Nenhum registro de ponto encontrado para este dia.</p>
+                      <p className="text-[10px] text-slate-300 uppercase tracking-widest">
+                        Data da Escala: {formatDateBR(selectedAssignmentForDetails.date)}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Modal Footer */}
