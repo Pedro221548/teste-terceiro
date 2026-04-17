@@ -35,6 +35,7 @@ export function LandingPage({
   plans
 }: LandingPageProps) {
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   return (
@@ -43,15 +44,20 @@ export function LandingPage({
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F4FBF7] border-b border-emerald-100/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="w-[200px] h-[140px] object-contain" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="w-[200px] h-[140px] object-contain" />
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#inicio" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Início</a>
             <a href="#planos" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Planos</a>
           </nav>
           <div className="flex items-center gap-6">
-            <a href="#login" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Login</a>
-            <a href="/?role=AGENCY_REGISTRATION" className="px-6 py-2.5 bg-[#10A34A] text-white rounded-lg font-bold text-sm hover:bg-[#0D8A3E] transition-colors shadow-lg shadow-emerald-500/20">Comece já!</a>
+            <button 
+              onClick={() => setShowLogin(true)}
+              className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors"
+            >
+              Entrar
+            </button>
+            <a href="/?role=AGENCY_REGISTRATION" className="px-6 py-2.5 bg-[#10A34A] text-white rounded-lg font-bold text-sm hover:bg-[#0D8A3E] transition-colors shadow-lg shadow-emerald-500/20">Criar Conta</a>
           </div>
         </div>
       </header>
@@ -122,117 +128,219 @@ export function LandingPage({
           </div>
         </section>
 
-        {/* Login Section */}
-        <section id="login" className="py-24 bg-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:40px_40px]" />
-          <div className="max-w-xl mx-auto px-6 relative z-10">
-            <div className="bg-white p-8 sm:p-12 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100">
-              <div className="text-center mb-10">
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight font-display mb-2">Acesso Restrito</h3>
-                <p className="text-slate-500 font-medium">Insira suas credenciais para continuar.</p>
-              </div>
+        {/* Platform Demonstration Section */}
+        <section className="py-24 bg-[#F8F9FA] border-y border-slate-100 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-20">
+              <span className="px-4 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 inline-block">
+                Interface & Experiência
+              </span>
+              <h3 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-display">Demonstração da Plataforma</h3>
+              <p className="text-slate-500 font-medium mt-4 max-w-2xl mx-auto italic">
+                Visualize como a nossa tecnologia conecta agências, empresas e colaboradores em uma experiência integrada e fluida.
+              </p>
+            </div>
 
-              {isForgotPassword ? (
-                <form onSubmit={handleResetPassword} className="space-y-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Recuperação</label>
-                    <div className="relative">
-                      <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="email" 
-                        placeholder="seu@email.com"
-                        className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        required
-                      />
+            <div className="space-y-32">
+              {[
+                {
+                  title: "Dashboard de Gestão Operacional",
+                  description: "Controle total da sua agência em um painel robusto. Gerencie faturamento, contratos, escalas e relatórios operacionais com precisão.",
+                  image: "https://i.imgur.com/ptkQ4XA.png",
+                  reverse: false,
+                  color: "bg-blue-600"
+                },
+                {
+                  title: "Perfil da Empresa Solicitante",
+                  description: "Transparência total para o seu cliente. A empresa solicitante acompanha as escalas em tempo real, avalia a equipe e solicita novos profissionais com apenas dois cliques.",
+                  image: "https://i.imgur.com/puLhTdk.png",
+                  reverse: true,
+                  color: "bg-emerald-600"
+                },
+                {
+                  title: "Perfil do Funcionário",
+                  description: "O dia a dia do colaborador simplificado. Agenda de diárias, notificações de novas escalas e registro de ponto via QR Code com validação por foto.",
+                  image: "https://i.imgur.com/mgjfmoo.png",
+                  reverse: false,
+                  color: "bg-amber-600"
+                }
+              ].map((profile, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: profile.reverse ? 50 : -50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8 }}
+                  className={`flex flex-col ${profile.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-24`}
+                >
+                  <div className="flex-1 space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${profile.color} flex items-center justify-center text-white font-black text-xs shadow-lg`}>
+                        0{i + 1}
+                      </div>
+                      <h4 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{profile.title}</h4>
+                    </div>
+                    <p className="text-lg text-slate-500 font-medium leading-relaxed">
+                      {profile.description}
+                    </p>
+                    <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-2 border-slate-100 pl-4 py-1">
+                      Interface Web & Mobile • 100% Responsivo • Tempo Real
                     </div>
                   </div>
-
-                  {resetStatus === 'SUCCESS' && (
-                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-bold flex items-center gap-3">
-                      <CheckCircle2 size={18} />
-                      E-mail enviado! Verifique sua caixa de entrada.
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <button 
-                      type="submit" 
-                      disabled={resetStatus === 'LOADING'}
-                      className="w-full py-4 bg-[#10A34A] text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                  <div className="flex-1 relative group">
+                    <div className="absolute inset-0 bg-slate-900/5 rounded-3xl -rotate-2 group-hover:rotate-0 transition-transform duration-500" />
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-200 bg-white"
                     >
-                      {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link'}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setIsForgotPassword(false)}
-                      className="w-full py-2 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
-                    >
-                      Voltar ao Login
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleEmailLogin} className="space-y-6">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
-                    <div className="relative">
-                      <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="email" 
-                        placeholder="admin@stafflink.com"
-                        className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        required
+                      <img 
+                        src={profile.image} 
+                        alt={profile.title} 
+                        className="w-full h-auto object-cover"
+                        referrerPolicy="no-referrer"
                       />
-                    </div>
+                    </motion.div>
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between ml-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                      <button 
-                        type="button"
-                        onClick={() => setIsForgotPassword(true)}
-                        className="text-[10px] font-black text-[#10A34A] uppercase tracking-widest hover:text-[#0D8A3E] transition-colors"
-                      >
-                        Esqueceu a senha?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="password" 
-                        placeholder="••••••••"
-                        className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {loginError && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-bold">
-                      <AlertCircle size={18} />
-                      {loginError}
-                    </div>
-                  )}
-
-                  <button 
-                    type="submit" 
-                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-3 mt-4"
-                  >
-                    Entrar na Plataforma
-                    <ArrowRight size={18} />
-                  </button>
-                </form>
-              )}
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
+
+        {/* Login Modal */}
+        <AnimatePresence>
+          {showLogin && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowLogin(false);
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="max-w-xl w-full relative z-10"
+              >
+                <div className="bg-white p-8 sm:p-12 rounded-[2rem] shadow-2xl border border-slate-100 relative overflow-hidden">
+                  <button 
+                    onClick={() => setShowLogin(false)}
+                    className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+
+                  <div className="text-center mb-10">
+                    <h3 className="text-3xl font-black text-slate-900 tracking-tight font-display mb-2">Acesso Restrito</h3>
+                    <p className="text-slate-500 font-medium">Insira suas credenciais para continuar.</p>
+                  </div>
+
+                  {isForgotPassword ? (
+                    <form onSubmit={handleResetPassword} className="space-y-8">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail de Recuperação</label>
+                        <div className="relative">
+                          <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                          <input 
+                            type="email" 
+                            placeholder="seu@email.com"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {resetStatus === 'SUCCESS' && (
+                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-bold flex items-center gap-3">
+                          <CheckCircle2 size={18} />
+                          E-mail enviado! Verifique sua caixa de entrada.
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        <button 
+                          type="submit" 
+                          disabled={resetStatus === 'LOADING'}
+                          className="w-full py-4 bg-[#10A34A] text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                        >
+                          {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link'}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setIsForgotPassword(false)}
+                          className="w-full py-2 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+                        >
+                          Voltar ao Login
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleEmailLogin} className="space-y-6">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                        <div className="relative">
+                          <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                          <input 
+                            type="email" 
+                            placeholder="admin@stafflink.com"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            value={emailInput}
+                            onChange={(e) => setEmailInput(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                          <button 
+                            type="button"
+                            onClick={() => setIsForgotPassword(true)}
+                            className="text-[10px] font-black text-[#10A34A] uppercase tracking-widest hover:text-[#0D8A3E] transition-colors"
+                          >
+                            Esqueceu a senha?
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                          <input 
+                            type="password" 
+                            placeholder="••••••••"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {loginError && (
+                        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-bold">
+                          <AlertCircle size={18} />
+                          {loginError}
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit" 
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-3 mt-4"
+                      >
+                        Entrar na Plataforma
+                        <ArrowRight size={18} />
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Plans Section */}
         <section id="planos" className="py-24 bg-slate-50">
@@ -276,9 +384,9 @@ export function LandingPage({
                       <h4 className="font-black text-slate-900 uppercase tracking-tight text-xl mb-2">{plan.name}</h4>
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-black text-slate-900 tracking-tighter">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+                          {plan.price === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
                         </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">/mês</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{plan.price === 0 ? '/período' : '/mês'}</span>
                       </div>
                     </div>
 
@@ -402,7 +510,7 @@ export function LandingPage({
       <footer className="bg-slate-900 py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-8 w-auto brightness-0 invert opacity-50" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-8 w-auto brightness-0 invert opacity-50" />
           </div>
           <div className="flex items-center gap-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">
             <span>© 2026 ProStaff Brasil</span>

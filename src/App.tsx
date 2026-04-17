@@ -180,12 +180,12 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   setIsDarkMode: (dark: boolean) => void
 }) {
   const menuItems: MenuItem[] = role === 'ADMIN' ? [
-    { id: 'admin_dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
     { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Painel de controle', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
@@ -198,7 +198,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
-    { id: 'manager_dashboard', label: 'Minhas Diarias', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
     { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
@@ -208,6 +208,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   ] : [
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
   ];
 
@@ -232,12 +233,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center justify-center">
-              <img 
-                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
-                alt="ProStaff Brasil" 
-                className="h-40 w-full object-contain"
-                referrerPolicy="no-referrer"
-              />
+              <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-40 w-full object-contain" fallback-src="https://picsum.photos/seed/agency/200" />
             </div>
           </div>
 
@@ -305,7 +301,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
 }) {
   const getTitle = () => {
     switch (activeTab) {
-      case 'admin_dashboard': return 'Dashboard Super Admin';
+      case 'admin_dashboard': return 'Painel Super Admin';
       case 'admin_agencies': return 'Gestão de Agências';
       case 'admin_plans': return 'Planos de Assinatura';
       case 'admin_companies': return 'Gestão de Empresas';
@@ -320,7 +316,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
       case 'feedbacks': return 'Feedbacks & Avaliações';
       case 'user_management': return 'Gestão de Usuários';
       case 'profile': return 'Meu Perfil Profissional';
-      case 'manager_dashboard': return 'Minhas Diarias';
+      case 'manager_dashboard': return 'Início';
       case 'evaluate_team': return 'Avaliação de Equipe';
       case 'company_diaristas': return 'Equipe de Solicitação';
       case 'company_profile': return 'Perfil da Empresa';
@@ -342,11 +338,11 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
             <Menu size={20} />
           </button>
           <div className="lg:hidden flex items-center">
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logo" className="h-14 w-auto" referrerPolicy="no-referrer" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-14 w-auto" referrerPolicy="no-referrer" />
           </div>
           <div className="hidden sm:block">
             <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display sm:max-w-none">{getTitle()}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ProStaff Brasil Platform</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plataforma ProStaff Brasil</p>
           </div>
         </div>
 
@@ -357,7 +353,7 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
             </p>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
-            <img src={userPhoto || user.photoURL || "https://picsum.photos/seed/user/100"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={userPhoto || user.photoURL || "https://picsum.photos/seed/user/100"} alt="Foto de Perfil" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
         </div>
       </div>
@@ -609,7 +605,7 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
               </div>
               
               <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200 mb-8 flex flex-col items-center justify-center">
-                <div className="hidden">
+                <div className="absolute opacity-0 pointer-events-none">
                   <QRCodeCanvas 
                     id="unit-qr-canvas"
                     value={selectedUnit.id} 
@@ -619,7 +615,7 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
                   />
                 </div>
                 <QRCodeSVG value={selectedUnit.id} size={200} level="H" includeMargin={true} />
-                <p className="mt-6 font-black text-slate-900 uppercase tracking-widest text-xs">{selectedUnit.name}</p>
+                <p className="mt-6 font-black text-slate-900 uppercase tracking-widest text-xs uppercase">{selectedUnit.name}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {selectedUnit.id}</p>
               </div>
 
@@ -1298,7 +1294,7 @@ export default function App() {
         const defaultPlans: Plan[] = [
           {
             id: 'STARTER',
-            name: 'Plano Trial (1 Mês)',
+            name: 'Plano Grátis (Trial)',
             price: 0,
             maxEmployees: 50,
             maxCompanies: 10,
@@ -2246,6 +2242,16 @@ export default function App() {
                     />
                   </div>
                 )}
+                {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
+                  <div key="employee-ponto">
+                    <SimplePonto 
+                      user={user}
+                      employees={employees}
+                      units={units}
+                      checkins={checkins}
+                    />
+                  </div>
+                )}
                 {role === 'EMPLOYEE' && activeTab === 'employee_schedule' && (
                   <div key="employee-schedule">
                     <EmployeeSchedule 
@@ -2423,7 +2429,7 @@ function BottomNav({ role, activeTab, setActiveTab }: {
   ] : [
     { id: 'employee_profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
-    { id: 'employee_ponto', label: 'PONTO', icon: Scan, color: 'text-accent-rose bg-rose-50' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
   ];
 
   return (
@@ -3962,7 +3968,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                                         </div>
                                         
                                         <div className="flex-1 min-w-0">
-                                          <p className="font-black text-slate-900 text-sm sm:text-base tracking-tight truncate uppercase leading-tight">
+                                          <p className="font-black text-slate-900 text-sm sm:text-base tracking-tight uppercase leading-tight">
                                             {emp?.firstName} {emp?.lastName}
                                           </p>
                                           <p className="text-[9px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1">
@@ -6787,7 +6793,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
 
                               <div className="flex items-center gap-2 text-slate-500">
                                 <MapPin size={14} />
-                                <span className="text-[10px] font-bold uppercase tracking-tight truncate">
+                                <span className="text-[10px] font-bold uppercase tracking-tight">
                                   {units.find(u => u.id === ci.unitId)?.name || 'Unidade não identificada'}
                                 </span>
                               </div>
@@ -8380,7 +8386,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                           <MapPin size={16} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{unit.name}</p>
+                          <p className="text-xs sm:text-sm font-bold text-slate-700">{unit.name}</p>
                           {unit.location && (
                             <a 
                               href={unit.location.startsWith('http') ? unit.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.location)}`}
@@ -10482,7 +10488,7 @@ function ProfileInfoItem({ icon, label, value, color = 'slate', valueColor }: { 
         </div>
         <div className="min-w-0">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-          <p className={`text-sm font-bold truncate ${valueColor || 'text-slate-700'}`} title={value}>{value}</p>
+          <p className={`text-sm font-bold ${valueColor || 'text-slate-700'}`} title={value}>{value}</p>
         </div>
       </div>
     </div>
@@ -10551,6 +10557,14 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
   const paginatedDates = allDates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   
   const todayStaff = myAssignments.filter(a => a.date === today);
+
+  const [expandedDates, setExpandedDates] = useState<string[]>([today]);
+
+  const toggleDate = (date: string) => {
+    setExpandedDates(prev => 
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
+    );
+  };
 
   // Chart Data Preparation
   const statusCounts = allAssignments.reduce((acc, curr) => {
@@ -10730,10 +10744,13 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                   const isToday = date === today;
 
                   return (
-                    <div key={date} className={`transition-colors ${isToday ? 'bg-blue-50/30' : 'hover:bg-slate-50/30'}`}>
-                      <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100/50 bg-slate-50/50">
+                    <div key={date} className={`transition-colors border-b border-slate-100 last:border-0 ${isToday ? 'bg-blue-50/10' : 'hover:bg-slate-50/30'}`}>
+                      <div 
+                        onClick={() => toggleDate(date)}
+                        className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white hover:bg-slate-50 transition-colors cursor-pointer group"
+                      >
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isToday ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-white text-slate-400 border border-slate-200'}`}>
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 ${isToday ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
                             <Calendar size={20} />
                           </div>
                           <div>
@@ -10750,10 +10767,22 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                             </p>
                           </div>
                         </div>
+                        <div className={`p-2 rounded-xl bg-slate-100 text-slate-400 transition-transform duration-300 ${expandedDates.includes(date) ? 'rotate-180 bg-blue-50 text-blue-600' : ''}`}>
+                          <ChevronDown size={20} />
+                        </div>
                       </div>
 
-                      <div className="p-6 sm:p-8 space-y-6">
-                        {dateRequests.map(req => {
+                      <AnimatePresence>
+                        {expandedDates.includes(date) && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-6 sm:p-8 pt-0 sm:pt-0 space-y-6">
+                              {dateRequests.map(req => {
                           const unit = units.find(u => u.clientId === req.clientId);
                           return (
                             <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
@@ -10824,9 +10853,12 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                           );
                         })}
                       </div>
-                    </div>
-                  );
-                })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
 
                 {allDates.length === 0 && (
                   <div className="p-12 text-center">
@@ -13152,14 +13184,14 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-2">
               <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm">
                 {loginEmail}
               </div>
             </div>
             {personalEmail && (
               <div className="space-y-2">
                 <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm truncate">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm">
                   {personalEmail}
                 </div>
               </div>
