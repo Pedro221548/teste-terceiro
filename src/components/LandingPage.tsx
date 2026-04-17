@@ -67,7 +67,7 @@ export function LandingPage({
         <section id="inicio" className="min-h-[calc(100vh-5rem)] flex items-center bg-[#F4FBF7] relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,163,74,0.05),transparent_50%)]" />
           <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col lg:flex-row items-center gap-16 relative z-10">
-            <div className="flex-1 space-y-8 text-center lg:text-left">
+            <div className="flex-1 space-y-8 text-left">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -75,17 +75,17 @@ export function LandingPage({
               >
                 <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight font-display mb-6">
                   Gestão <br className="hidden lg:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-mono" translate="no">Inteligente</span> <br className="hidden lg:block" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-sans" translate="no">Inteligente</span> <br className="hidden lg:block" />
                   de Diaristas.
                 </h1>
-                <div className="h-1.5 w-24 bg-[#10A34A] rounded-full mx-auto lg:mx-0 mb-6" />
+                <div className="h-1.5 w-24 bg-[#10A34A] rounded-full mb-6" />
               </motion.div>
 
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-lg text-slate-600 font-medium leading-relaxed max-w-xl mx-auto lg:mx-0"
+                className="text-lg text-slate-600 font-medium leading-relaxed max-w-xl"
               >
                 Automatize sua agência com a plataforma líder em controle operacional e satisfação do cliente.
               </motion.p>
@@ -94,7 +94,7 @@ export function LandingPage({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start"
+                className="flex flex-col sm:flex-row items-center gap-4 justify-start"
               >
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
                   <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-[#10A34A] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-xl shadow-emerald-500/20 w-full text-center">
