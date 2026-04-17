@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Building2, Users, HelpCircle, ChevronDown, Phone, X } from 'lucide-react';
+import { Mail, Lock, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Building2, Users, HelpCircle, ChevronDown, Phone, X, TrendingUp, Calendar, DollarSign, Layers, Layout } from 'lucide-react';
 import { Plan } from '../types';
 
 interface LandingPageProps {
@@ -112,18 +112,109 @@ export function LandingPage({
             </div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, type: 'spring' }}
-              className="flex-1 relative rounded-[2rem] overflow-hidden border border-slate-200 shadow-2xl shadow-slate-200/50 group"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="flex-1 relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#10A34A]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10" />
-              <img 
-                src="https://i.postimg.cc/DzDWGjNx/Chat-GPT-Image-30-de-mar-de-2026-02-01-43.png" 
-                alt="ProStaff Brasil Dashboard" 
-                className="w-full h-auto object-cover group-hover:scale-105 transition-all duration-1000"
-                referrerPolicy="no-referrer"
-              />
+              {/* Dashboard Mockup - 100% Code Based (Fast Render) */}
+              <div className="relative rounded-[2rem] bg-slate-100 p-3 sm:p-4 shadow-2xl border border-slate-200 group overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent opacity-50" />
+                
+                {/* Window Controls */}
+                <div className="flex items-center gap-1.5 mb-4 ml-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-400/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/50" />
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex h-full min-h-[400px]">
+                  {/* Sidebar Mockup */}
+                  <div className="w-12 sm:w-16 bg-slate-900 flex flex-col items-center py-6 gap-6">
+                    <div className="w-8 h-8 bg-[#10A34A] rounded-lg flex items-center justify-center text-white scale-75">
+                      <Layout size={18} />
+                    </div>
+                    {[Layout, Users, Calendar, DollarSign, Activity, Layers].map((Icon, idx) => (
+                      <div key={idx} className={`text-slate-500 hover:text-emerald-400 transition-colors ${idx === 0 ? 'text-emerald-400' : ''}`}>
+                        <Icon size={18} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Main Content Mockup */}
+                  <div className="flex-1 p-6 space-y-6 bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="h-4 w-32 bg-slate-200 rounded-full" />
+                      <div className="h-8 w-8 bg-slate-200 rounded-full" />
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { label: 'Diaristas Ativos', value: '142', icon: Users, color: 'emerald' },
+                        { label: 'Contratos/Mês', value: 'R$ 42k', icon: DollarSign, color: 'blue' }
+                      ].map((stat, idx) => (
+                        <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-2">
+                          <div className="flex items-center justify-between">
+                            <stat.icon size={14} className="text-slate-400" />
+                            <TrendingUp size={12} className="text-emerald-500" />
+                          </div>
+                          <div className="text-xl font-black text-slate-800 tracking-tight">{stat.value}</div>
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Chart Mockup */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm h-32 relative flex flex-col justify-end gap-1">
+                      <div className="absolute top-4 left-4 h-3 w-20 bg-slate-100 rounded-full" />
+                      <div className="flex items-end gap-1.5 h-16">
+                        {[40, 70, 45, 90, 65, 80, 50, 85, 60, 95].map((h, i) => (
+                          <motion.div 
+                            key={i}
+                            initial={{ height: 0 }}
+                            animate={{ height: `${h}%` }}
+                            transition={{ delay: 1 + (i * 0.1), duration: 1 }}
+                            className="flex-1 bg-emerald-100 hover:bg-emerald-500 transition-colors rounded-t-sm"
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Activity List */}
+                    <div className="space-y-3">
+                      {[1, 2].map((_, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-2 w-full bg-slate-100 rounded-full" />
+                            <div className="h-2 w-2/3 bg-slate-50 rounded-full" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Decorative Elements */}
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-500/10 blur-3xl" />
+                <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/10 blur-3xl" />
+              </div>
+
+              {/* Float Badge */}
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-3"
+              >
+                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <Activity size={20} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Status em Tempo Real</div>
+                  <div className="text-sm font-black text-slate-800">98.2% de Assiduidade</div>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
         </section>
