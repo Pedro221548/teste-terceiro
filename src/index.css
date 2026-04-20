@@ -7,17 +7,17 @@
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-brand-50: #f0f9ff;
-  --color-brand-100: #e0f2fe;
-  --color-brand-200: #bae6fd;
-  --color-brand-300: #7dd3fc;
-  --color-brand-400: #38bdf8;
-  --color-brand-500: #0ea5e9;
-  --color-brand-600: #0284c7;
-  --color-brand-700: #0369a1;
-  --color-brand-800: #075985;
-  --color-brand-900: #0c4a6e;
-  --color-brand-950: #082f49;
+  --color-brand-50: #f0f4ff;
+  --color-brand-100: #e1e9ff;
+  --color-brand-200: #c9d6ff;
+  --color-brand-300: #a2baff;
+  --color-brand-400: #7293ff;
+  --color-brand-500: #3d5cea;
+  --color-brand-600: #2944d1;
+  --color-brand-700: #2135af;
+  --color-brand-800: #1f2d8d;
+  --color-brand-900: #1e2a73;
+  --color-brand-950: #121845;
 
   --color-accent-violet: #8b5cf6;
   --color-accent-emerald: #10b981;

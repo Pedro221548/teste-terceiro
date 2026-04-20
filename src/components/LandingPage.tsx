@@ -41,31 +41,31 @@ export function LandingPage({
   return (
     <div className="min-h-screen bg-[#F8F9FA] font-sans scroll-smooth">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#F4FBF7] border-b border-emerald-100/50">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#F8F9FA]/80 backdrop-blur-md border-b border-brand-100/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)} translate="no">
             <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="w-[200px] h-[140px] object-contain" />
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#inicio" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Início</a>
-            <a href="#planos" className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors">Planos</a>
+            <a href="#inicio" className="text-slate-600 hover:text-brand-600 font-medium text-sm transition-colors">Início</a>
+            <a href="#planos" className="text-slate-600 hover:text-brand-600 font-medium text-sm transition-colors">Planos</a>
           </nav>
           <div className="flex items-center gap-6">
             <button 
               onClick={() => setShowLogin(true)}
-              className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors"
+              className="text-slate-600 hover:text-brand-600 font-medium text-sm transition-colors"
             >
               Entrar
             </button>
-            <a href="/?role=AGENCY_REGISTRATION" className="px-6 py-2.5 bg-[#10A34A] text-white rounded-lg font-bold text-sm hover:bg-[#0D8A3E] transition-colors shadow-lg shadow-emerald-500/20">Criar Conta</a>
+            <a href="/?role=AGENCY_REGISTRATION" className="px-6 py-2.5 bg-brand-500 text-white rounded-lg font-bold text-sm hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Criar Conta</a>
           </div>
         </div>
       </header>
 
       <main className="pt-20">
         {/* Hero Section (Início) */}
-        <section id="inicio" className="min-h-[calc(100vh-5rem)] flex items-center bg-[#F4FBF7] relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,163,74,0.05),transparent_50%)]" />
+        <section id="inicio" className="min-h-[calc(100vh-5rem)] flex items-center bg-brand-50/30 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.05),transparent_50%)]" />
           <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col lg:flex-row items-center gap-16 relative z-10">
             <div className="flex-1 space-y-8 text-left">
               <motion.div
@@ -75,10 +75,10 @@ export function LandingPage({
               >
                 <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight font-display mb-6">
                   Gestão <br className="hidden lg:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10A34A] to-emerald-400 font-sans" translate="no">Inteligente</span> <br className="hidden lg:block" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-300 font-sans" translate="no">Inteligente</span> <br className="hidden lg:block" />
                   de Diaristas.
                 </h1>
-                <div className="h-1.5 w-24 bg-[#10A34A] rounded-full mb-6" />
+                <div className="h-1.5 w-24 bg-brand-500 rounded-full mb-6" />
               </motion.div>
 
               <motion.p 
@@ -97,15 +97,15 @@ export function LandingPage({
                 className="flex flex-col sm:flex-row items-center gap-4 justify-start"
               >
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
-                  <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-[#10A34A] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-xl shadow-emerald-500/20 w-full text-center">
+                  <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-brand-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/20 w-full text-center">
                     Comece Gratuitamente
                   </a>
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest text-center">
+                  <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest text-center">
                     1 Mês Grátis • 10 Empresas • 50 Colaboradores
                   </p>
                 </div>
                 <button onClick={() => setShowDemoModal(true)} className="px-8 py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all border border-slate-200 w-full sm:w-auto flex items-center justify-center gap-2 h-[52px]">
-                  <Play size={16} className="text-[#10A34A]" />
+                  <Play size={16} className="text-brand-500" />
                   Ver Demonstração
                 </button>
               </motion.div>
@@ -119,23 +119,23 @@ export function LandingPage({
             >
               {/* Dashboard Mockup - 100% Code Based (Fast Render) */}
               <div className="relative rounded-[2rem] bg-slate-100 p-3 sm:p-4 shadow-2xl border border-slate-200 group overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50 to-transparent opacity-50" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-brand-50 to-transparent opacity-50" />
                 
                 {/* Window Controls */}
                 <div className="flex items-center gap-1.5 mb-4 ml-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-400/50" />
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-400/50" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-400/50" />
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex h-full min-h-[400px]">
                   {/* Sidebar Mockup */}
                   <div className="w-12 sm:w-16 bg-slate-900 flex flex-col items-center py-6 gap-6">
-                    <div className="w-8 h-8 bg-[#10A34A] rounded-lg flex items-center justify-center text-white scale-75">
+                    <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white scale-75">
                       <Layout size={18} />
                     </div>
                     {[Layout, Users, Calendar, DollarSign, Activity, Layers].map((Icon, idx) => (
-                      <div key={idx} className={`text-slate-500 hover:text-emerald-400 transition-colors ${idx === 0 ? 'text-emerald-400' : ''}`}>
+                      <div key={idx} className={`text-slate-500 hover:text-brand-400 transition-colors ${idx === 0 ? 'text-brand-400' : ''}`}>
                         <Icon size={18} />
                       </div>
                     ))}
@@ -151,13 +151,13 @@ export function LandingPage({
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">
                       {[
-                        { label: 'Diaristas Ativos', value: '142', icon: Users, color: 'emerald' },
+                        { label: 'Diaristas Ativos', value: '142', icon: Users, color: 'brand' },
                         { label: 'Contratos/Mês', value: 'R$ 42k', icon: DollarSign, color: 'blue' }
                       ].map((stat, idx) => (
                         <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-2">
                           <div className="flex items-center justify-between">
                             <stat.icon size={14} className="text-slate-400" />
-                            <TrendingUp size={12} className="text-emerald-500" />
+                            <TrendingUp size={12} className="text-brand-500" />
                           </div>
                           <div className="text-xl font-black text-slate-800 tracking-tight">{stat.value}</div>
                           <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</div>
@@ -175,7 +175,7 @@ export function LandingPage({
                             initial={{ height: 0 }}
                             animate={{ height: `${h}%` }}
                             transition={{ delay: 1 + (i * 0.1), duration: 1 }}
-                            className="flex-1 bg-emerald-100 hover:bg-emerald-500 transition-colors rounded-t-sm"
+                            className="flex-1 bg-brand-100 hover:bg-brand-500 transition-colors rounded-t-sm"
                           />
                         ))}
                       </div>
@@ -197,8 +197,8 @@ export function LandingPage({
                 </div>
 
                 {/* Decorative Elements */}
-                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-500/10 blur-3xl" />
-                <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/10 blur-3xl" />
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-brand-500/10 blur-3xl" />
+                <div className="absolute -top-10 -left-10 w-40 h-40 bg-brand-500/10 blur-3xl" />
               </div>
 
             </motion.div>
@@ -209,7 +209,7 @@ export function LandingPage({
         <section className="py-24 bg-[#F8F9FA] border-y border-slate-100 overflow-hidden">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-20">
-              <span className="px-4 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 inline-block">
+              <span className="px-4 py-1.5 bg-brand-50 border border-brand-100 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest mb-4 inline-block">
                 Interface & Experiência
               </span>
               <h3 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-display">Demonstração da Plataforma</h3>
@@ -232,7 +232,7 @@ export function LandingPage({
                   description: "Transparência total para o seu cliente. A empresa solicitante acompanha as escalas em tempo real, avalia a equipe e solicita novos profissionais com apenas dois cliques.",
                   image: "https://i.imgur.com/puLhTdk.png",
                   reverse: true,
-                  color: "bg-emerald-600"
+                  color: "bg-brand-600"
                 },
                 {
                   title: "Perfil do Funcionário",
@@ -324,7 +324,7 @@ export function LandingPage({
                           <input 
                             type="email" 
                             placeholder="seu@email.com"
-                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all"
                             value={resetEmail}
                             onChange={(e) => setResetEmail(e.target.value)}
                             required
@@ -333,7 +333,7 @@ export function LandingPage({
                       </div>
 
                       {resetStatus === 'SUCCESS' && (
-                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-bold flex items-center gap-3">
+                        <div className="p-4 bg-brand-50 border border-brand-100 rounded-2xl text-brand-600 text-sm font-bold flex items-center gap-3">
                           <CheckCircle2 size={18} />
                           E-mail enviado! Verifique sua caixa de entrada.
                         </div>
@@ -343,7 +343,7 @@ export function LandingPage({
                         <button 
                           type="submit" 
                           disabled={resetStatus === 'LOADING'}
-                          className="w-full py-4 bg-[#10A34A] text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#0D8A3E] transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                          className="w-full py-4 bg-brand-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20 active:scale-95 disabled:opacity-50"
                         >
                           {resetStatus === 'LOADING' ? 'Enviando...' : 'Enviar Link'}
                         </button>
@@ -365,9 +365,9 @@ export function LandingPage({
                           <input 
                             type="email" 
                             placeholder="admin@stafflink.com"
-                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all"
                             value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
+                            onChange={(e) => emailInput===undefined ? undefined : setEmailInput(e.target.value)}
                             required
                           />
                         </div>
@@ -379,7 +379,7 @@ export function LandingPage({
                           <button 
                             type="button"
                             onClick={() => setIsForgotPassword(true)}
-                            className="text-[10px] font-black text-[#10A34A] uppercase tracking-widest hover:text-[#0D8A3E] transition-colors"
+                            className="text-[10px] font-black text-brand-500 uppercase tracking-widest hover:text-brand-600 transition-colors"
                           >
                             Esqueceu a senha?
                           </button>
@@ -389,7 +389,7 @@ export function LandingPage({
                           <input 
                             type="password" 
                             placeholder="••••••••"
-                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#10A34A] focus:ring-4 focus:ring-[#10A34A]/10 outline-none transition-all"
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all"
                             value={passwordInput}
                             onChange={(e) => setPasswordInput(e.target.value)}
                             required
@@ -441,11 +441,11 @@ export function LandingPage({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className={`relative flex flex-col bg-white p-8 rounded-[2rem] border transition-all duration-500 hover:shadow-2xl group ${
-                      isPopular ? 'border-[#10A34A] shadow-xl shadow-emerald-500/10 md:-translate-y-4 z-20' : 'border-slate-200 z-10'
+                      isPopular ? 'border-brand-500 shadow-xl shadow-brand-500/10 md:-translate-y-4 z-20' : 'border-slate-200 z-10'
                     }`}
                   >
                     {isPopular && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#10A34A] text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-500/20">
                         Recomendado
                       </div>
                     )}
@@ -453,7 +453,7 @@ export function LandingPage({
                     <div className="mb-8">
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 ${
                         isEnterprise ? 'bg-purple-100 text-purple-600' :
-                        isPopular ? 'bg-emerald-100 text-[#10A34A]' :
+                        isPopular ? 'bg-brand-100 text-brand-500' :
                         'bg-slate-100 text-slate-600'
                       }`}>
                         {isEnterprise ? <ShieldCheck size={28} /> : isPopular ? <Activity size={28} /> : <Briefcase size={28} />}
@@ -470,7 +470,7 @@ export function LandingPage({
                     <ul className="space-y-4 mb-8 flex-1">
                       {plan.features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-slate-600 font-medium leading-snug">
-                          <div className={`mt-0.5 p-0.5 rounded-full ${isPopular ? 'text-[#10A34A]' : 'text-slate-400'}`}>
+                          <div className={`mt-0.5 p-0.5 rounded-full ${isPopular ? 'text-brand-500' : 'text-slate-400'}`}>
                             <CheckCircle2 size={16} />
                           </div>
                           {feature}
@@ -517,7 +517,7 @@ export function LandingPage({
                   className="text-center space-y-6 group"
                 >
                   <div className="relative inline-block">
-                    <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center text-[#10A34A] group-hover:bg-emerald-50 group-hover:scale-110 transition-all duration-500">
+                    <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center text-brand-500 group-hover:bg-brand-50 group-hover:scale-110 transition-all duration-500">
                       <item.icon size={40} />
                     </div>
                     <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center text-[10px] font-black border-4 border-white">
