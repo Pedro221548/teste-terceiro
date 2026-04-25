@@ -373,5 +373,9 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
+
+    match /test/{document=**} {
+      allow read: if true;
+    }
   }
 }

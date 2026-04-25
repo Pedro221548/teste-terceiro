@@ -54,6 +54,7 @@ import {
   FileText,
   Briefcase,
   CheckCircle2,
+  Flame,
   Key,
   XCircle,
   Edit2,
@@ -168,7 +169,7 @@ interface MenuItem {
   color: string;
 }
 
-function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout, isDarkMode, setIsDarkMode }: { 
+function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout, isDarkMode, setIsDarkMode, agencyPlan }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -179,9 +180,10 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
   userPhoto: string | null,
   handleLogout: () => void,
   isDarkMode: boolean,
-  setIsDarkMode: (dark: boolean) => void
+  setIsDarkMode: (dark: boolean) => void,
+  agencyPlan?: PlanType
 }) {
-  const menuItems: MenuItem[] = role === 'ADMIN' ? [
+  const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
     { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
@@ -213,6 +215,14 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
     { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
   ];
+
+  const menuItems = allMenuItems.filter(item => {
+    if (role === 'AGENCY' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['ponto', 'feedbacks', 'pricing', 'reports'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    return true;
+  });
 
   return (
     <>
@@ -1215,6 +1225,9 @@ export default function App() {
 
   const handleTabChange = (tab: string) => {
     if (tab === activeTab) return;
+    if (role === 'ADMIN' && tab !== 'admin_dashboard') {
+      setSelectedAgencyId(null);
+    }
     const protectedTabs = ['pricing', 'user_management', 'profile', 'company_profile', 'employee_profile'];
     if (protectedTabs.includes(tab)) {
       setPendingTab(tab);
@@ -1321,8 +1334,8 @@ export default function App() {
         const defaultPlans: Plan[] = [
           {
             id: 'STARTER',
-            name: 'Plano Grátis (Trial)',
-            price: 0,
+            name: 'Plano Starter',
+            price: 200,
             maxEmployees: 50,
             maxCompanies: 10,
             features: [
@@ -1930,6 +1943,7 @@ export default function App() {
           handleLogout={handleLogout}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
+          agencyPlan={agencies.find(a => a.id === currentAgencyId)?.plan}
         />
 
         <div className="flex-1 lg:ml-72 flex flex-col min-h-screen overflow-x-hidden">
@@ -2528,7 +2542,15 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   };
 
   const handleActivateAgency = async (agencyId: string) => {
-    await updateDocument('agencies', agencyId, { status: 'ACTIVE' });
+    const agency = agencies.find(a => a.id === agencyId);
+    const starterPlan = plans.find(p => p.id === 'STARTER');
+    
+    await updateDocument('agencies', agencyId, { 
+      status: 'ACTIVE',
+      plan: agency?.plan || 'STARTER',
+      maxEmployees: agency?.maxEmployees || starterPlan?.maxEmployees || 50,
+      maxCompanies: agency?.maxCompanies || starterPlan?.maxCompanies || 10
+    });
     const agencyUser = usersList.find(u => u.agencyId === agencyId && u.role === 'AGENCY');
     if (agencyUser) {
       await updateDocument('users', agencyUser.id, { status: 'ACTIVE' });
@@ -2540,11 +2562,15 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
     e.preventDefault();
     try {
       const id = Math.random().toString(36).substr(2, 9);
+      const starterPlan = plans.find(p => p.id === 'STARTER');
+      
       await setDocument('agencies', id, {
         ...newAgency,
         id,
         status: 'ACTIVE',
         plan: 'STARTER',
+        maxEmployees: starterPlan?.maxEmployees || 50,
+        maxCompanies: starterPlan?.maxCompanies || 10,
         subscriptionStatus: 'TRIAL',
         createdAt: new Date().toISOString(),
         address: {
@@ -2719,7 +2745,12 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
                               maxEmployees: plan.maxEmployees,
                               maxCompanies: plan.maxCompanies
                             });
-                            setSelectedAgency({ ...selectedAgency, plan: plan.id });
+                            setSelectedAgency({ 
+                              ...selectedAgency, 
+                              plan: plan.id,
+                              maxEmployees: plan.maxEmployees,
+                              maxCompanies: plan.maxCompanies
+                            });
                           }}
                           className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                             selectedAgency.plan === plan.id
@@ -2891,121 +2922,154 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agencies.map(agency => {
-          const agencyCompanies = companies.filter(c => c.agencyId === agency.id);
-          const agencyEmployees = employees.filter(e => e.agencyId === agency.id);
+      <div className="space-y-12">
+        {['ENTERPRISE', 'PROFESSIONAL', 'STARTER'].map(plan => {
+          const planAgencies = agencies.filter(a => (a.plan || 'STARTER') === plan);
+          if (planAgencies.length === 0) return null;
 
           return (
-            <motion.div
-              key={agency.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all group relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 p-6 flex items-center gap-2">
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  agency.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 
-                  agency.status === 'PENDING' ? 'bg-amber-50 text-amber-600' :
-                  'bg-red-50 text-red-600'
-                }`}>
-                  {agency.status === 'ACTIVE' ? 'Ativa' : agency.status === 'PENDING' ? 'Pendente' : 'Bloqueada'}
-                </div>
-                {agency.status === 'PENDING' && (
-                  <button 
-                    onClick={() => handleActivateAgency(agency.id)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    title="Liberar Acesso"
-                  >
-                    <Unlock size={16} />
-                  </button>
-                )}
+            <div key={plan} className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  plan === 'ENTERPRISE' ? 'bg-purple-600 shadow-[0_0_12px_rgba(147,51,234,0.4)]' :
+                  plan === 'PROFESSIONAL' ? 'bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.4)]' :
+                  'bg-slate-400'
+                }`} />
+                <h2 className="text-xl font-black text-slate-950 tracking-tighter font-display flex items-center gap-3 uppercase tracking-widest">
+                  Plano {plan === 'ENTERPRISE' ? 'Enterprise' : plan === 'PROFESSIONAL' ? 'Professional' : 'Starter'}
+                  {plan === 'STARTER' && <Flame size={20} className="text-orange-500 fill-orange-500 animate-pulse" />}
+                  <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 lowercase">
+                    {planAgencies.length} {planAgencies.length === 1 ? 'agência' : 'agências'}
+                  </span>
+                </h2>
               </div>
 
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-950 group-hover:text-white transition-colors">
-                  <ShieldCheck size={28} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-black text-slate-950 tracking-tight">{agency.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                      agency.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
-                      agency.plan === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-600' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>
-                      {agency.plan || 'STARTER'}
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{agency.responsibleName}</p>
-                </div>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {planAgencies.map(agency => {
+                  const agencyCompanies = companies.filter(c => c.agencyId === agency.id);
+                  const agencyEmployees = employees.filter(e => e.agencyId === agency.id);
+                  const currentPlan = plans.find(p => p.id === (agency.plan || 'STARTER'));
+                  const maxCos = agency.maxCompanies || currentPlan?.maxCompanies || 0;
+                  const maxEmps = agency.maxEmployees || currentPlan?.maxEmployees || 0;
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Empresas</p>
-                  <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyCompanies.length}</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Diaristas</p>
-                  <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyEmployees.length}</p>
-                </div>
-              </div>
+                  return (
+                    <motion.div
+                      key={agency.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 p-6 flex items-center gap-2">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          agency.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 
+                          agency.status === 'PENDING' ? 'bg-amber-50 text-amber-600' :
+                          'bg-red-50 text-red-600'
+                        }`}>
+                          {agency.status === 'ACTIVE' ? 'Ativa' : agency.status === 'PENDING' ? 'Pendente' : 'Bloqueada'}
+                        </div>
+                        {agency.status === 'PENDING' && (
+                          <button 
+                            onClick={() => handleActivateAgency(agency.id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Liberar Acesso"
+                          >
+                            <Unlock size={16} />
+                          </button>
+                        )}
+                      </div>
 
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center gap-3 text-slate-500">
-                  <Mail size={14} />
-                  <span className="text-xs font-medium">{agency.email}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 text-slate-500">
-                  <div className="flex items-center gap-3">
-                    <Phone size={14} />
-                    <span className="text-xs font-medium">{agency.phone}</span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const cleanPhone = agency.phone.replace(/\D/g, '');
-                      const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
-                      const message = encodeURIComponent(`Olá ${agency.responsibleName}! Aqui está o link para completar o cadastro da agência ${agency.name}: ${link}`);
-                      window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
-                    }}
-                    className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all"
-                    title="Reenviar convite via WhatsApp"
-                  >
-                    <Phone size={14} />
-                  </button>
-                </div>
-              </div>
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-950 group-hover:text-white transition-colors">
+                          <ShieldCheck size={28} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-black text-slate-950 tracking-tight">{agency.name}</h3>
+                            {(agency.plan === 'STARTER' || !agency.plan) && <Flame size={14} className="text-orange-500 fill-orange-500" />}
+                          </div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{agency.responsibleName}</p>
+                        </div>
+                      </div>
 
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => {
-                    setSelectedAgency(agency);
-                    setShowDetailsModal(true);
-                  }}
-                  className="p-3 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
-                  title="Ver Detalhes"
-                >
-                  <Eye size={18} />
-                </button>
-                <button 
-                  onClick={() => onManageAgency(agency.id)}
-                  className="flex-1 py-3 bg-slate-950 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
-                >
-                  Gerenciar
-                </button>
-                <button 
-                  onClick={() => toggleAgencyStatus(agency)}
-                  className={`flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${
-                    agency.status === 'ACTIVE' 
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                  }`}
-                >
-                  {agency.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear'}
-                </button>
+                      <div className="grid grid-cols-2 gap-4 mb-8">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Empresas</p>
+                          <div className="flex items-baseline gap-1">
+                            <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyCompanies.length}</p>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              / {maxCos >= 9999 ? 'ilimitado' : maxCos}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Diaristas</p>
+                          <div className="flex items-baseline gap-1">
+                            <p className="text-2xl font-black text-slate-950 tracking-tighter">{agencyEmployees.length}</p>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              / {maxEmps >= 9999 ? 'ilimitado' : maxEmps}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 mb-8">
+                        <div className="flex items-center gap-3 text-slate-500">
+                          <Mail size={14} />
+                          <span className="text-xs font-medium">{agency.email}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 text-slate-500">
+                          <div className="flex items-center gap-3">
+                            <Phone size={14} />
+                            <span className="text-xs font-medium">{agency.phone}</span>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const cleanPhone = agency.phone.replace(/\D/g, '');
+                              const link = `${window.location.origin}?role=AGENCY_REGISTRATION`;
+                              const message = encodeURIComponent(`Olá ${agency.responsibleName}! Aqui está o link para completar o cadastro da agência ${agency.name}: ${link}`);
+                              window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+                            }}
+                            className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all"
+                            title="Reenviar convite via WhatsApp"
+                          >
+                            <Phone size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setSelectedAgency(agency);
+                            setShowDetailsModal(true);
+                          }}
+                          className="p-3 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
+                          title="Ver Detalhes"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button 
+                          onClick={() => onManageAgency(agency.id)}
+                          className="flex-1 py-3 bg-slate-950 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                        >
+                          Gerenciar
+                        </button>
+                        <button 
+                          onClick={() => toggleAgencyStatus(agency)}
+                          className={`flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${
+                            agency.status === 'ACTIVE' 
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {agency.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -3144,13 +3208,28 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
             )}
 
             <div className="mb-8">
-              <h3 className="text-2xl font-black text-slate-950 tracking-tighter mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1">
+              <h3 className="text-2xl font-black text-slate-950 tracking-tighter mb-2 flex items-center gap-2">
+                {plan.id === 'STARTER' ? 'Plano Starter' : plan.name}
+                {plan.id === 'STARTER' && <Flame className="text-orange-500 fill-orange-500" size={20} />}
+              </h3>
+              <div className="flex items-baseline gap-2">
+                {plan.id === 'STARTER' && (
+                  <span className="text-slate-400 font-bold text-sm line-through">
+                    R$ 200,00
+                  </span>
+                )}
                 <span className="text-4xl font-black text-slate-950 tracking-tighter">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+                  {plan.id === 'STARTER' ? 'R$ 0,00' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
                 </span>
                 <span className="text-slate-400 font-bold text-sm uppercase tracking-widest">/mês</span>
               </div>
+              {plan.id === 'STARTER' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-lg">
+                    3 Primeiros meses grátis
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
@@ -3642,6 +3721,22 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Seu plano atual e limites</p>
+                {(() => {
+                  const currentPlan = plans.find(p => p.id === agencies.find(a => a.id === agencyId)?.plan);
+                  if (currentPlan) {
+                    return (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                        {currentPlan.features.slice(0, 3).map((f, i) => (
+                          <div key={i} className="flex items-center gap-1">
+                            <CheckCircle2 size={10} className="text-emerald-500" />
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -12243,6 +12338,8 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
 
       const agencyId = Math.random().toString(36).substr(2, 9);
       
+      const starterPlan = plans.find(p => p.id === 'STARTER');
+      
       const agencyData: Omit<Agency, 'id'> = {
         name: formData.name,
         tradeName: formData.tradeName,
@@ -12274,8 +12371,8 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         status: 'PENDING',
         plan: 'STARTER',
         subscriptionStatus: 'TRIAL',
-        maxEmployees: 50,
-        maxCompanies: 10,
+        maxEmployees: starterPlan?.maxEmployees || 50,
+        maxCompanies: starterPlan?.maxCompanies || 10,
         createdAt: new Date().toISOString()
       };
 
@@ -12296,7 +12393,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       });
       console.log('User profile created successfully.');
       
-      toast.success('Cadastro enviado com sucesso! Você tem 30 dias de teste grátis.');
+      toast.success('Cadastro enviado com sucesso! Você tem 3 meses de teste grátis.');
       setTimeout(() => {
         onComplete();
       }, 1500);
