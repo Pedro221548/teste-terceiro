@@ -123,6 +123,8 @@ export interface Employee {
     };
   };
   category?: 'DIARISTA' | 'CONTRATADO';
+  eSocialUrl?: string;
+  profession?: string;
 }
 
 export interface Client {
@@ -275,6 +277,8 @@ export interface EmployeeRegistration {
   status: 'PENDING' | 'PROCESSED';
   createdAt: string;
   category?: 'DIARISTA' | 'CONTRATADO';
+  eSocialUrl?: string;
+  profession?: string;
 }
 
 export interface Notification {

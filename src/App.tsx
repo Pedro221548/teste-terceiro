@@ -47,6 +47,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ArrowRight,
+  ArrowLeft,
   TrendingUp as TrendingUpIcon,
   Volume2,
   VolumeX,
@@ -75,7 +76,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan, CheckIn } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -234,7 +235,12 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center justify-center">
-              <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-40 w-full object-contain" fallback-src="https://picsum.photos/seed/agency/200" />
+              <img 
+                src={userPhoto || "https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png"} 
+                alt="Logotipo" 
+                className="h-40 w-full object-contain p-4" 
+                referrerPolicy="no-referrer"
+              />
             </div>
           </div>
 
@@ -1805,6 +1811,19 @@ export default function App() {
   }
 
   if (isPending && user) {
+    if (role === 'AGENCY') {
+      const agency = agencies.find(a => a.id === currentAgencyId);
+      return (
+        <ErrorBoundary>
+          <AgencyOnboarding 
+            user={user} 
+            agency={agency} 
+            plans={plans} 
+            onLogout={handleLogout} 
+          />
+        </ErrorBoundary>
+      );
+    }
     return (
       <ErrorBoundary>
         <PendingApproval onLogout={handleLogout} />
@@ -1821,7 +1840,7 @@ export default function App() {
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <Toaster position="top-center" />
-            <RegistrationForm onComplete={() => window.location.href = '/'} />
+            <RegistrationForm onComplete={() => window.location.href = '/'} agencies={agencies} />
           </div>
         </ErrorBoundary>
       );
@@ -2147,6 +2166,7 @@ export default function App() {
                       agencyId={role === 'AGENCY' ? currentAgencyId : null}
                       selectedAgencyId={selectedAgencyId}
                       checkins={checkins}
+                      agencies={agencies}
                     />
                   </div>
                 )}
@@ -4092,6 +4112,20 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                           <div className="flex items-center gap-2 mt-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{r.phone}</p>
+                            {r.eSocialUrl && (
+                              <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest flex items-center gap-0.5 ml-2">
+                                <FileText size={8} />
+                                eSocial
+                              </span>
+                            )}
+                            <span className={`text-[7px] px-1 rounded bg-slate-100 text-slate-500 font-black uppercase tracking-widest ml-1 ${r.category === 'CONTRATADO' ? 'text-emerald-600 bg-emerald-50' : 'text-blue-600 bg-blue-50'}`}>
+                              {r.category === 'CONTRATADO' ? 'CLT' : 'Diarista'}
+                            </span>
+                            {r.profession && (
+                              <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest ml-1">
+                                {r.profession}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -5026,7 +5060,11 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
 function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId, selectedAgencyId, agencies, employees }: { registration: EmployeeRegistration, onClose: () => void, onComplete: () => void, agencyId: string | null, selectedAgencyId?: string | null, agencies: Agency[], employees: Employee[] }) {
   const [username, setUsername] = useState(`${registration.firstName.toLowerCase()}.${registration.lastName.toLowerCase().split(' ')[0]}`);
   const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
+  const [profession, setProfession] = useState(registration.profession || '');
   const [isSending, setIsSending] = useState(false);
+
+  const currentAgency = agencies.find(a => a.id === (selectedAgencyId || agencyId || registration.agencyId));
+  const professionsList = currentAgency?.segment || ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
 
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -5072,7 +5110,10 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
         rating: 5,
         complaints: 0,
         lastAssignmentDate: "",
-        unavailableDates: []
+        unavailableDates: [],
+        eSocialUrl: registration.eSocialUrl || '',
+        category: registration.category || 'DIARISTA',
+        profession: profession || registration.profession || ''
       });
 
       // 3. Set user role
@@ -5136,6 +5177,21 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
               />
             </div>
             <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Profissão</label>
+              <select 
+                required
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                value={profession}
+                onChange={e => setProfession(e.target.value)}
+              >
+                <option value="">Selecione...</option>
+                {professionsList.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+            <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Senha Temporária</label>
               <div className="relative">
                 <input 
@@ -5155,6 +5211,27 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
               </div>
             </div>
           </div>
+
+          {(registration.docUrl || registration.eSocialUrl) && (
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Documentação Anexada</label>
+              <div className="grid grid-cols-2 gap-3">
+                {registration.docUrl && (
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2">
+                    <Database size={16} className="text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-600 truncate">Documento ID</span>
+                  </div>
+                )}
+                {registration.eSocialUrl && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-600" />
+                    <span className="text-[10px] font-bold text-indigo-700 truncate">eSocial</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <button 
             type="submit" 
             disabled={isSending}
@@ -5181,6 +5258,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [employeeToCreateUserFor, setEmployeeToCreateUserFor] = useState<Employee | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'DIARISTA' | 'CONTRATADO'>('ALL');
+  const [professionFilter, setProfessionFilter] = useState<string>('ALL');
   const [linkCategory, setLinkCategory] = useState<'DIARISTA' | 'CONTRATADO'>('DIARISTA');
 
   const pendingManagers = companyUsers.filter(cu => cu.status === 'PENDING');
@@ -5209,8 +5287,13 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     lgpdAuthorized: false,
     photoUrl: '',
     docUrl: '',
+    eSocialUrl: '',
     category: 'DIARISTA' as 'DIARISTA' | 'CONTRATADO',
+    profession: '',
   });
+
+  const currentAgency = agencies.find(a => a.id === (selectedAgencyId || agencyId));
+  const professions = currentAgency?.segment || ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
 
   const handleEdit = (emp: Employee) => {
     setFormData({
@@ -5223,7 +5306,9 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       lgpdAuthorized: emp.lgpdAuthorized || false,
       photoUrl: emp.photoUrl || '',
       docUrl: emp.docUrl || '',
+      eSocialUrl: emp.eSocialUrl || '',
       category: emp.category || 'DIARISTA',
+      profession: emp.profession || '',
     });
     setIsEditing(true);
     setShowForm(true);
@@ -5256,7 +5341,8 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       emp.cpf.includes(searchTerm) ||
       emp.phone.includes(searchTerm);
     const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesProfession = professionFilter === 'ALL' || emp.profession === professionFilter;
+    return matchesSearch && matchesCategory && matchesProfession;
   });
 
   const handleDeleteEmployee = (emp: Employee) => {
@@ -5404,7 +5490,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     setShowForm(false);
     setIsEditing(false);
     setSelectedEmployee(null);
-    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', category: 'DIARISTA' });
+    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', eSocialUrl: '', category: 'DIARISTA', profession: '' });
   };
 
   return (
@@ -5450,6 +5536,25 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
             >
               Contratados
             </button>
+          </div>
+          <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-2 no-scrollbar">
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setProfessionFilter('ALL')}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${professionFilter === 'ALL' ? 'bg-slate-900 text-white border-slate-900 shadow-md transform -translate-y-0.5' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}
+            >
+              Qualquer Profissão
+            </motion.button>
+            {professions.map(prof => (
+              <motion.button 
+                key={prof}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setProfessionFilter(prof)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${professionFilter === prof ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform -translate-y-0.5' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}
+              >
+                {prof}
+              </motion.button>
+            ))}
           </div>
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto">
@@ -5592,6 +5697,58 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                   <option value="DIARISTA">Diarista</option>
                   <option value="CONTRATADO">Contratado CLT</option>
                 </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Profissão / Segmento</label>
+                <select 
+                  required
+                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                  value={formData.profession}
+                  onChange={e => setFormData({...formData, profession: e.target.value})}
+                >
+                  <option value="">Selecione uma profissão...</option>
+                  {professions.map(prof => (
+                    <option key={prof} value={prof}>{prof}</option>
+                  ))}
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Documento eSocial (PDF/IMG)</label>
+                <div className="flex items-center gap-3">
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 transition-all">
+                      <FileText size={16} />
+                      <span className="text-xs font-bold truncate">
+                        {formData.eSocialUrl ? 'Documento Anexado' : 'Selecionar Arquivo'}
+                      </span>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*,application/pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormData({...formData, eSocialUrl: reader.result as string});
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  {formData.eSocialUrl && (
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, eSocialUrl: ''})}
+                      className="p-3 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -5826,6 +5983,17 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                           <span className={`text-[7px] px-1 rounded bg-slate-100 text-slate-500 font-black uppercase tracking-widest ${emp.category === 'CONTRATADO' ? 'text-emerald-600 bg-emerald-50' : 'text-blue-600 bg-blue-50'}`}>
                             {emp.category === 'CONTRATADO' ? 'CLT' : 'Diarista'}
                           </span>
+                          {emp.profession && (
+                            <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest">
+                              {emp.profession}
+                            </span>
+                          )}
+                          {emp.eSocialUrl && (
+                            <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest flex items-center gap-0.5">
+                              <FileText size={8} />
+                              eSocial
+                            </span>
+                          )}
                         </div>
                         {emp.personalEmail && <p className="text-[8px] sm:text-[9px] text-blue-500 font-bold tracking-tight hidden sm:block">{emp.personalEmail}</p>}
                       </div>
@@ -5974,8 +6142,13 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
                     <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
                       <span className={`text-[8px] sm:text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest ${selectedEmployee.category === 'CONTRATADO' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                        {selectedEmployee.category === 'CONTRATADO' ? 'Contratado CLT' : 'Solicitação'}
+                        {selectedEmployee.category === 'CONTRATADO' ? 'Contratado CLT' : 'Diarista'}
                       </span>
+                      {selectedEmployee.profession && (
+                        <span className="text-[8px] sm:text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          {selectedEmployee.profession}
+                        </span>
+                      )}
                       <div className="flex gap-0.5 bg-slate-50 px-1.5 py-0.5 rounded-lg">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} size={10} className={i < selectedEmployee.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
@@ -6021,6 +6194,108 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                       </div>
                     </div>
                     <div>
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Status Profissional</h4>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <button
+                          onClick={async () => {
+                            await updateDocument('employees', selectedEmployee.id, { category: 'DIARISTA' });
+                            setSelectedEmployee({ ...selectedEmployee, category: 'DIARISTA' });
+                            toast.success('Categoria atualizada para Diarista');
+                          }}
+                          className={`text-[8px] sm:text-[9px] px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border transition-all ${selectedEmployee.category === 'DIARISTA' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'}`}
+                        >
+                          Diarista
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await updateDocument('employees', selectedEmployee.id, { category: 'CONTRATADO' });
+                            setSelectedEmployee({ ...selectedEmployee, category: 'CONTRATADO' });
+                            toast.success('Categoria atualizada para CLT');
+                          }}
+                          className={`text-[8px] sm:text-[9px] px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border transition-all ${selectedEmployee.category === 'CONTRATADO' ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'}`}
+                        >
+                          CLT
+                        </button>
+                      </div>
+
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Profissão / Cargo</h4>
+                      <select 
+                        className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-700 focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={selectedEmployee.profession || ''}
+                        onChange={async (e) => {
+                          const newProf = e.target.value;
+                          await updateDocument('employees', selectedEmployee.id, { profession: newProf });
+                          setSelectedEmployee({ ...selectedEmployee, profession: newProf });
+                          toast.success(`Profissão atualizada para ${newProf}`);
+                        }}
+                      >
+                        <option value="">Selecione...</option>
+                        {professions.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                        <option value="Outros">Outros</option>
+                      </select>
+                    </div>
+                  </div>
+
+                    <div>
+                      <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Documentação eSocial</h4>
+                      {selectedEmployee.eSocialUrl ? (
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = selectedEmployee.eSocialUrl!;
+                              link.download = `eSocial_${selectedEmployee.firstName}_${selectedEmployee.lastName}`;
+                              link.click();
+                            }}
+                            className="flex items-center gap-2 p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100 transition-all font-bold text-xs"
+                          >
+                            <FileText size={16} />
+                            Ver / Baixar eSocial
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (confirm('Deseja remover este documento?')) {
+                                await updateDocument('employees', selectedEmployee.id, { eSocialUrl: '' });
+                                setSelectedEmployee({ ...selectedEmployee, eSocialUrl: '' });
+                                toast.success('Documento removido');
+                              }
+                            }}
+                            className="p-3 bg-white border border-rose-100 text-rose-400 rounded-xl hover:text-rose-600 hover:bg-rose-50 transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <div className="flex items-center gap-2 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-blue-400 hover:text-blue-600 transition-all">
+                            <Upload size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Anexar eSocial</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*,application/pdf"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = async () => {
+                                  const url = reader.result as string;
+                                  await updateDocument('employees', selectedEmployee.id, { eSocialUrl: url });
+                                  setSelectedEmployee({ ...selectedEmployee, eSocialUrl: url });
+                                  toast.success('eSocial anexado com sucesso!');
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    <div>
                       <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Status Operacional</h4>
                       <span className={`text-[8px] sm:text-[9px] px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border shadow-sm ${
                         selectedEmployee.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
@@ -6030,7 +6305,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                         {selectedEmployee.status === 'ACTIVE' ? 'Ativo' : selectedEmployee.status === 'PENDING' ? 'Pendente' : 'Inativo'}
                       </span>
                     </div>
-                  </div>
+
                   <div className="space-y-4 sm:space-y-6">
                     <div>
                       <h4 className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Histórico & Feedback</h4>
@@ -6518,9 +6793,10 @@ function AccessFlow({
   );
 }
 
-function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins }: { user: any, employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[] }) {
+function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins, agencies }: { user: any, employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[], agencies: Agency[] }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
+  const [professionFilter, setProfessionFilter] = useState('ALL');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>('STAFFING');
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
@@ -6570,9 +6846,18 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
     return score;
   };
 
+  const targetAgencyId = selectedAgencyId || agencyId;
+  const currentAgency = agencies.find(a => a.id === targetAgencyId);
+  const professions = Array.from(new Set([
+    ...(currentAgency?.segment || []),
+    ...employees.filter(e => e.agencyId === targetAgencyId).map(e => e.profession).filter(Boolean) as string[]
+  ])).sort();
+
   const sortedEmployees = [...employees]
+    .filter(e => e.agencyId === targetAgencyId)
     .filter(e => e.status !== 'INACTIVE')
     .filter(e => (e.firstName + ' ' + e.lastName).toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(e => professionFilter === 'ALL' || e.profession === professionFilter)
     .sort((a, b) => {
       const unit = units.find(u => u.clientId === selectedClientId);
       const scoreA = getMatchScore(a, unit);
@@ -6998,39 +7283,69 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
             </div>
           </div>
 
-          <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
-                Buscar Profissional
-              </h3>
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')}
-                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
-                >
-                  Limpar
-                </button>
-              )}
-            </div>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
-                <Search size={16} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
+                  Buscar Profissional
+                </h3>
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
               </div>
-              <input 
-                type="text" 
-                placeholder="Nome do profissional..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
-              />
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 text-slate-400 group-focus-within:bg-blue-50 group-focus-within:text-blue-600 flex items-center justify-center transition-all">
+                  <Search size={16} />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Nome do profissional..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm shadow-inner"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full flex flex-col justify-between">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">5</div>
+                Tipo de Serviço
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => setProfessionFilter('ALL')}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    professionFilter === 'ALL' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                  }`}
+                >
+                  Todos
+                </button>
+                {professions.map(p => (
+                  <button 
+                    key={p}
+                    onClick={() => setProfessionFilter(p)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      professionFilter === p ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">5</div>
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">6</div>
               Equipe Disponível
             </h3>
             <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100 w-fit">
@@ -7071,8 +7386,11 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-black text-slate-900 text-base sm:text-lg leading-tight">{emp.firstName}</p>
+                          {emp.profession && (
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-black uppercase rounded-lg border border-blue-100">{emp.profession}</span>
+                          )}
                           {selectedClientId && getMatchScore(emp, units.find(u => u.clientId === selectedClientId)) > 80 && (
-                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg animate-pulse shrink-0">Smart Match</span>
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg animate-pulse shrink-0">Smart Match</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 mt-1">
@@ -11719,7 +12037,15 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-xl w-full bg-white rounded-[40px] border border-slate-200 shadow-2xl overflow-hidden"
       >
-        <div className="p-10 bg-slate-900 text-white text-center space-y-2">
+        <div className="p-10 bg-slate-900 text-white text-center space-y-2 relative">
+          <button 
+            type="button"
+            onClick={() => window.location.href = '/'}
+            className="absolute top-6 left-6 text-slate-400 hover:text-white transition-colors"
+            title="Voltar ao Início"
+          >
+            <ArrowLeft size={20} />
+          </button>
           <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-200/50 overflow-hidden">
             <img 
               src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
@@ -11879,6 +12205,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
     loginEmail: '',
     password: '',
     confirmPassword: '',
+    logoUrl: '',
 
     // Step 5: Documentação (URLs)
     cnpjCard: '',
@@ -11937,6 +12264,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         responsibleRole: formData.responsibleRole,
         phone: formData.phone,
         email: formData.email,
+        logoUrl: formData.logoUrl,
         documents: {
           cnpjCard: formData.cnpjCard,
           socialContract: formData.socialContract,
@@ -11946,6 +12274,8 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         status: 'PENDING',
         plan: 'STARTER',
         subscriptionStatus: 'TRIAL',
+        maxEmployees: 50,
+        maxCompanies: 10,
         createdAt: new Date().toISOString()
       };
 
@@ -11966,7 +12296,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
       });
       console.log('User profile created successfully.');
       
-      toast.success('Cadastro enviado com sucesso! Aguarde a aprovação.');
+      toast.success('Cadastro enviado com sucesso! Você tem 30 dias de teste grátis.');
       setTimeout(() => {
         onComplete();
       }, 1500);
@@ -12154,6 +12484,80 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
                 </div>
               </div>
             </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 block mb-3">Logo da Empresa (Opcional)</label>
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0 group hover:border-blue-300 transition-all">
+                  {formData.logoUrl ? (
+                    <img src={formData.logoUrl} alt="Logo preview" className="w-full h-full object-contain" />
+                  ) : (
+                    <Upload size={24} className="text-slate-300 group-hover:text-blue-400" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-3">
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed uppercase tracking-wider">
+                    Arraste sua logo ou clique no botão abaixo.<br />
+                    Formatos aceitos: PNG, JPG ou SVG.
+                  </p>
+                  <label className="inline-flex px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-200 transition-all border border-slate-200 shadow-sm active:scale-95">
+                    Selecionar Logo
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            toast.error('O arquivo é muito grande (máx 2MB)');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const img = new Image();
+                            img.src = reader.result as string;
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              let width = img.width;
+                              let height = img.height;
+                              const MAX_SIZE = 400;
+                              if (width > height) {
+                                if (width > MAX_SIZE) {
+                                  height *= MAX_SIZE / width;
+                                  width = MAX_SIZE;
+                                }
+                              } else {
+                                if (height > MAX_SIZE) {
+                                  width *= MAX_SIZE / height;
+                                  height = MAX_SIZE;
+                                }
+                              }
+                              canvas.width = width;
+                              canvas.height = height;
+                              const ctx = canvas.getContext('2d');
+                              ctx?.drawImage(img, 0, 0, width, height);
+                              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                              setFormData({...formData, logoUrl: compressedBase64});
+                            };
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  {formData.logoUrl && (
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, logoUrl: ''})}
+                      className="ml-3 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-600 transition-colors bg-white px-3 py-1 rounded-lg border border-rose-100 shadow-sm"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         );
       case 5:
@@ -12236,8 +12640,16 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-slate-950" />
           
-          <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center justify-between mb-8">
             <div>
+              <button 
+                type="button"
+                onClick={() => window.location.href = '/'}
+                className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-4 group"
+              >
+                <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+                Voltar ao Início
+              </button>
               <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Etapa {step} de 6</p>
               <h2 className="text-3xl font-black text-slate-900 tracking-tight">{stepTitles[step-1]}</h2>
             </div>
@@ -12300,7 +12712,7 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-function RegistrationForm({ onComplete }: { onComplete: () => void }) {
+function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, agencies: Agency[] }) {
   const [step, setStep] = useState<'INFO' | 'PHOTO' | 'DOCUMENT' | 'FACE_REG'>('INFO');
   const [formData, setFormData] = useState({
     fullName: '',
@@ -12311,9 +12723,16 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
     lgpdAuthorized: false,
     photo: null as string | null,
     document: null as File | null,
+    eSocialBase64: '' as string,
     faceReference: null as string | null,
     category: 'DIARISTA' as 'DIARISTA' | 'CONTRATADO',
+    profession: '',
   });
+
+  const params = new URLSearchParams(window.location.search);
+  const agencyId = params.get('agencyId');
+  const currentAgency = agencies.find(a => a.id === agencyId);
+  const professions = currentAgency?.segment || ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -12384,10 +12803,12 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
       lgpdAuthorized: formData.lgpdAuthorized,
       photoUrl: formData.photo || undefined,
       docUrl: formData.document ? formData.document.name : undefined,
+      eSocialUrl: formData.eSocialBase64 || undefined,
       faceReferenceUrl: formData.faceReference || undefined,
       status: 'PENDING',
       agencyId: agencyId || undefined,
       category: urlCategory || formData.category,
+      profession: formData.profession,
       createdAt: new Date().toISOString()
     };
 
@@ -12408,7 +12829,16 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
         <div className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
           
-          <div className="text-center mb-10">
+          <button 
+            type="button"
+            onClick={() => window.location.href = '/'}
+            className="absolute top-6 left-6 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest group"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            Voltar
+          </button>
+
+          <div className="text-center mb-10 mt-4">
             <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-slate-200/50 overflow-hidden">
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
@@ -12480,6 +12910,22 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 value={formData.personalEmail}
                 onChange={e => setFormData({...formData, personalEmail: e.target.value})}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Sua Profissão / Cargo</label>
+              <select 
+                required
+                className="input-field"
+                value={formData.profession}
+                onChange={e => setFormData({...formData, profession: e.target.value})}
+              >
+                <option value="">Selecione sua profissão...</option>
+                {professions.map(prof => (
+                  <option key={prof} value={prof}>{prof}</option>
+                ))}
+                <option value="Outros">Outros</option>
+              </select>
             </div>
 
             {!new URLSearchParams(window.location.search).get('category') && (
@@ -12573,26 +13019,73 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Documento (RG ou CNH)</label>
-                <div className="relative h-full min-h-[140px]">
-                  <input 
-                    required
-                    type="file" 
-                    accept="image/*,application/pdf"
-                    className="hidden" 
-                    id="doc-upload"
-                    onChange={e => setFormData({...formData, document: e.target.files?.[0] || null})}
-                  />
-                  <label 
-                    htmlFor="doc-upload"
-                    className="w-full h-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group"
-                  >
-                    <Upload className={formData.document ? 'text-emerald-500' : 'text-slate-400 group-hover:text-blue-600'} size={32} />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center px-4 group-hover:text-blue-600 transition-colors">
-                      {formData.document ? formData.document.name : 'Anexar cópia do documento'}
-                    </span>
-                  </label>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Documento (RG ou CNH)</label>
+                  <div className="relative">
+                    <input 
+                      required
+                      type="file" 
+                      accept="image/*,application/pdf"
+                      className="hidden" 
+                      id="doc-upload"
+                      onChange={e => setFormData({...formData, document: e.target.files?.[0] || null})}
+                    />
+                    <label 
+                      htmlFor="doc-upload"
+                      className={`flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all ${formData.document ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-blue-400 hover:bg-blue-50/50'}`}
+                    >
+                      {formData.document ? (
+                        <>
+                          <CheckCircle2 size={32} />
+                          <span className="text-sm font-bold">{formData.document.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Database size={32} className="opacity-40" />
+                          <span className="text-xs font-bold uppercase tracking-widest text-center">Selecionar Documento</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Documento eSocial (Opcional)</label>
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*,application/pdf"
+                      className="hidden" 
+                      id="esocial-upload"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormData({...formData, eSocialBase64: reader.result as string});
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="esocial-upload"
+                      className={`flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all ${formData.eSocialBase64 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-blue-400 hover:bg-blue-50/50'}`}
+                    >
+                      {formData.eSocialBase64 ? (
+                        <>
+                          <CheckCircle2 size={32} />
+                          <span className="text-sm font-bold">eSocial Anexado</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText size={32} className="opacity-40" />
+                          <span className="text-xs font-bold uppercase tracking-widest text-center">Anexar eSocial</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -13939,5 +14432,142 @@ function ServiceMonitoring({ assignments, companies, units, employees, clients }
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency?: Agency, plans: Plan[], onLogout: () => void }) {
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleSelectPlan = async (planId: PlanType) => {
+    if (!agency) return;
+    setIsUpdating(true);
+    try {
+      await updateDocument('agencies', agency.id, { 
+        plan: planId,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success('Plano selecionado com sucesso!');
+    } catch (error) {
+      console.error('Error selecting plan:', error);
+      toast.error('Erro ao selecionar plano.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (!agency) return null;
+
+  const hasSelectedPlan = !!agency.plan;
+
+  if (!hasSelectedPlan) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-20 px-4 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-12 pb-20">
+          <div className="text-center space-y-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-20 h-20 bg-brand-50 text-brand-500 rounded-3xl flex items-center justify-center mx-auto mb-6"
+            >
+              <LayoutDashboard size={40} />
+            </motion.div>
+            <h2 className="text-4xl font-black text-slate-900 tracking-tight font-display">Bem-vindo à StaffLink</h2>
+            <p className="text-slate-500 font-medium max-w-xl mx-auto">
+              Você está quase lá! Como parte dos seus 30 dias de teste grátis, escolha o plano que melhor se adapta à sua operação após o período de experiência.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {plans.sort((a, b) => a.price - b.price).map((plan, index) => {
+              return (
+                <motion.div 
+                  key={plan.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 transition-all flex flex-col hover:border-brand-200 hover:shadow-xl group"
+                >
+                  <div className="flex-1 space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">{plan.name}</h3>
+                      <p className="text-3xl font-black text-brand-600">
+                        {plan.price === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-widest ml-1">/mês</span>
+                      </p>
+                    </div>
+
+                    <ul className="space-y-4">
+                      {plan.features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-3 text-xs font-bold text-slate-600">
+                          <CheckCircle2 size={16} className="text-brand-500 mt-0.5 shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => handleSelectPlan(plan.id)}
+                    disabled={isUpdating}
+                    className="mt-10 py-5 bg-slate-950 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] transition-all hover:bg-brand-600 shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
+                  >
+                    {isUpdating ? 'Processando...' : `Selecionar ${plan.name}`}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-center pt-8">
+            <button onClick={onLogout} className="text-slate-400 hover:text-slate-900 font-black uppercase tracking-widest text-[10px] flex items-center gap-2">
+              Sair da Conta
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-white p-12 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 text-center space-y-8"
+      >
+        <div className="w-24 h-24 bg-brand-50 rounded-[32px] flex items-center justify-center text-brand-500 mx-auto">
+          <CreditCard size={48} />
+        </div>
+        
+        <div className="space-y-3">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight font-display text-center">Aguardando Pagamento</h2>
+          <p className="text-slate-500 font-medium leading-relaxed">
+            Plano <strong>{plans.find(p => p.id === agency.plan)?.name}</strong> selecionado! <br />
+            Para liberar seu acesso e iniciar o período de 30 dias de teste grátis, aguardamos a confirmação do pagamento inicial ou validação do administrador.
+          </p>
+          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3 text-left mt-6">
+            <AlertCircle className="text-amber-600 mt-1 shrink-0" size={20} />
+            <p className="text-xs text-amber-700 font-bold leading-relaxed">
+              Dica: Entre em contato com nosso suporte para agilizar a liberação da sua conta.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <button 
+            disabled
+            className="w-full py-5 bg-slate-200 text-slate-400 rounded-[24px] font-black text-xs uppercase tracking-widest cursor-not-allowed"
+          >
+            Pagar com PIX (Indisponível)
+          </button>
+          <button 
+            onClick={onLogout}
+            className="w-full py-5 bg-slate-100 text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+          >
+            Sair da Conta
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
