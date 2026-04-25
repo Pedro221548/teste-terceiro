@@ -204,9 +204,9 @@ export function LandingPage({
         </section>
 
         {/* Platform Demonstration Section */}
-        <section className="py-24 bg-[#F8F9FA] border-y border-slate-100 overflow-hidden">
+        <section className="py-12 bg-[#F8F9FA] border-y border-slate-100 overflow-hidden">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-20">
+            <div className="text-center mb-12">
               <span className="px-4 py-1.5 bg-brand-50 border border-brand-100 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest mb-4 inline-block">
                 Interface & Experiência
               </span>
