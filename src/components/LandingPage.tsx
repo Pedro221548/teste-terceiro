@@ -35,7 +35,6 @@ export function LandingPage({
   resetStatus,
   plans
 }: LandingPageProps) {
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -107,10 +106,6 @@ export function LandingPage({
                     3 Meses de Acesso Completo • 10 Empresas • 50 Diaristas
                   </p>
                 </div>
-                <button onClick={() => setShowDemoModal(true)} className="px-8 py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all border border-slate-200 w-full sm:w-auto flex items-center justify-center gap-2 h-[52px]">
-                  <Play size={16} className="text-brand-500" />
-                  Ver Demonstração
-                </button>
               </motion.div>
             </div>
 
@@ -616,38 +611,6 @@ export function LandingPage({
       >
         <Phone size={24} className="group-hover:rotate-12 transition-transform" />
       </a>
-
-      {/* Demo Modal */}
-      <AnimatePresence>
-        {showDemoModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-slate-900/90 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl overflow-hidden w-full max-w-5xl shadow-2xl relative"
-            >
-              <button 
-                onClick={() => setShowDemoModal(false)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white/80 backdrop-blur-sm text-slate-900 rounded-full hover:bg-white transition-colors shadow-sm"
-              >
-                <X size={20} />
-              </button>
-              <div className="aspect-video bg-slate-100 relative">
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 space-y-4">
-                  <Play size={48} className="opacity-20" />
-                  <p className="font-black uppercase tracking-widest text-xs">Vídeo de Demonstração</p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
