@@ -104,7 +104,7 @@ export function LandingPage({
                     Comece Gratuitamente
                   </a>
                   <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest text-center">
-                    1 Mês Grátis • 10 Empresas • 50 Colaboradores
+                    3 Meses de Acesso Completo • 10 Empresas • 50 Diaristas
                   </p>
                 </div>
                 <button onClick={() => setShowDemoModal(true)} className="px-8 py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all border border-slate-200 w-full sm:w-auto flex items-center justify-center gap-2 h-[52px]">

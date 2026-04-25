@@ -254,7 +254,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
           <div className="p-4 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
             <div className="flex items-center justify-center">
               <img 
-                src={userPhoto || "https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png"} 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="Logotipo" 
                 className="h-40 w-full object-contain p-4" 
                 referrerPolicy="no-referrer"
@@ -1359,7 +1359,7 @@ export default function App() {
             features: [
               '3 Meses de Acesso Completo',
               'Gestão de até 10 Empresas Parceiras',
-              'Até 50 Colaboradores Cadastrados',
+              'Até 50 Diaristas Cadastrados',
               'Dashboard Geral de Operações',
               'Escala de Trabalho (Agenda)'
             ],
@@ -1370,10 +1370,10 @@ export default function App() {
             name: 'Plano Professional',
             price: 299,
             maxEmployees: 150,
-            maxCompanies: 9999,
+            maxCompanies: 50,
             features: [
-              'Empresas Parceiras ilimitadas',
-              'Até 150 Colaboradores',
+              'Gestão de até 50 Empresas Parceiras',
+              'Até 150 Diaristas',
               'Controle de Acesso via QR Code (PONTO)',
               'Fluxo de Acesso Dinâmico',
               'Interação em Tempo Real (Feed)',
@@ -1391,7 +1391,8 @@ export default function App() {
             maxCompanies: 9999,
             features: [
               'Tudo do Professional',
-              'Colaboradores Ilimitados',
+              'Empresas Parceiras Ilimitadas',
+              'Diaristas Ilimitados',
               'White-label parcial',
               'Módulo de Faturamento Automático',
               'Suporte Prioritário',
@@ -1539,6 +1540,7 @@ export default function App() {
             await updateDocument('users', firebaseUser.uid, { role: 'ADMIN' });
           }
           setRole(currentRole);
+          
           if (userDoc.agencyId) {
             setCurrentAgencyId(userDoc.agencyId);
           } else if (currentRole === 'AGENCY') {
@@ -1546,6 +1548,22 @@ export default function App() {
             const agencyDoc = await getDocs(query(collection(db, 'agencies'), where('email', '==', firebaseUser.email)));
             if (!agencyDoc.empty) {
               const foundAgencyId = agencyDoc.docs[0].id;
+              setCurrentAgencyId(foundAgencyId);
+              await updateDocument('users', firebaseUser.uid, { agencyId: foundAgencyId });
+            }
+          } else if (currentRole === 'EMPLOYEE') {
+            // Try to find employee by email to get agencyId
+            const empDoc = await getDocs(query(collection(db, 'employees'), where('loginEmail', '==', firebaseUser.email)));
+            if (!empDoc.empty) {
+              const foundAgencyId = empDoc.docs[0].data().agencyId;
+              setCurrentAgencyId(foundAgencyId);
+              await updateDocument('users', firebaseUser.uid, { agencyId: foundAgencyId });
+            }
+          } else if (currentRole === 'COMPANY') {
+            // Try to find company user by email to get agencyId
+            const companyUserDoc = await getDocs(query(collection(db, 'companyUsers'), where('email', '==', firebaseUser.email)));
+            if (!companyUserDoc.empty) {
+              const foundAgencyId = companyUserDoc.docs[0].data().agencyId;
               setCurrentAgencyId(foundAgencyId);
               await updateDocument('users', firebaseUser.uid, { agencyId: foundAgencyId });
             }
@@ -1612,7 +1630,7 @@ export default function App() {
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
       unsubs.push(subscribeToCollection<any>('users', setUsersList));
-    } else if (role === 'AGENCY' && currentAgencyId) {
+    } else if ((role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId) {
       const unsubAgency = onSnapshot(doc(db, 'agencies', currentAgencyId), (docSnap) => {
         if (docSnap.exists()) {
           setAgencies([{ id: docSnap.id, ...docSnap.data() } as Agency]);
@@ -1763,6 +1781,7 @@ export default function App() {
         clientId: cUser.unitId ? units.find(u => u.id === cUser.unitId)?.clientId : null
       });
       setRole('COMPANY');
+      setCurrentAgencyId(cUser.agencyId);
       return;
     }
 
@@ -1778,6 +1797,7 @@ export default function App() {
         isCustom: true
       });
       setRole('EMPLOYEE');
+      setCurrentAgencyId(eUser.agencyId);
       return;
     }
 
@@ -1837,8 +1857,9 @@ export default function App() {
 
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 relative">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
       </div>
     );
   }
@@ -1854,12 +1875,14 @@ export default function App() {
             plans={plans} 
             onLogout={handleLogout} 
           />
+          <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
         </ErrorBoundary>
       );
     }
     return (
       <ErrorBoundary>
         <PendingApproval onLogout={handleLogout} />
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
       </ErrorBoundary>
     );
   }
@@ -1874,6 +1897,7 @@ export default function App() {
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <Toaster position="top-center" />
             <RegistrationForm onComplete={() => window.location.href = '/'} agencies={agencies} />
+            <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
           </div>
         </ErrorBoundary>
       );
@@ -1885,6 +1909,7 @@ export default function App() {
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <Toaster position="top-center" />
             <CompanyRegistrationForm onComplete={() => window.location.href = '/'} />
+            <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
           </div>
         </ErrorBoundary>
       );
@@ -1896,27 +1921,31 @@ export default function App() {
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <Toaster position="top-center" />
             <AgencyRegistrationForm onComplete={() => window.location.href = '/'} plans={plans} />
+            <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
           </div>
         </ErrorBoundary>
       );
     }
 
     return (
-      <LandingPage
-        emailInput={emailInput}
-        setEmailInput={setEmailInput}
-        passwordInput={passwordInput}
-        setPasswordInput={setPasswordInput}
-        handleEmailLogin={handleEmailLogin}
-        loginError={loginError}
-        isForgotPassword={isForgotPassword}
-        setIsForgotPassword={setIsForgotPassword}
-        resetEmail={resetEmail}
-        setResetEmail={setResetEmail}
-        handleResetPassword={handleResetPassword}
-        resetStatus={resetStatus}
-        plans={plans}
-      />
+      <div className="relative">
+        <LandingPage
+          emailInput={emailInput}
+          setEmailInput={setEmailInput}
+          passwordInput={passwordInput}
+          setPasswordInput={setPasswordInput}
+          handleEmailLogin={handleEmailLogin}
+          loginError={loginError}
+          isForgotPassword={isForgotPassword}
+          setIsForgotPassword={setIsForgotPassword}
+          resetEmail={resetEmail}
+          setResetEmail={setResetEmail}
+          handleResetPassword={handleResetPassword}
+          resetStatus={resetStatus}
+          plans={plans}
+        />
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+      </div>
     );
   }
 
@@ -1928,9 +1957,12 @@ export default function App() {
           onComplete={() => setNeedsPasswordChange(false)} 
           handleLogout={handleLogout}
         />
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
       </ErrorBoundary>
     );
   }
+
+  const currentAgencyPlan = agencies.find(a => a.id === currentAgencyId)?.plan;
 
   return (
     <ErrorBoundary>
@@ -1963,7 +1995,7 @@ export default function App() {
           handleLogout={handleLogout}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
-          agencyPlan={agencies.find(a => a.id === currentAgencyId)?.plan}
+          agencyPlan={currentAgencyPlan}
         />
 
         <div className="flex-1 lg:ml-72 flex flex-col min-h-screen overflow-x-hidden">
@@ -2108,12 +2140,12 @@ export default function App() {
                     />
                   </div>
                 )}
-                {activeTab === 'feed' && (
+                {activeTab === 'feed' && currentAgencyPlan !== 'STARTER' && (
                   <div key="feed">
                     <Feed />
                   </div>
                 )}
-                {role === 'AGENCY' && activeTab === 'ponto' && (
+                {role === 'AGENCY' && activeTab === 'ponto' && currentAgencyPlan !== 'STARTER' && (
                   <div key="ponto">
                     <UnitQRManager 
                       units={units} 
@@ -2123,7 +2155,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {activeTab === 'access_flow' && (
+                {activeTab === 'access_flow' && currentAgencyPlan !== 'STARTER' && (
                   <div key="access_flow">
                     <AccessFlow 
                       checkins={checkins}
@@ -2162,7 +2194,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'feedbacks' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'feedbacks' && currentAgencyPlan !== 'STARTER' && (
                   <div key="agency-feedbacks">
                     <EmployeeFeedbackView 
                       feedbacks={feedbacks}
@@ -2204,7 +2236,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'reports' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'reports' && currentAgencyPlan !== 'STARTER' && (
                   <div key="agency-reports">
                     <AgencyReports 
                       employees={employees}
@@ -2231,7 +2263,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'pricing' && (
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'pricing' && currentAgencyPlan !== 'STARTER' && (
                   <div key="agency-pricing">
                     <AgencyPricing 
                       pricing={pricing}
@@ -2320,7 +2352,7 @@ export default function App() {
                     />
                   </div>
                 )}
-                {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && (
+                {role === 'EMPLOYEE' && activeTab === 'employee_ponto' && currentAgencyPlan !== 'STARTER' && (
                   <div key="employee-ponto">
                     <SimplePonto 
                       user={user}
@@ -2434,6 +2466,7 @@ export default function App() {
             activeTab={activeTab} 
             setActiveTab={handleTabChange} 
           />
+          <div className="fixed bottom-20 lg:bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
         </div>
       </div>
     </ErrorBoundary>
