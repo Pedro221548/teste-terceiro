@@ -218,7 +218,15 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
 
   const menuItems = allMenuItems.filter(item => {
     if (role === 'AGENCY' && agencyPlan === 'STARTER') {
-      const restrictedForStarter = ['ponto', 'feedbacks', 'pricing', 'reports'];
+      const restrictedForStarter = ['feed', 'ponto', 'access_flow', 'feedbacks', 'pricing', 'reports'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    if (role === 'EMPLOYEE' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'employee_ponto'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    if (role === 'COMPANY' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'access_flow'];
       return !restrictedForStarter.includes(item.id);
     }
     return true;
@@ -1225,6 +1233,16 @@ export default function App() {
 
   const handleTabChange = (tab: string) => {
     if (tab === activeTab) return;
+    
+    const currentAgency = agencies.find(a => a.id === currentAgencyId);
+    if (currentAgency?.plan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'ponto', 'employee_ponto', 'access_flow', 'feedbacks', 'pricing', 'reports'];
+      if (restrictedForStarter.includes(tab)) {
+        toast.error('Este recurso não está disponível no plano Starter. Faça o upgrade para o plano Profissional para acessar.');
+        return;
+      }
+    }
+
     if (role === 'ADMIN' && tab !== 'admin_dashboard') {
       setSelectedAgencyId(null);
     }
@@ -1339,7 +1357,7 @@ export default function App() {
             maxEmployees: 50,
             maxCompanies: 10,
             features: [
-              '1 Mês de Acesso Completo',
+              '3 Meses de Acesso Completo',
               'Gestão de até 10 Empresas Parceiras',
               'Até 50 Colaboradores Cadastrados',
               'Dashboard Geral de Operações',
@@ -1357,6 +1375,8 @@ export default function App() {
               'Empresas Parceiras ilimitadas',
               'Até 150 Colaboradores',
               'Controle de Acesso via QR Code (PONTO)',
+              'Fluxo de Acesso Dinâmico',
+              'Interação em Tempo Real (Feed)',
               'Gestão de Feedbacks e Avaliações',
               'Configuração de Precificação customizada',
               'Relatórios de Produtividade'
@@ -1875,7 +1895,7 @@ export default function App() {
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
             <Toaster position="top-center" />
-            <AgencyRegistrationForm onComplete={() => window.location.href = '/'} />
+            <AgencyRegistrationForm onComplete={() => window.location.href = '/'} plans={plans} />
           </div>
         </ErrorBoundary>
       );
@@ -12267,7 +12287,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
+function AgencyRegistrationForm({ onComplete, plans }: { onComplete: () => void, plans: Plan[] }) {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
