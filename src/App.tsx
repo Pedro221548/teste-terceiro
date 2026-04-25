@@ -28,6 +28,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Eye,
+  EyeOff,
   Plus,
   ShieldCheck,
   Download,
@@ -364,6 +365,8 @@ function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setA
 function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, onComplete: () => void, handleLogout: () => void }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -429,25 +432,43 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
           <div className="space-y-4">
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nova Senha</label>
-              <input 
-                required
-                type="password" 
-                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-              />
+              <div className="relative">
+                <input 
+                  required
+                  type={showNewPassword ? "text" : "password"} 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Nova Senha</label>
-              <input 
-                required
-                type="password" 
-                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
-              />
+              <div className="relative">
+                <input 
+                  required
+                  type={showConfirmPassword ? "text" : "password"} 
+                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1799,6 +1820,7 @@ export default function App() {
       return (
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <Toaster position="top-center" />
             <RegistrationForm onComplete={() => window.location.href = '/'} />
           </div>
         </ErrorBoundary>
@@ -1809,6 +1831,7 @@ export default function App() {
       return (
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <Toaster position="top-center" />
             <CompanyRegistrationForm onComplete={() => window.location.href = '/'} />
           </div>
         </ErrorBoundary>
@@ -1819,6 +1842,7 @@ export default function App() {
       return (
         <ErrorBoundary>
           <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans">
+            <Toaster position="top-center" />
             <AgencyRegistrationForm onComplete={() => window.location.href = '/'} />
           </div>
         </ErrorBoundary>
@@ -11621,8 +11645,10 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         });
       }
       
-      toast.success('Cadastro concluído com sucesso! Aguarde a aprovação do administrador.');
-      onComplete();
+      toast.success('Cadastro concluído com sucesso! Aguarde a aprovação.');
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
     } catch (error: any) {
       console.error('Error registering company:', error);
       let errorMessage = 'Erro ao realizar cadastro. Tente novamente.';
@@ -11644,7 +11670,7 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         }
       }
       
-      toast(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -11822,6 +11848,8 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
 
 function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     // Step 1: Dados da Empresa
     name: '',
@@ -11870,18 +11898,21 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: any) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      toast('As senhas não coincidem!');
+      toast.error('As senhas não coincidem!');
       return;
     }
     setIsSubmitting(true);
+    console.log('Starting agency registration process...');
 
     try {
       // Create Firebase Auth user
+      console.log('Creating Firebase Auth user with email:', formData.loginEmail);
       const userCredential = await createUserWithEmailAndPassword(auth, formData.loginEmail, formData.password);
       const newUid = userCredential.user.uid;
+      console.log('Firebase Auth user created with UID:', newUid);
 
       const agencyId = Math.random().toString(36).substr(2, 9);
       
@@ -11918,9 +11949,12 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         createdAt: new Date().toISOString()
       };
 
+      console.log('Generating agency document for ID:', agencyId);
       await setDocument('agencies', agencyId, { ...agencyData, id: agencyId });
+      console.log('Agency document created successfully.');
       
       // Update user role to AGENCY and link to agencyId
+      console.log('Generating user profile for UID:', newUid);
       await setDocument('users', newUid, { 
         id: newUid,
         role: 'AGENCY', 
@@ -11930,11 +11964,14 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         status: 'PENDING',
         createdAt: new Date().toISOString()
       });
+      console.log('User profile created successfully.');
       
-      toast.success('Cadastro enviado com sucesso! Aguarde a aprovação do administrador.');
-      onComplete();
+      toast.success('Cadastro enviado com sucesso! Aguarde a aprovação.');
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
     } catch (error: any) {
-      console.error('Error registering agency:', error);
+      console.error('CRITICAL: Error registering agency:', error);
       let errorMessage = 'Erro ao realizar cadastro. Tente novamente.';
       
       if (error.code === 'auth/email-already-in-use') {
@@ -11954,9 +11991,10 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
         }
       }
       
-      toast(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
+      console.log('Registration process execution finished.');
     }
   };
 
@@ -12091,11 +12129,29 @@ function AgencyRegistrationForm({ onComplete }: { onComplete: () => void }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
-                <input required type="password" className="input-field" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                <div className="relative">
+                  <input required type={showPassword ? "text" : "password"} className="input-field pr-12" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                <input required type="password" className="input-field" placeholder="••••••••" value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} />
+                <div className="relative">
+                  <input required type={showConfirmPassword ? "text" : "password"} className="input-field pr-12" placeholder="••••••••" value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -12337,7 +12393,9 @@ function RegistrationForm({ onComplete }: { onComplete: () => void }) {
 
     await createDocument('employeeRegistrations', newEmployeeRegistration);
     toast.success('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
-    onComplete();
+    setTimeout(() => {
+      onComplete();
+    }, 1500);
   };
 
   return (

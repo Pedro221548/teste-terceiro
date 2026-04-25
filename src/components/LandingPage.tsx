@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Building2, Users, HelpCircle, ChevronDown, Phone, X, TrendingUp, Calendar, DollarSign, Layers, Layout } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Building2, Users, HelpCircle, ChevronDown, Phone, X, TrendingUp, Calendar, DollarSign, Layers, Layout } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 import { Plan } from '../types';
 
 interface LandingPageProps {
@@ -37,9 +38,11 @@ export function LandingPage({
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] font-sans scroll-smooth">
+      <Toaster position="top-center" />
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F8F9FA]/80 backdrop-blur-md border-b border-brand-100/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -387,13 +390,20 @@ export function LandingPage({
                         <div className="relative">
                           <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                           <input 
-                            type="password" 
+                            type={showPassword ? "text" : "password"} 
                             placeholder="••••••••"
-                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all"
+                            className="w-full pl-14 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all"
                             value={passwordInput}
                             onChange={(e) => setPasswordInput(e.target.value)}
                             required
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
                         </div>
                       </div>
 
