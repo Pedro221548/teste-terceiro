@@ -1,5 +1,5 @@
 import toast, { Toaster } from 'react-hot-toast';
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { 
   Users, 
   User as UserIcon,
@@ -169,18 +169,252 @@ interface MenuItem {
   color: string;
 }
 
-function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userEmail, userName, userPhoto, handleLogout, isDarkMode, setIsDarkMode, agencyPlan }: { 
+function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPhoto, handleLogout, agencyPlan, setIsMobileMenuOpen }: { 
+  role: string, 
+  activeTab: string, 
+  setActiveTab: (tab: string) => void,
+  userEmail: string | null,
+  userName: string | null,
+  userPhoto: string | null,
+  handleLogout: () => void,
+  agencyPlan?: PlanType,
+  setIsMobileMenuOpen: (open: boolean) => void
+}) {
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
+    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
+    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+  ] : role === 'AGENCY' ? [
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
+    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
+    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
+    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+  ] : role === 'COMPANY' ? [
+    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
+    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
+    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
+    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
+    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+  ] : [
+    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
+    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+  ];
+
+  const menuItems = allMenuItems.filter(item => {
+    if (role === 'AGENCY' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'ponto', 'access_flow', 'feedbacks', 'pricing', 'reports'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    if (role === 'EMPLOYEE' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'employee_ponto'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    if (role === 'COMPANY' && agencyPlan === 'STARTER') {
+      const restrictedForStarter = ['feed', 'access_flow'];
+      return !restrictedForStarter.includes(item.id);
+    }
+    return true;
+  });
+
+  const agencyGroups = role === 'AGENCY' ? [
+    { 
+      label: 'Operacional', 
+      items: menuItems.filter(i => ['staffing', 'access_flow', 'ponto'].includes(i.id)) 
+    },
+    { 
+      label: 'Gestão & Acesso', 
+      items: menuItems.filter(i => ['registrations', 'companies', 'pricing'].includes(i.id)) 
+    },
+    { 
+      label: 'Sistema', 
+      items: menuItems.filter(i => ['reports', 'user_management', 'feedbacks', 'profile'].includes(i.id)) 
+    }
+  ] : role === 'COMPANY' ? [
+    {
+      label: 'Operacional',
+      items: menuItems.filter(i => ['company_diaristas', 'access_flow', 'evaluate_team'].includes(i.id))
+    },
+    {
+      label: 'Sistema',
+      items: menuItems.filter(i => ['company_reports', 'company_profile'].includes(i.id))
+    }
+  ] : role === 'EMPLOYEE' ? [
+    {
+      label: 'Operacional',
+      items: menuItems.filter(i => ['employee_ponto', 'employee_schedule'].includes(i.id))
+    },
+    {
+      label: 'Pessoal',
+      items: menuItems.filter(i => ['employee_profile'].includes(i.id))
+    }
+  ] : [];
+
+  const mainItems = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') 
+    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed'].includes(i.id)) 
+    : menuItems;
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16 sm:h-20">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+            >
+              <Menu size={24} />
+            </button>
+            <div className="flex-shrink-0 cursor-pointer" onClick={() => setActiveTab(role === 'ADMIN' ? 'admin_dashboard' : role === 'AGENCY' ? 'dashboard' : role === 'COMPANY' ? 'manager_dashboard' : 'employee_profile')}>
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="Logotipo" 
+                className="h-10 sm:h-12 w-auto" 
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block text-right">
+              <p className="text-xs font-black text-slate-900 leading-none mb-1">{userName || 'Usuário'}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{role === 'AGENCY' ? 'Agência' : role === 'ADMIN' ? 'Admin' : role === 'COMPANY' ? 'Empresa' : 'Colaborador'}</p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="relative" ref={profileMenuRef}>
+                <div 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-100 border-2 border-white shadow-sm ring-1 ring-slate-200 overflow-hidden cursor-pointer active:scale-95 transition-all"
+                >
+                  <img 
+                    src={userPhoto || "https://picsum.photos/seed/user/100"} 
+                    alt="Foto de Perfil" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                  />
+                </div>
+                
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] origin-top-right"
+                    >
+                      <div className="p-2">
+                        <button 
+                          onClick={() => {
+                            setActiveTab(role === 'EMPLOYEE' ? 'employee_profile' : role === 'COMPANY' ? 'company_profile' : 'profile');
+                            setShowProfileMenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                        >
+                          <UserIcon size={14} className="text-slate-400" />
+                          MEU PERFIL
+                        </button>
+                        <div className="h-px bg-slate-100 my-1 mx-2" />
+                        <button 
+                          onClick={() => {
+                            handleLogout();
+                            setShowProfileMenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                        >
+                          <LogOut size={14} />
+                          SAIR DA CONTA
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav className="hidden lg:flex items-center gap-1 py-3 border-t border-slate-100">
+          {mainItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex items-center gap-2 px-4 py-4 rounded-xl transition-all duration-300 whitespace-nowrap ${
+                activeTab === item.id 
+                  ? 'bg-slate-950 text-white shadow-lg' 
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <item.icon size={16} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest leading-none">
+                {item.label}
+              </span>
+            </button>
+          ))}
+
+          {agencyGroups.length > 0 && agencyGroups.map((group) => (
+            <div key={group.label} className="relative group px-1">
+              <button className={`flex items-center gap-2 px-5 py-4 rounded-xl transition-all duration-300 font-black uppercase tracking-widest text-[10px] sm:text-[11px] h-full ${group.items.some(i => i.id === activeTab) ? 'text-slate-900 bg-slate-50 font-black' : 'text-slate-500 hover:text-slate-900 focus:text-slate-900 focus:bg-slate-50'}`}>
+                {group.label}
+                <ChevronDown size={14} className="group-hover:rotate-180 transition-transform opacity-50" />
+              </button>
+              
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-[100] origin-top p-2 translate-y-2 group-hover:translate-y-0 group-focus-within:translate-y-0">
+                <div className="grid gap-1">
+                  {group.items.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-left ${activeTab === item.id ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 focus:bg-slate-50 focus:text-slate-950'}`}
+                    >
+                      <item.icon size={16} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
+                      <span className="text-[10px] font-black uppercase tracking-widest leading-none flex-1">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userName, userPhoto, handleLogout, agencyPlan }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
   isMobileMenuOpen: boolean,
   setIsMobileMenuOpen: (open: boolean) => void,
-  userEmail: string | null,
   userName: string | null,
   userPhoto: string | null,
   handleLogout: () => void,
-  isDarkMode: boolean,
-  setIsDarkMode: (dark: boolean) => void,
   agencyPlan?: PlanType
 }) {
   const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
@@ -213,7 +447,7 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
     { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
-    { id: 'employee_schedule', label: 'Minha Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
   ];
 
   const menuItems = allMenuItems.filter(item => {
@@ -232,6 +466,43 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
     return true;
   });
 
+  const agencyGroups = role === 'AGENCY' ? [
+    { 
+      label: 'Operacional', 
+      items: menuItems.filter(i => ['staffing', 'access_flow', 'ponto'].includes(i.id)) 
+    },
+    { 
+      label: 'Gestão & Acesso', 
+      items: menuItems.filter(i => ['registrations', 'companies', 'pricing'].includes(i.id)) 
+    },
+    { 
+      label: 'Sistema', 
+      items: menuItems.filter(i => ['reports', 'user_management', 'feedbacks', 'profile'].includes(i.id)) 
+    }
+  ] : role === 'COMPANY' ? [
+    {
+      label: 'Operacional',
+      items: menuItems.filter(i => ['company_diaristas', 'access_flow', 'evaluate_team'].includes(i.id))
+    },
+    {
+      label: 'Sistema',
+      items: menuItems.filter(i => ['company_reports', 'company_profile'].includes(i.id))
+    }
+  ] : role === 'EMPLOYEE' ? [
+    {
+      label: 'Operacional',
+      items: menuItems.filter(i => ['employee_ponto', 'employee_schedule'].includes(i.id))
+    },
+    {
+      label: 'Pessoal',
+      items: menuItems.filter(i => ['employee_profile'].includes(i.id))
+    }
+  ] : [];
+
+  const mainItems = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') 
+    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed'].includes(i.id)) 
+    : menuItems;
+
   return (
     <>
       <AnimatePresence>
@@ -241,148 +512,119 @@ function Sidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileM
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] lg:hidden"
           />
         )}
       </AnimatePresence>
 
       <aside className={`
-        fixed top-0 left-0 bottom-0 z-50 w-72 bg-slate-50 border-r border-slate-200 transition-transform duration-300 ease-in-out lg:translate-x-0
+        fixed top-0 left-0 bottom-0 z-[110] w-72 bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out lg:hidden
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-slate-50 bg-gradient-to-br from-white to-slate-50/50">
-            <div className="flex items-center justify-center">
-              <img 
-                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
-                alt="Logotipo" 
-                className="h-40 w-full object-contain p-4" 
-                referrerPolicy="no-referrer"
-              />
+          <div className="p-6 border-b border-slate-100">
+            <img 
+              src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+              alt="Logotipo" 
+              className="h-10 w-auto mb-6"
+              referrerPolicy="no-referrer"
+            />
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-200">
+                <img src={userPhoto || "https://picsum.photos/seed/user/100"} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-black text-slate-900 truncate uppercase">{userName || 'Usuário'}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">{role}</p>
+              </div>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
-            <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Menu Principal</p>
-            {menuItems.map((item) => (
-              <SidebarItem
-                key={item.id}
-                icon={<item.icon size={18} />}
-                label={item.label}
-                active={activeTab === item.id}
-                color={item.color}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
-              />
-            ))}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* Main Items like Dashboard and Feed */}
+            {mainItems.length > 0 && (
+              <div className="space-y-1">
+                {mainItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
+                      activeTab === item.id 
+                        ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
+                    <span className="text-[11px] font-black uppercase tracking-widest">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Categorized Groups */}
+            {agencyGroups.length > 0 ? (
+              agencyGroups.map(group => (
+                <div key={group.label} className="space-y-2">
+                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{group.label}</p>
+                  <div className="space-y-1">
+                    {group.items.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
+                          activeTab === item.id 
+                            ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
+                        <span className="text-[11px] font-black uppercase tracking-widest">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="space-y-1">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
+                      activeTab === item.id 
+                        ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
+                    <span className="text-[11px] font-black uppercase tracking-widest">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </nav>
 
-          <div className="p-4 border-t border-slate-50 bg-slate-50/50">
-            <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="relative">
-                  {userPhoto ? (
-                    <img src={userPhoto} alt={userName || ''} className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-slate-500">
-                      <UserIcon size={24} />
-                    </div>
-                  )}
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-black text-slate-900 leading-tight">{userName || 'Usuário'}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {/* Dark mode toggle removed */}
-                <button 
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                >
-                  <LogOut size={14} />
-                  Sair da Conta
-                </button>
-              </div>
-            </div>
+          <div className="p-4 border-t border-slate-100">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 py-4 text-[11px] font-black text-rose-600 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-rose-100"
+            >
+              <LogOut size={16} />
+              SAIR DA CONTA
+            </button>
           </div>
         </div>
       </aside>
     </>
-  );
-}
-
-function Header({ activeTab, setIsMobileMenuOpen, user, role, audioEnabled, setAudioEnabled, userName, userPhoto }: { 
-  activeTab: string, 
-  setIsMobileMenuOpen: (open: boolean) => void,
-  user: any,
-  role: string,
-  audioEnabled: boolean,
-  setAudioEnabled: (enabled: boolean) => void,
-  userName?: string | null,
-  userPhoto?: string | null
-}) {
-  const getTitle = () => {
-    switch (activeTab) {
-      case 'admin_dashboard': return 'Painel Super Admin';
-      case 'admin_agencies': return 'Gestão de Agências';
-      case 'admin_plans': return 'Planos de Assinatura';
-      case 'admin_companies': return 'Gestão de Empresas';
-      case 'admin_users': return 'Gestão de Usuários';
-      case 'admin_documents': return 'Controle de Documentos';
-      case 'dashboard': return 'Painel de controle';
-      case 'staffing': return 'Solicitação';
-      case 'companies': return 'Empresas Parceiras';
-      case 'registrations': return 'Cadastros Pendentes';
-      case 'access_control': return 'Controle de Acesso';
-      case 'pricing': return 'Configuração de Preços';
-      case 'feedbacks': return 'Feedbacks & Avaliações';
-      case 'user_management': return 'Gestão de Usuários';
-      case 'profile': return 'Meu Perfil Profissional';
-      case 'manager_dashboard': return 'Início';
-      case 'evaluate_team': return 'Avaliação de Equipe';
-      case 'company_diaristas': return 'Equipe de Solicitação';
-      case 'company_profile': return 'Perfil da Empresa';
-      case 'employee_schedule': return 'Minha Agenda';
-      case 'employee_profile': return 'Meu Perfil';
-      case 'ponto': return 'Ponto de controle';
-      default: return 'Visão Geral';
-    }
-  };
-
-  return (
-    <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2.5 bg-slate-50 text-slate-600 rounded-xl lg:hidden hover:bg-slate-100 transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="lg:hidden flex items-center">
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-14 w-auto" referrerPolicy="no-referrer" />
-          </div>
-          <div className="hidden sm:block">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-display sm:max-w-none">{getTitle()}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plataforma ProStaff Brasil</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-xl font-black text-slate-900 tracking-tight leading-none">
-              {userName || user.displayName || 'Usuário'}
-            </p>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border-2 border-white shadow-xl overflow-hidden ring-1 ring-slate-200 group cursor-pointer hover:scale-105 transition-all">
-            <img src={userPhoto || user.photoURL || "https://picsum.photos/seed/user/100"} alt="Foto de Perfil" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-          </div>
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -1966,14 +2208,12 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900 pb-20 lg:pb-0">
+      <div className="min-h-screen flex flex-col bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
         <Toaster position="top-center" />
-        <Sidebar 
+        <AppNavbar 
           role={role} 
           activeTab={activeTab} 
           setActiveTab={handleTabChange}
-          isMobileMenuOpen={isMobileMenuOpen}
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
           userEmail={user.email}
           userName={
             role === 'EMPLOYEE' ? (() => {
@@ -1993,39 +2233,39 @@ export default function App() {
             user.photoURL
           }
           handleLogout={handleLogout}
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
+          agencyPlan={currentAgencyPlan}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+        />
+
+        <MobileSidebar 
+          role={role}
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          userName={
+            role === 'EMPLOYEE' ? (() => {
+              const emp = employees.find(e => e.id === user?.uid || e.loginEmail === user?.email);
+              return emp ? `${emp.firstName} ${emp.lastName}`.trim() : user.displayName;
+            })() :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.fullName || user.displayName :
+            role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
+            role === 'ADMIN' ? orgInfo?.name || user.displayName :
+            user.displayName
+          }
+          userPhoto={
+            role === 'EMPLOYEE' ? employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.photoUrl || user.photoURL :
+            role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.photoUrl || user.photoURL :
+            role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
+            role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
+            user.photoURL
+          }
+          handleLogout={handleLogout}
           agencyPlan={currentAgencyPlan}
         />
 
-        <div className="flex-1 lg:ml-72 flex flex-col min-h-screen overflow-x-hidden">
-          <Header 
-            activeTab={activeTab} 
-            setIsMobileMenuOpen={setIsMobileMenuOpen} 
-            user={user}
-            role={role}
-            audioEnabled={audioEnabled}
-            setAudioEnabled={setAudioEnabled}
-            userName={
-              role === 'EMPLOYEE' ? (() => {
-                const emp = employees.find(e => e.id === user?.uid || e.loginEmail === user?.email);
-                return emp ? `${emp.firstName} ${emp.lastName}`.trim() : user.displayName;
-              })() :
-              role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.fullName || user.displayName :
-              role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.name || user.displayName :
-              role === 'ADMIN' ? orgInfo?.name || user.displayName :
-              user.displayName
-            }
-            userPhoto={
-              role === 'EMPLOYEE' ? employees.find(e => e.id === user?.uid || e.loginEmail === user?.email)?.photoUrl || user.photoURL :
-              role === 'COMPANY' ? companyUsers.find(cu => cu.id === user?.uid || cu.email === user?.email)?.photoUrl || user.photoURL :
-              role === 'AGENCY' ? agencies.find(a => a.id === currentAgencyId)?.logoUrl || user.photoURL :
-              role === 'ADMIN' ? orgInfo?.logoUrl || user.photoURL :
-              user.photoURL
-            }
-          />
-
-          <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full pb-24 lg:pb-10">
+        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+          <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full pb-32">
               <AnimatePresence mode="wait">
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'PENDING' && (
                   <motion.div 
