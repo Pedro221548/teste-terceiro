@@ -70,14 +70,16 @@ export function LandingPage({
           {/* Background Images & Effects */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.05),transparent_50%)]" />
           <div 
-            className="absolute inset-0 opacity-[0.12] pointer-events-none"
+            className="absolute inset-0 opacity-[0.05] sm:opacity-[0.12] pointer-events-none transition-opacity duration-1000"
             style={{ 
               backgroundImage: 'url("https://i.imgur.com/lnpU0gB.jpeg")',
               backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              backgroundPosition: '75% center',
               backgroundRepeat: 'no-repeat'
             }} 
           />
+          {/* Mobile-specific soft fade for better text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-transparent sm:hidden pointer-events-none transition-all duration-700" />
           
           <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col lg:flex-row items-center gap-16 relative z-10">
             <div className="flex-1 space-y-8 text-left">
