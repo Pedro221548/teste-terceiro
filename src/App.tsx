@@ -136,21 +136,21 @@ class ErrorBoundary extends Component<any, any> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 p-4 transition-colors duration-500">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-lg shadow-xl max-w-md w-full text-center border border-transparent dark:border-slate-800">
             <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Ops! Algo deu errado.</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Ops! Algo deu errado.</h2>
+            <p className="text-gray-600 dark:text-slate-400 mb-6">
               Ocorreu um erro inesperado. Por favor, tente recarregar a página.
             </p>
             <button 
               onClick={() => window.location.reload()}
-              className="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
             >
               Recarregar Página
             </button>
             {process.env.NODE_ENV === 'development' && (
-              <pre className="mt-4 p-4 bg-gray-100 rounded-sm text-left text-xs overflow-auto max-h-40">
+              <pre className="mt-4 p-4 bg-gray-100 dark:bg-slate-950 rounded-sm text-left text-xs overflow-auto max-h-40 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-800">
                 {this.state.error?.message || JSON.stringify(this.state.error)}
               </pre>
             )}
@@ -169,7 +169,7 @@ interface MenuItem {
   color: string;
 }
 
-function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPhoto, handleLogout, agencyPlan, setIsMobileMenuOpen }: { 
+function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPhoto, handleLogout, agencyPlan, setIsMobileMenuOpen, isDarkMode, setIsDarkMode }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -178,7 +178,9 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   userPhoto: string | null,
   handleLogout: () => void,
   agencyPlan?: PlanType,
-  setIsMobileMenuOpen: (open: boolean) => void
+  setIsMobileMenuOpen: (open: boolean) => void,
+  isDarkMode: boolean,
+  setIsDarkMode: (val: boolean) => void
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -194,36 +196,36 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   }, []);
 
   const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
-    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
-    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
-    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
-    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
-    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
-    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
-    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
-    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
-    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
+    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
+    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
+    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800' },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
   ] : role === 'COMPANY' ? [
-    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
-    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
-    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
-    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
   ] : [
-    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
-    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
   ];
 
   const menuItems = allMenuItems.filter(item => {
@@ -280,7 +282,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
     : menuItems;
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 sm:h-20">
           <div className="flex items-center gap-4">
@@ -294,23 +296,32 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="Logotipo" 
-                className="h-10 sm:h-12 w-auto" 
+                className="h-10 sm:h-12 w-auto dark:brightness-0 dark:invert" 
                 referrerPolicy="no-referrer"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            {role === 'AGENCY' && (
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            )}
             <div className="hidden sm:block text-right">
-              <p className="text-xs font-black text-slate-900 leading-none mb-1">{userName || 'Usuário'}</p>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{role === 'AGENCY' ? 'Agência' : role === 'ADMIN' ? 'Admin' : role === 'COMPANY' ? 'Empresa' : 'Colaborador'}</p>
+              <p className="text-xs font-black text-slate-900 dark:text-white leading-none mb-1">{userName || 'Usuário'}</p>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{role === 'AGENCY' ? 'Agência' : role === 'ADMIN' ? 'Admin' : role === 'COMPANY' ? 'Empresa' : 'Colaborador'}</p>
             </div>
             
             <div className="flex items-center gap-2">
               <div className="relative" ref={profileMenuRef}>
                 <div 
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-100 border-2 border-white shadow-sm ring-1 ring-slate-200 overflow-hidden cursor-pointer active:scale-95 transition-all"
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 overflow-hidden cursor-pointer active:scale-95 transition-all"
                 >
                   <img 
                     src={userPhoto || "https://picsum.photos/seed/user/100"} 
@@ -326,7 +337,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] origin-top-right"
+                      className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-[100] origin-top-right transition-colors duration-500"
                     >
                       <div className="p-2">
                         <button 
@@ -334,12 +345,12 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
                             setActiveTab(role === 'EMPLOYEE' ? 'employee_profile' : role === 'COMPANY' ? 'company_profile' : 'profile');
                             setShowProfileMenu(false);
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
                         >
-                          <UserIcon size={14} className="text-slate-400" />
+                          <UserIcon size={14} className="text-slate-400 dark:text-slate-500" />
                           MEU PERFIL
                         </button>
-                        <div className="h-px bg-slate-100 my-1 mx-2" />
+                        <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
                         <button 
                           onClick={() => {
                             handleLogout();
@@ -359,15 +370,15 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
           </div>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-1 py-3 border-t border-slate-100">
+        <nav className="hidden lg:flex items-center gap-1 py-3 border-t border-slate-100 dark:border-slate-800 transition-colors">
           {mainItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`flex items-center gap-2 px-4 py-4 rounded-xl transition-all duration-300 whitespace-nowrap ${
                 activeTab === item.id 
-                  ? 'bg-slate-950 text-white shadow-lg' 
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-slate-950 dark:bg-brand-500 text-white shadow-lg' 
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <item.icon size={16} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
@@ -379,18 +390,18 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
 
           {agencyGroups.length > 0 && agencyGroups.map((group) => (
             <div key={group.label} className="relative group px-1">
-              <button className={`flex items-center gap-2 px-5 py-4 rounded-xl transition-all duration-300 font-black uppercase tracking-widest text-[10px] sm:text-[11px] h-full ${group.items.some(i => i.id === activeTab) ? 'text-slate-900 bg-slate-50 font-black' : 'text-slate-500 hover:text-slate-900 focus:text-slate-900 focus:bg-slate-50'}`}>
+              <button className={`flex items-center gap-2 px-5 py-4 rounded-xl transition-all duration-300 font-black uppercase tracking-widest text-[10px] sm:text-[11px] h-full ${group.items.some(i => i.id === activeTab) ? 'text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 font-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white focus:text-slate-900 focus:bg-slate-50 focus:dark:bg-slate-900'}`}>
                 {group.label}
                 <ChevronDown size={14} className="group-hover:rotate-180 transition-transform opacity-50" />
               </button>
               
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-[100] origin-top p-2 translate-y-2 group-hover:translate-y-0 group-focus-within:translate-y-0">
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-[100] origin-top p-2 translate-y-2 group-hover:translate-y-0 group-focus-within:translate-y-0">
                 <div className="grid gap-1">
                   {group.items.map(item => (
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-left ${activeTab === item.id ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 focus:bg-slate-50 focus:text-slate-950'}`}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-left ${activeTab === item.id ? 'bg-slate-950 dark:bg-brand-500 text-white shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-950 dark:hover:text-white focus:bg-slate-50 focus:text-slate-950'}`}
                     >
                       <item.icon size={16} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
                       <span className="text-[10px] font-black uppercase tracking-widest leading-none flex-1">{item.label}</span>
@@ -406,7 +417,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   );
 }
 
-function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userName, userPhoto, handleLogout, agencyPlan }: { 
+function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userName, userPhoto, handleLogout, agencyPlan, isDarkMode, setIsDarkMode }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -415,39 +426,41 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
   userName: string | null,
   userPhoto: string | null,
   handleLogout: () => void,
-  agencyPlan?: PlanType
+  agencyPlan?: PlanType,
+  isDarkMode: boolean,
+  setIsDarkMode: (val: boolean) => void
 }) {
   const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
-    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
-    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'admin_agencies', label: 'Gestão de Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'admin_plans', label: 'Planos de Assinatura', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
   ] : role === 'AGENCY' ? [
-    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
-    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
-    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50' },
-    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
-    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
-    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
-    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100' },
-    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
+    { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
+    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
+    { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
+    { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800' },
+    { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
   ] : role === 'COMPANY' ? [
-    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50' },
-    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50' },
-    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
-    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'manager_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'access_flow', label: 'Fluxo de acesso', icon: Activity, color: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'evaluate_team', label: 'Avaliar Equipe', icon: Star, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'company_diaristas', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
+    { id: 'company_reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'company_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
   ] : [
-    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
-    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50' },
-    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
-    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
+    { id: 'employee_profile', label: 'Meu Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
+    { id: 'feed', label: 'Feed', icon: MessageSquare, color: 'text-accent-amber bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50 dark:text-rose-400 dark:bg-rose-900/20' },
+    { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20' },
   ];
 
   const menuItems = allMenuItems.filter(item => {
@@ -518,24 +531,34 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
       </AnimatePresence>
 
       <aside className={`
-        fixed top-0 left-0 bottom-0 z-[110] w-72 bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out lg:hidden
+        fixed top-0 left-0 bottom-0 z-[110] w-72 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out lg:hidden
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-slate-100">
-            <img 
-              src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
-              alt="Logotipo" 
-              className="h-10 w-auto mb-6"
-              referrerPolicy="no-referrer"
-            />
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-200">
+        <div className="flex flex-col h-full transition-colors duration-500">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-6">
+              <img 
+                src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
+                alt="Logotipo" 
+                className="h-10 w-auto dark:brightness-0 dark:invert"
+                referrerPolicy="no-referrer"
+              />
+              {role === 'AGENCY' && (
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800">
                 <img src={userPhoto || "https://picsum.photos/seed/user/100"} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-black text-slate-900 truncate uppercase">{userName || 'Usuário'}</p>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">{role}</p>
+                <p className="text-[13px] font-black text-slate-900 dark:text-white truncate uppercase">{userName || 'Usuário'}</p>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{role}</p>
               </div>
             </div>
           </div>
@@ -553,8 +576,8 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
                       activeTab === item.id 
-                        ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-slate-950 dark:bg-brand-500 text-white shadow-xl scale-[1.02]' 
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
@@ -568,7 +591,7 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
             {agencyGroups.length > 0 ? (
               agencyGroups.map(group => (
                 <div key={group.label} className="space-y-2">
-                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{group.label}</p>
+                  <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em]">{group.label}</p>
                   <div className="space-y-1">
                     {group.items.map(item => (
                       <button
@@ -579,8 +602,8 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
                           activeTab === item.id 
-                            ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-slate-950 dark:bg-brand-500 text-white shadow-xl scale-[1.02]' 
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
@@ -601,8 +624,8 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
                       activeTab === item.id 
-                        ? 'bg-slate-950 text-white shadow-xl scale-[1.02]' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-slate-950 dark:bg-brand-500 text-white shadow-xl scale-[1.02]' 
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <item.icon size={18} className={activeTab === item.id ? 'text-white' : item.color?.split(' ')[0]} />
@@ -613,10 +636,10 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
             )}
           </nav>
 
-          <div className="p-4 border-t border-slate-100">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800">
             <button 
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-4 text-[11px] font-black text-rose-600 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-rose-100"
+              className="w-full flex items-center justify-center gap-2 py-4 text-[11px] font-black text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-2xl transition-all shadow-sm border border-rose-100 dark:border-rose-900/50"
             >
               <LogOut size={16} />
               SAIR DA CONTA
@@ -677,32 +700,32 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden"
       >
-        <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-100">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-100 dark:shadow-blue-900/20">
             <Lock className="text-white" size={32} />
           </div>
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Trocar Senha</h3>
-          <p className="text-xs text-slate-400 font-medium mt-2">Este é seu primeiro acesso. Por segurança, você deve definir uma nova senha.</p>
+          <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Trocar Senha</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-2">Este é seu primeiro acesso. Por segurança, você deve definir uma nova senha.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3">
+            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-center gap-3">
               <AlertCircle className="text-red-500 shrink-0" size={20} />
-              <p className="text-xs text-red-600 font-bold">{error}</p>
+              <p className="text-xs text-red-600 dark:text-red-400 font-bold">{error}</p>
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nova Senha</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Nova Senha</label>
               <div className="relative">
                 <input 
                   required
                   type={showNewPassword ? "text" : "password"} 
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
@@ -710,19 +733,19 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
                 >
                   {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirmar Nova Senha</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Confirmar Nova Senha</label>
               <div className="relative">
                 <input 
                   required
                   type={showConfirmPassword ? "text" : "password"} 
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Repita a nova senha"
@@ -730,7 +753,7 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -742,14 +765,14 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
             <button 
               type="submit" 
               disabled={isUpdating}
-              className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+              className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 dark:shadow-blue-900/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
             >
               {isUpdating ? 'Atualizando...' : 'Salvar Nova Senha'}
             </button>
             <button 
               type="button"
               onClick={handleLogout}
-              className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+              className="w-full py-4 text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 dark:hover:text-slate-300 transition-all"
             >
               Sair e trocar depois
             </button>
@@ -844,23 +867,23 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
         {units.map(unit => {
           const company = companies.find(c => c.id === unit.companyId);
           return (
-            <div key={unit.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-all">
+            <div key={unit.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-black text-slate-900">{unit.name}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{company?.name || 'Empresa'}</p>
+                  <h3 className="font-black text-slate-900 dark:text-white">{unit.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{company?.name || 'Empresa'}</p>
                 </div>
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
                   <QrCode size={20} />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mb-6 flex items-center gap-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 flex items-center gap-2">
                 <MapPin size={14} />
                 {unit.location}
               </p>
               <button 
                 onClick={() => setSelectedUnit(unit)}
-                className="w-full py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-slate-900 dark:bg-white dark:text-slate-950 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
               >
                 <Eye size={14} />
                 Ver QR Code
@@ -939,13 +962,13 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Nova Unidade / QR Code</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Cadastre uma nova unidade para gerar o ponto</p>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Nova Unidade / QR Code</h3>
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Cadastre uma nova unidade para gerar o ponto</p>
                 </div>
-                <button onClick={() => setShowAddUnitModal(false)} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                  <X size={24} className="text-slate-400" />
+                <button onClick={() => setShowAddUnitModal(false)} className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm">
+                  <X size={24} className="text-slate-400 dark:text-slate-500" />
                 </button>
               </div>
 
@@ -1201,25 +1224,25 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
               </button>
             </div>
           )}
-          <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-sm text-center">
-            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+          <div className="bg-white dark:bg-slate-900 p-8 sm:p-12 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+            <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
               <QrCode size={40} />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Registro de Ponto</h3>
-            <p className="text-slate-500 mb-10 max-w-md mx-auto">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-4">Registro de Ponto</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto">
               Escaneie o QR Code da unidade para registrar sua entrada ou saída.
             </p>
             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
               <button 
                 onClick={() => { setType('IN'); setScanning(true); }}
-                className="py-6 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex flex-col items-center gap-3"
+                className="py-6 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 dark:shadow-emerald-900/20 flex flex-col items-center gap-3"
               >
                 <ArrowUpRight size={24} />
                 Entrada
               </button>
               <button 
                 onClick={() => { setType('OUT'); setScanning(true); }}
-                className="py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-xl shadow-rose-100 flex flex-col items-center gap-3"
+                className="py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-xl shadow-rose-100 dark:shadow-rose-900/20 flex flex-col items-center gap-3"
               >
                 <ArrowRight size={24} className="rotate-45" />
                 Saída
@@ -1228,42 +1251,42 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
           </div>
 
           <div className="space-y-6">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-4">Meus Últimos Registros</h4>
+            <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-4">Meus Últimos Registros</h4>
             <div className="space-y-3">
               {myCheckins.slice(0, 5).map(ci => {
                 const ciUnit = units.find(u => u.id === ci.unitId);
                 return (
-                  <div key={ci.id} className="bg-white p-5 rounded-[1.5rem] border border-slate-200 flex items-center justify-between">
+                  <div key={ci.id} className="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ci.type === 'IN' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'}`}>
                         {ci.type === 'IN' ? <ArrowUpRight size={20} /> : <ArrowRight size={20} className="rotate-45" />}
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 text-sm">{ci.type === 'IN' ? 'Entrada' : 'Saída'}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ciUnit?.name || 'Unidade'}</p>
+                        <p className="font-black text-slate-900 dark:text-white text-sm">{ci.type === 'IN' ? 'Entrada' : 'Saída'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{ciUnit?.name || 'Unidade'}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-slate-900 text-sm">{formatTime(ci.timestamp)}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDateBR(ci.timestamp)}</p>
+                      <p className="font-black text-slate-900 dark:text-white text-sm">{formatTime(ci.timestamp)}</p>
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{formatDateBR(ci.timestamp)}</p>
                     </div>
                   </div>
                 );
               })}
               {myCheckins.length === 0 && (
-                <div className="bg-slate-50 p-10 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-                  <p className="text-slate-400 font-bold text-sm italic">Nenhum registro encontrado.</p>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-10 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 text-center">
+                  <p className="text-slate-400 dark:text-slate-500 font-bold text-sm italic">Nenhum registro encontrado.</p>
                 </div>
               )}
             </div>
           </div>
         </div>
       ) : scanning ? (
-        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden relative">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden relative">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Escaneie o QR Code</h3>
-            <button onClick={() => { setScanning(false); setType(null); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-              <X size={20} />
+            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Escaneie o QR Code</h3>
+            <button onClick={() => { setScanning(false); setType(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+              <X size={20} className="dark:text-slate-400" />
             </button>
           </div>
           <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-900 relative">
@@ -1282,19 +1305,19 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
               <div className="w-full h-full border-2 border-emerald-500 rounded-2xl animate-pulse"></div>
             </div>
           </div>
-          <p className="text-center text-slate-500 text-xs mt-6 font-medium">
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mt-6 font-medium">
             Posicione o QR Code da unidade dentro do quadrado para escanear.
           </p>
         </div>
       ) : scannedUnitId && !photo ? (
-        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Tirar Foto</h3>
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{unit?.name || 'Unidade'}</p>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Tirar Foto</h3>
+              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">{unit?.name || 'Unidade'}</p>
             </div>
-            <button onClick={() => { setScannedUnitId(null); setType(null); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-              <X size={20} />
+            <button onClick={() => { setScannedUnitId(null); setType(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+              <X size={20} className="dark:text-slate-400" />
             </button>
           </div>
           <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-900 relative">
@@ -1302,41 +1325,41 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
             <div className="absolute bottom-8 left-0 right-0 flex justify-center">
               <button 
                 onClick={capturePhoto}
-                className="w-16 h-16 bg-white rounded-full border-4 border-slate-200 flex items-center justify-center shadow-xl active:scale-90 transition-all"
+                className="w-16 h-16 bg-white rounded-full border-4 border-slate-200 dark:border-white/20 flex items-center justify-center shadow-xl active:scale-90 transition-all"
               >
                 <div className="w-12 h-12 bg-slate-900 rounded-full"></div>
               </button>
             </div>
           </div>
-          <p className="text-center text-slate-500 text-xs mt-6 font-medium">
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mt-6 font-medium">
             Tire uma foto sua no local para confirmar o registro.
           </p>
         </div>
       ) : scannedUnitId && photo ? (
-        <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Confirmar Registro</h3>
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{type === 'IN' ? 'Entrada' : 'Saída'} em {unit?.name}</p>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Confirmar Registro</h3>
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{type === 'IN' ? 'Entrada' : 'Saída'} em {unit?.name}</p>
             </div>
-            <button onClick={() => { setPhoto(null); startCamera(); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-              <X size={20} />
+            <button onClick={() => { setPhoto(null); startCamera(); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+              <X size={20} className="dark:text-slate-400" />
             </button>
           </div>
-          <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-50 border border-slate-200 mb-8">
+          <div className="aspect-square rounded-[2rem] overflow-hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 mb-8">
             <img src={photo} alt="Captured" className="w-full h-full object-cover" />
           </div>
           <div className="space-y-4">
             <button 
               onClick={handleRegister}
-              className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-3"
+              className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 dark:shadow-emerald-900/20 flex items-center justify-center gap-3 active:scale-95"
             >
               <CheckCircle size={18} />
               Confirmar e Salvar
             </button>
             <button 
               onClick={() => { setPhoto(null); startCamera(); }}
-              className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all"
+              className="w-full py-4 text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 dark:hover:text-slate-300 transition-all"
             >
               Tirar outra foto
             </button>
@@ -2099,9 +2122,9 @@ export default function App() {
 
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 relative">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black relative transition-colors duration-500">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
       </div>
     );
   }
@@ -2117,14 +2140,14 @@ export default function App() {
             plans={plans} 
             onLogout={handleLogout} 
           />
-          <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+          <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
         </ErrorBoundary>
       );
     }
     return (
       <ErrorBoundary>
         <PendingApproval onLogout={handleLogout} />
-        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
       </ErrorBoundary>
     );
   }
@@ -2185,6 +2208,8 @@ export default function App() {
           handleResetPassword={handleResetPassword}
           resetStatus={resetStatus}
           plans={plans}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
       </div>
@@ -2199,7 +2224,7 @@ export default function App() {
           onComplete={() => setNeedsPasswordChange(false)} 
           handleLogout={handleLogout}
         />
-        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
       </ErrorBoundary>
     );
   }
@@ -2208,7 +2233,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex flex-col bg-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-black font-sans selection:bg-blue-100 selection:text-blue-900 transition-colors duration-500">
         <Toaster position="top-center" />
         <AppNavbar 
           role={role} 
@@ -2235,6 +2260,8 @@ export default function App() {
           handleLogout={handleLogout}
           agencyPlan={currentAgencyPlan}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
 
         <MobileSidebar 
@@ -2262,9 +2289,11 @@ export default function App() {
           }
           handleLogout={handleLogout}
           agencyPlan={currentAgencyPlan}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
 
-        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-slate-50 dark:bg-black transition-colors duration-500">
           <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full pb-32">
               <AnimatePresence mode="wait">
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'PENDING' && (
@@ -2273,12 +2302,12 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6"
                   >
-                    <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-500">
+                    <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center text-blue-500 dark:text-blue-400">
                       <Clock size={40} />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-3xl font-black text-slate-950 tracking-tighter">Cadastro em Análise</h2>
-                      <p className="text-slate-500 font-medium max-w-md mx-auto">
+                      <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tighter">Cadastro em Análise</h2>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md mx-auto">
                         Sua agência foi cadastrada com sucesso! Nossa equipe está revisando seus dados e documentos. Você receberá um e-mail assim que sua conta for ativada.
                       </p>
                     </div>
@@ -2296,12 +2325,12 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6"
                   >
-                    <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500">
+                    <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-3xl flex items-center justify-center text-red-500 dark:text-red-400">
                       <AlertTriangle size={40} />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-3xl font-black text-slate-950 tracking-tighter">Conta Bloqueada</h2>
-                      <p className="text-slate-500 font-medium max-w-md mx-auto">
+                      <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tighter">Conta Bloqueada</h2>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md mx-auto">
                         Sua conta de agência está temporariamente bloqueada. Entre em contato com o suporte para mais informações.
                       </p>
                     </div>
@@ -2336,6 +2365,7 @@ export default function App() {
                       companyUsers={companyUsers}
                       plans={plans}
                       companyRequests={companyRequests}
+                      isDarkMode={isDarkMode}
                     />
                   </div>
                 )}
@@ -2431,6 +2461,7 @@ export default function App() {
                       companyUsers={companyUsers}
                       plans={plans}
                       companyRequests={companyRequests}
+                      isDarkMode={isDarkMode}
                     />
                   </div>
                 )}
@@ -2531,6 +2562,7 @@ export default function App() {
                       invoices={invoices}
                       bulletins={bulletins}
                       companyRequests={companyRequests}
+                      isDarkMode={isDarkMode}
                     />
                   </div>
                 )}
@@ -2616,6 +2648,7 @@ export default function App() {
                       bulletins={bulletins}
                       invoices={invoices}
                       checkins={checkins}
+                      isDarkMode={isDarkMode}
                     />
                   </div>
                 )}
@@ -2706,7 +2739,7 @@ export default function App() {
             activeTab={activeTab} 
             setActiveTab={handleTabChange} 
           />
-          <div className="fixed bottom-20 lg:bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
+          <div className="fixed bottom-20 lg:bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
         </div>
       </div>
     </ErrorBoundary>
@@ -3642,7 +3675,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans, companyRequests }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[], companyRequests: CompanyRequest[] }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans, companyRequests, isDarkMode }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -3784,8 +3817,8 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         className="space-y-10"
       >
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Dashboard Super Admin</h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Acompanhe o desempenho global da plataforma.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Dashboard Super Admin</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm sm:text-base">Acompanhe o desempenho global da plataforma.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -3842,14 +3875,14 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           />
         </div>
 
-        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20">
+            <div className="w-12 h-12 rounded-2xl bg-slate-950 dark:bg-brand-500 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 dark:shadow-brand-500/20">
               <Building2 size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Agências Cadastradas</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Lista de parceiros na plataforma</p>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Agências Cadastradas</h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mt-0.5">Lista de parceiros na plataforma</p>
             </div>
           </div>
 
@@ -3858,18 +3891,18 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
               const agencyEmployees = employees.filter(e => e.agencyId === agency.id).length;
               const agencyCompanies = companies.filter(c => c.agencyId === agency.id).length;
               return (
-                <div key={agency.id} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group">
+                <div key={agency.id} className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{agency.name}</h4>
+                      <h4 className="font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase tracking-tight">{agency.name}</h4>
                       <div className="flex items-center gap-4 mt-2">
                         <div className="flex items-center gap-1.5">
                           <Users size={12} className="text-slate-400" />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{agencyEmployees} Colaboradores</span>
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{agencyEmployees} Colaboradores</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Building2 size={12} className="text-slate-400" />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{agencyCompanies} Empresas</span>
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{agencyCompanies} Empresas</span>
                         </div>
                       </div>
                     </div>
@@ -3880,14 +3913,14 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                           setMaxEmployees(agency.maxEmployees?.toString() || '');
                           setMaxCompanies(agency.maxCompanies?.toString() || '');
                         }}
-                        className="p-3 bg-white rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                        className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-900 dark:hover:bg-brand-500 hover:text-white hover:border-slate-900 dark:hover:border-brand-500 transition-all shadow-sm"
                         title="Definir Limites"
                       >
                         <Settings size={16} />
                       </button>
                       <button 
                         onClick={() => onSelectAgency && onSelectAgency(agency.id)}
-                        className="p-3 bg-white rounded-xl border border-slate-200 text-slate-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
+                        className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -3976,12 +4009,12 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative">
         <div className="flex flex-col gap-2">
-          <h2 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tighter uppercase">
+          <h2 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">
             {role === 'ADMIN' && agencies.find(a => a.id === selectedAgencyId) 
               ? agencies.find(a => a.id === selectedAgencyId)?.name 
               : role === 'AGENCY' ? agencies.find(a => a.id === agencyId)?.name || 'Visão Geral' : 'Visão Geral'}
           </h2>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm sm:text-base">
             {role === 'ADMIN' && selectedAgencyId 
               ? 'Acompanhe o desempenho desta agência.' 
               : 'Acompanhe o desempenho da sua agência hoje.'}
@@ -3990,7 +4023,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         {role === 'ADMIN' && selectedAgencyId && (
           <button 
             onClick={() => onClearAgency()}
-            className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all active:scale-95"
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
           >
             Voltar para Visão Global
           </button>
@@ -3999,21 +4032,21 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {role === 'AGENCY' && (
-          <div className="lg:col-span-3 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="lg:col-span-3 bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                 <ShieldCheck size={24} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Plano {agencies.find(a => a.id === agencyId)?.plan}</h3>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Plano {agencies.find(a => a.id === agencyId)?.plan}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                    agencies.find(a => a.id === agencyId)?.subscriptionStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                    agencies.find(a => a.id === agencyId)?.subscriptionStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
                   }`}>
                     {agencies.find(a => a.id === agencyId)?.subscriptionStatus === 'TRIAL' ? 'Período de Teste' : 'Ativo'}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Seu plano atual e limites</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Seu plano atual e limites</p>
                 {(() => {
                   const currentPlan = plans.find(p => p.id === agencies.find(a => a.id === agencyId)?.plan);
                   if (currentPlan) {
@@ -4022,7 +4055,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                         {currentPlan.features.slice(0, 3).map((f, i) => (
                           <div key={i} className="flex items-center gap-1">
                             <CheckCircle2 size={10} className="text-emerald-500" />
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">{f}</span>
+                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{f}</span>
                           </div>
                         ))}
                       </div>
@@ -4035,32 +4068,32 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
 
             <div className="flex flex-wrap items-center gap-8">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Solicitação</span>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Solicitação</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-24 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-blue-500 transition-all" 
                       style={{ width: `${Math.min(100, (totalEmployees / (agencies.find(a => a.id === agencyId)?.maxEmployees || 9999)) * 100)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-slate-700">{totalEmployees} / {agencies.find(a => a.id === agencyId)?.maxEmployees || '∞'}</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-white">{totalEmployees} / {agencies.find(a => a.id === agencyId)?.maxEmployees || '∞'}</span>
                 </div>
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Empresas</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-24 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-violet-500 transition-all" 
                       style={{ width: `${Math.min(100, (totalCompanies / (agencies.find(a => a.id === agencyId)?.maxCompanies || 9999)) * 100)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-slate-700">{totalCompanies} / {agencies.find(a => a.id === agencyId)?.maxCompanies || '∞'}</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-white">{totalCompanies} / {agencies.find(a => a.id === agencyId)?.maxCompanies || '∞'}</span>
                 </div>
               </div>
 
-              <button className="px-4 py-2 bg-slate-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95">
+              <button className="px-4 py-2 bg-slate-950 dark:bg-brand-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-brand-600 transition-all active:scale-95">
                 Upgrade
               </button>
             </div>
@@ -4143,17 +4176,26 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-black text-slate-900 mb-6">Faturamento (Últimos 6 meses)</h3>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Faturamento (Últimos 6 meses)</h3>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#1e293b" : "#f1f5f9"} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
                 <RechartsTooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  cursor={{ fill: isDarkMode ? '#0f172a' : '#f8fafc' }}
+                  contentStyle={{ 
+                    borderRadius: '1rem', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    backgroundColor: isDarkMode ? '#020617' : '#ffffff',
+                    color: isDarkMode ? '#ffffff' : '#000000',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                  itemStyle={{ color: isDarkMode ? '#3b82f6' : '#2563eb' }}
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
                 />
                 <Bar dataKey="Faturamento" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -4162,8 +4204,8 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-black text-slate-900 mb-6">Status das Diárias</h3>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Status das Diárias</h3>
           <div className="h-72 w-full flex items-center justify-center">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -4182,19 +4224,27 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ 
+                      borderRadius: '1rem', 
+                      border: 'none', 
+                      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                      backgroundColor: isDarkMode ? '#020617' : '#ffffff',
+                      color: isDarkMode ? '#ffffff' : '#000000',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-slate-400 font-medium text-sm">Nenhum dado disponível</p>
+              <p className="text-slate-400 dark:text-slate-500 font-medium text-sm">Nenhum dado disponível</p>
             )}
           </div>
           <div className="flex flex-wrap justify-center gap-4 mt-4">
             {pieData.map((entry, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span className="text-xs font-bold text-slate-600">{entry.name} ({entry.value})</span>
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{entry.name} ({entry.value})</span>
               </div>
             ))}
           </div>
@@ -4202,7 +4252,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       </div>
 
       {alerts > 0 && (
-        <div className="bg-rose-50 p-8 sm:p-12 rounded-[2.5rem] border border-rose-100 shadow-sm relative overflow-hidden group">
+        <div className="bg-rose-50 dark:bg-rose-950/20 p-8 sm:p-12 rounded-[2.5rem] border border-rose-100 dark:border-rose-900/30 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
           
           <div className="relative z-10">
@@ -4211,20 +4261,20 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 <AlertTriangle size={32} />
               </div>
               <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-rose-900 tracking-tight">Alertas Críticos</h3>
-                <p className="text-sm text-rose-600 font-medium tracking-wide">Empresas com irregularidades que precisam de atenção.</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-rose-900 dark:text-rose-100 tracking-tight">Alertas Críticos</h3>
+                <p className="text-sm text-rose-600 dark:text-rose-400 font-medium tracking-wide">Empresas com irregularidades que precisam de atenção.</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {companies.filter(c => c.status === 'BLOCKED' || c.documents?.some(d => d.status === 'REJECTED')).map(company => (
-                <div key={company.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-rose-100 shadow-sm">
+                <div key={company.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-2xl border border-rose-100 dark:border-rose-900/30 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
                       <Building2 size={20} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{company.name}</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{company.name}</p>
                       <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
                         {company.status === 'BLOCKED' ? 'Empresa Bloqueada' : 'Documentos Rejeitados'}
                       </p>
@@ -4232,7 +4282,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                   </div>
                   <button 
                     onClick={() => setActiveTab('admin_companies')}
-                    className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
+                    className="px-4 py-2 bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
                   >
                     Resolver
                   </button>
@@ -4244,24 +4294,24 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
       )}
 
       {role !== 'ADMIN' && (
-        <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+        <div className="bg-white dark:bg-slate-900 p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
           
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12">
               <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <div className="w-16 h-16 bg-slate-950 dark:bg-brand-500 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 dark:shadow-black/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
                   {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
                 </div>
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
                   </h3>
-                  <p className="text-sm text-slate-400 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
                 </div>
               </div>
               {pricing.type === 'DAILY' && (
-                <div className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 w-fit shadow-sm">
+                <div className="px-5 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-900/50 w-fit shadow-sm">
                   Hoje: {todayName}
                 </div>
               )}
@@ -4270,18 +4320,18 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {pricing.type === 'STARS' ? (
                 Object.entries(pricing.stars || {}).map(([stars, p]) => (
-                  <div key={stars} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-6 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
+                  <div key={stars} className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-6 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
                     <div className="flex gap-1.5 relative z-10">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={16} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                        <Star key={i} size={16} className={i < parseInt(stars) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200 dark:text-slate-700'} />
                       ))}
                     </div>
                     <div className="text-center relative z-10">
-                      <p className="text-3xl font-black text-slate-900 tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-3">Valor por diária</p>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">R$ {(p.employee + p.company).toFixed(2)}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mt-3">Valor por diária</p>
                     </div>
-                    <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden relative z-10">
+                    <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative z-10">
                       <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${(parseInt(stars) / 5) * 100}%` }}></div>
                     </div>
                   </div>
@@ -4291,15 +4341,15 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                   const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
                   const isToday = day === todayName;
                   return (
-                    <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden ${isToday ? 'bg-slate-950 border-slate-950 text-white shadow-2xl shadow-slate-950/30 scale-105 z-10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10'}`}>
+                    <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden transition-colors duration-500 ${isToday ? 'bg-slate-950 dark:bg-brand-600 border-slate-950 dark:border-brand-600 text-white shadow-2xl shadow-slate-950/30 dark:shadow-brand-600/30 scale-105 z-10 font-bold' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 dark:text-slate-100'}`}>
                       {isToday && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>}
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>{day}</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-400 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{day}</span>
                       <div className="text-center">
-                        <p className={`text-3xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${isToday ? 'text-slate-500' : 'text-slate-400'}`}>Valor por diária</p>
+                        <p className={`text-3xl font-black tracking-tight ${isToday ? 'text-white' : 'text-slate-900 dark:text-white'}`}>R$ {(p.employee + p.company).toFixed(2)}</p>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${isToday ? 'text-slate-500 dark:text-white/60' : 'text-slate-400 dark:text-slate-500'}`}>Valor por diária</p>
                       </div>
                       {isToday && (
-                        <div className="px-4 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-500/20">
+                        <div className="px-4 py-1.5 bg-blue-600/20 dark:bg-white/20 text-blue-400 dark:text-white rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-500/20 dark:border-white/20">
                           Vigente Agora
                         </div>
                       )}
@@ -4314,21 +4364,21 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
 
       {role !== 'ADMIN' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+          <div className="bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group transition-colors duration-500">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-700"></div>
             <div className="flex items-center justify-between mb-10 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <div className="w-12 h-12 rounded-2xl bg-slate-950 dark:bg-brand-500 text-white flex items-center justify-center shadow-2xl shadow-slate-950/20 dark:shadow-brand-500/20 rotate-3 group-hover:rotate-0 transition-transform duration-500 transition-colors">
                   <Calendar size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Diarias do Dia</h3>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Diaria ativa hoje</p>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Diarias do Dia</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mt-0.5">Diaria ativa hoje</p>
                 </div>
               </div>
               <button 
                 onClick={() => setActiveTab('agency_staffing')}
-                className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
+                className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:text-blue-700 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm active:scale-95"
               >
                 Ver Agenda
               </button>
@@ -4695,16 +4745,16 @@ function ConfirmationModal({
 
 function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }: { icon: React.ReactNode, label: string, value: string, trend?: string, alert?: boolean, color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'slate' | 'violet' | 'amber' | 'cyan', onClick?: () => void }) {
   const colorClasses: any = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    orange: 'bg-orange-50 text-orange-600 border-orange-100',
-    purple: 'bg-purple-50 text-purple-600 border-purple-100',
-    rose: 'bg-rose-50 text-rose-600 border-rose-100',
-    slate: 'bg-slate-50 text-slate-900 border-slate-100',
-    violet: 'bg-violet-50 text-accent-violet border-violet-100',
-    amber: 'bg-amber-50 text-accent-amber border-amber-100',
-    cyan: 'bg-cyan-50 text-accent-cyan border-cyan-100'
+    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50',
+    indigo: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
+    orange: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-800/50',
+    purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-800/50',
+    rose: 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/50',
+    slate: 'bg-slate-50 dark:bg-slate-800/30 text-slate-900 dark:text-slate-100 border-slate-100 dark:border-slate-800/50',
+    violet: 'bg-violet-50 dark:bg-violet-900/20 text-accent-violet dark:text-violet-400 border-violet-100 dark:border-violet-800/50',
+    amber: 'bg-amber-50 dark:bg-amber-900/20 text-accent-amber dark:text-amber-400 border-amber-100 dark:border-amber-800/50',
+    cyan: 'bg-cyan-50 dark:bg-cyan-900/20 text-accent-cyan dark:text-cyan-400 border-cyan-100 dark:border-cyan-800/50'
   };
 
   const iconColors: any = {
@@ -4723,12 +4773,12 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   return (
     <div 
       onClick={onClick}
-      className={`p-3.5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all duration-500 group relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
+      className={`p-3.5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 dark:hover:shadow-black/20 transition-all duration-500 group relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
     >
       <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150 ${iconColors[color]?.split(' ')[0] || 'bg-blue-600'}`} />
       
       <div className="flex items-center justify-between mb-2 sm:mb-6 relative z-10">
-        <div className={`w-8 h-8 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 ${iconColors[color] || 'bg-blue-600 text-white'}`}>
+        <div className={`w-8 h-8 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 bg-linear-to-br from-white/10 to-transparent ${iconColors[color] || 'bg-blue-600 text-white'}`}>
           {icon}
         </div>
         {trend && (
@@ -4738,8 +4788,8 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
         )}
       </div>
       <div className="relative z-10">
-        <p className="text-[6px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0 sm:mb-1.5">{label}</p>
-        <h3 className="text-sm sm:text-3xl font-black text-slate-950 tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
+        <p className="text-[6px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0 sm:mb-1.5">{label}</p>
+        <h3 className="text-sm sm:text-3xl font-black text-slate-950 dark:text-white tracking-tight group-hover:translate-x-1 transition-transform duration-300">{value}</h3>
       </div>
       {alert && (
         <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
@@ -4748,7 +4798,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[] }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins, isDarkMode }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[], isDarkMode: boolean }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
@@ -4793,13 +4843,13 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
   
   if (!employee) {
     return (
-      <div className="bg-white p-12 rounded-[3rem] border border-slate-100 text-center space-y-6 shadow-sm">
-        <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 border border-slate-100 rotate-6">
+      <div className="bg-white dark:bg-slate-900 p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 text-center space-y-6 shadow-sm transition-colors duration-500">
+        <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200 dark:text-slate-700 border border-slate-100 dark:border-slate-800 rotate-6">
           <UserIcon size={48} />
         </div>
         <div className="space-y-2">
-          <h3 className="text-2xl font-black text-slate-950 tracking-tight uppercase">Perfil não encontrado</h3>
-          <p className="text-slate-400 max-w-xs mx-auto text-sm font-medium leading-relaxed">Não encontramos uma agenda vinculada a este e-mail. Entre em contato com sua agência.</p>
+          <h3 className="text-2xl font-black text-slate-950 dark:text-white tracking-tight uppercase">Perfil não encontrado</h3>
+          <p className="text-slate-400 dark:text-slate-500 max-w-xs mx-auto text-sm font-medium leading-relaxed">Não encontramos uma agenda vinculada a este e-mail. Entre em contato com sua agência.</p>
         </div>
       </div>
     );
@@ -4875,8 +4925,8 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
       </AnimatePresence>
 
       <div className="flex flex-col gap-0.5 px-2 sm:px-0 mb-2 sm:mb-0 items-center text-center sm:items-start sm:text-left">
-        <h2 className="text-base sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Minha Agenda</h2>
-        <p className="text-slate-500 font-medium text-[8px] sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
+        <h2 className="text-base sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Minha Agenda</h2>
+        <p className="text-slate-500 dark:text-slate-400 font-medium text-[8px] sm:text-base">Gerencie suas diarias e informe sua disponibilidade.</p>
       </div>
 
       {/* Notifications Section */}
@@ -4884,7 +4934,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         <div className="space-y-6">
           <div className="flex items-center gap-3 px-2">
             <div className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Notificações Prioritárias</h3>
+            <h3 className="text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-[0.2em]">Notificações Prioritárias</h3>
           </div>
           <div className="grid grid-cols-1 gap-6">
             {myNotifications.map(notification => (
@@ -4892,7 +4942,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                 key={notification.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-slate-950 text-white p-8 sm:p-12 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between gap-10 shadow-2xl shadow-slate-950/40 relative overflow-hidden group"
+                className="bg-slate-950 dark:bg-brand-900/50 text-white p-8 sm:p-12 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between gap-10 shadow-2xl shadow-slate-950/40 relative overflow-hidden group border border-transparent dark:border-brand-500/20"
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                 <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] group-hover:scale-150 transition-transform duration-1000" />
@@ -4943,22 +4993,22 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         </div>
       )}
 
-      <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
+      <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 dark:border-slate-800 mx-auto sm:mx-0 overflow-x-auto no-scrollbar transition-colors">
         <button 
           onClick={() => setActiveTab('SCHEDULE')}
-          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'SCHEDULE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'SCHEDULE' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
         >
           Agenda
         </button>
         <button 
           onClick={() => setActiveTab('FINANCE')}
-          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FINANCE' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FINANCE' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
         >
           Financeiro
         </button>
         <button 
           onClick={() => setActiveTab('UNAVAILABILITY')}
-          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'UNAVAILABILITY' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+          className={`flex-none px-2.5 sm:px-6 py-1.5 sm:py-3 rounded-md sm:rounded-xl text-[6px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'UNAVAILABILITY' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
         >
           Indisponibilidade
         </button>
@@ -6229,39 +6279,39 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-12">
-        <div className="bg-white border border-slate-200 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 p-4 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-md dark:shadow-black/50 transition-all group">
           <div className="flex items-center justify-between mb-4 md:mb-6">
             <div className="flex items-center gap-3 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 group-hover:bg-orange-600 dark:group-hover:bg-orange-500 group-hover:text-white transition-all">
                 <AlertCircle className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base md:text-lg">Inatividade</h3>
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">+30 dias sem diarias</p>
+                <h3 className="font-bold text-slate-900 dark:text-white text-base md:text-lg">Inatividade</h3>
+                <p className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium">+30 dias sem diarias</p>
               </div>
             </div>
-            <span className="bg-orange-100 text-orange-700 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
+            <span className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 text-[9px] md:text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
               {inactiveEmployees.length} Alertas
             </span>
           </div>
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
             {inactiveEmployees.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-300">
+              <div className="flex flex-col items-center justify-center py-8 text-slate-300 dark:text-slate-700">
                 <CheckCircle size={32} className="mb-2 opacity-20" />
                 <p className="text-sm font-medium italic">Tudo em dia!</p>
               </div>
             ) : (
               inactiveEmployees.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-white transition-all group/item">
+                <div key={emp.id} className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-orange-200 dark:hover:border-orange-900 hover:bg-white dark:hover:bg-black transition-all group/item">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center text-orange-600 dark:text-orange-400 text-xs font-bold">
                       {emp.firstName[0]}
                     </div>
-                    <span className="text-sm font-bold text-slate-700">{emp.firstName} {emp.lastName}</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{emp.firstName} {emp.lastName}</span>
                   </div>
                   <button 
                     onClick={() => sendInactivityWarning(emp)}
-                    className="text-[10px] bg-white text-orange-600 border border-orange-200 px-3 py-1.5 rounded-xl font-bold hover:bg-orange-600 hover:text-white hover:border-orange-600 transition-all shadow-sm"
+                    className="text-[10px] bg-white dark:bg-black text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900 px-3 py-1.5 rounded-xl font-bold hover:bg-orange-600 dark:hover:bg-orange-500 hover:text-white dark:hover:text-white hover:border-orange-600 dark:hover:border-orange-500 transition-all shadow-sm"
                   >
                     Notificar
                   </button>
@@ -6271,37 +6321,37 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm hover:shadow-md dark:shadow-black/50 transition-all group">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 group-hover:bg-rose-600 dark:group-hover:bg-rose-500 group-hover:text-white transition-all">
                 <MessageSquare size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-lg">Reclamações</h3>
-                <p className="text-xs text-slate-400 font-medium">Críticas recorrentes</p>
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Reclamações</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Críticas recorrentes</p>
               </div>
             </div>
-            <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
+            <span className="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider">
               {highComplaintEmployees.length} Críticos
             </span>
           </div>
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
             {highComplaintEmployees.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-300">
+              <div className="flex flex-col items-center justify-center py-8 text-slate-300 dark:text-slate-700">
                 <CheckCircle size={32} className="mb-2 opacity-20" />
                 <p className="text-sm font-medium italic">Nenhuma queixa.</p>
               </div>
             ) : (
               highComplaintEmployees.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:border-rose-200 hover:bg-white transition-all group/item">
+                <div key={emp.id} className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-rose-200 dark:hover:border-rose-900 hover:bg-white dark:hover:bg-black transition-all group/item">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 text-xs font-bold">
                       {emp.firstName[0]}
                     </div>
-                    <span className="text-sm font-bold text-slate-700">{emp.firstName} {emp.lastName}</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{emp.firstName} {emp.lastName}</span>
                   </div>
-                  <span className="text-[10px] bg-rose-50 text-rose-600 px-3 py-1.5 rounded-xl font-bold border border-rose-100">
+                  <span className="text-[10px] bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-xl font-bold border border-rose-100 dark:border-rose-900">
                     {emp.complaints} Queixas
                   </span>
                 </div>
@@ -6311,27 +6361,27 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl sm:rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 gap-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/30 dark:bg-zinc-950/30 gap-4 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Base de Funcionários</h3>
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Base de Funcionários</h3>
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
               <input 
                 type="text" 
                 placeholder="Buscar por nome, CPF ou tel..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-blue-600 outline-none transition-all"
+                className="w-full pl-9 pr-4 py-2 bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:border-blue-600 outline-none transition-all text-slate-700 dark:text-slate-200"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
           <div className="flex gap-2">
-            <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-slate-200 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total: {employees.length}
             </div>
             {searchTerm && (
-              <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-50 border border-blue-100 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+              <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                 Encontrados: {filteredEmployees.length}
               </div>
             )}
@@ -6340,24 +6390,24 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         <div className="overflow-x-auto block">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white border-b border-slate-100">
-                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Funcionário</th>
-                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Documento</th>
-                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Nascimento</th>
-                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Performance</th>
-                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+              <tr className="bg-white dark:bg-black border-b border-slate-100 dark:border-slate-800">
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Funcionário</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hidden sm:table-cell">Documento</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hidden sm:table-cell">Nascimento</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hidden md:table-cell">Performance</th>
+                <th className="p-2 sm:p-4 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {filteredEmployees.map(emp => (
                 <tr 
                   key={emp.id} 
-                  className="hover:bg-blue-50/30 transition-all cursor-pointer group"
+                  className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all cursor-pointer group"
                   onClick={() => setSelectedEmployee(emp)}
                 >
                   <td className="p-2 sm:p-4">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-[10px] sm:text-xs border-2 border-white shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-600 dark:text-slate-400 font-bold text-[10px] sm:text-xs border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
                         {emp.photoUrl ? (
                           <img src={emp.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -6365,34 +6415,34 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 text-[10px] sm:text-xs group-hover:text-blue-600 transition-colors">{emp.firstName} {emp.lastName}</p>
+                        <p className="font-bold text-slate-900 dark:text-white text-[10px] sm:text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{emp.firstName} {emp.lastName}</p>
                         <div className="flex items-center gap-1.5">
-                          <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold tracking-tight">{emp.phone}</p>
-                          <span className={`text-[7px] px-1 rounded bg-slate-100 text-slate-500 font-black uppercase tracking-widest ${emp.category === 'CONTRATADO' ? 'text-emerald-600 bg-emerald-50' : 'text-blue-600 bg-blue-50'}`}>
+                          <p className="text-[8px] sm:text-[9px] text-slate-400 dark:text-slate-500 font-bold tracking-tight">{emp.phone}</p>
+                          <span className={`text-[7px] px-1 rounded bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest ${emp.category === 'CONTRATADO' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30'}`}>
                             {emp.category === 'CONTRATADO' ? 'CLT' : 'Diarista'}
                           </span>
                           {emp.profession && (
-                            <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest">
+                            <span className="text-[7px] px-1 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest">
                               {emp.profession}
                             </span>
                           )}
                           {emp.eSocialUrl && (
-                            <span className="text-[7px] px-1 rounded bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest flex items-center gap-0.5">
+                            <span className="text-[7px] px-1 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest flex items-center gap-0.5">
                               <FileText size={8} />
                               eSocial
                             </span>
                           )}
                         </div>
-                        {emp.personalEmail && <p className="text-[8px] sm:text-[9px] text-blue-500 font-bold tracking-tight hidden sm:block">{emp.personalEmail}</p>}
+                        {emp.personalEmail && <p className="text-[8px] sm:text-[9px] text-blue-500 dark:text-blue-400 font-bold tracking-tight hidden sm:block">{emp.personalEmail}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-tighter hidden sm:table-cell">{emp.cpf}</td>
-                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 font-medium hidden sm:table-cell">{formatDateBR(emp.birthDate)}</td>
+                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-tighter hidden sm:table-cell">{emp.cpf}</td>
+                  <td className="p-2 sm:p-4 text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden sm:table-cell">{formatDateBR(emp.birthDate)}</td>
                   <td className="p-2 sm:p-4 hidden md:table-cell">
-                    <div className="flex gap-0.5 bg-slate-50 w-fit px-2 py-1 rounded-lg">
+                    <div className="flex gap-0.5 bg-slate-50 dark:bg-black w-fit px-2 py-1 rounded-lg border border-transparent dark:border-slate-800 transition-colors">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={10} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                        <Star key={i} size={10} className={i < emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200 dark:text-slate-800'} />
                       ))}
                     </div>
                   </td>
@@ -8212,37 +8262,37 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden bg-slate-50/50 border-t border-slate-100"
+                          className="overflow-hidden bg-slate-50/50 dark:bg-zinc-900/50 border-t border-slate-100 dark:border-slate-800"
                         >
                           <div className="p-4 sm:p-8 space-y-6">
-                            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-black">
                               <table className="w-full text-left border-collapse">
                                 <thead>
-                                  <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário / Data</th>
-                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidade</th>
-                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Operação</th>
-                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ações</th>
+                                  <tr className="bg-slate-50 dark:bg-zinc-950 border-b border-slate-200 dark:border-slate-800">
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Horário / Data</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Unidade</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Operação</th>
+                                    <th className="p-4 sm:p-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Ações</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {incidents.map((inc, idx) => {
                                     const client = clients.find(c => c.id === inc.as.clientId);
                                     return (
-                                      <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                      <tr key={idx} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-zinc-900/50 transition-colors">
                                         <td className="p-4 sm:p-6">
                                           <div className="flex flex-col">
-                                            <span className="font-black text-slate-900 text-sm">{new Date(inc.ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDateBR(inc.as.date)}</span>
+                                            <span className="font-black text-slate-900 dark:text-white text-sm">{new Date(inc.ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{formatDateBR(inc.as.date)}</span>
                                           </div>
                                         </td>
                                         <td className="p-4 sm:p-6">
-                                          <p className="font-black text-slate-900 text-sm">{client?.name}</p>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {inc.ci.unitId}</p>
+                                          <p className="font-black text-slate-900 dark:text-white text-sm">{client?.name}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">ID: {inc.ci.unitId}</p>
                                         </td>
                                         <td className="p-4 sm:p-6 text-center">
                                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tight ${
-                                            inc.ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                                            inc.ci.type === 'IN' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
                                           }`}>
                                             {inc.ci.type === 'IN' ? 'Entrada' : 'Saída'}
                                           </span>
@@ -8278,14 +8328,14 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
         </div>
       </div>
       ) : (
-        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <div className="flex items-center gap-4 mb-10">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-inner">
               <MessageSquare size={20} />
             </div>
             <div>
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Solicitações das Empresas</h3>
-              <p className="text-slate-400 text-[9px] sm:text-xs font-black uppercase tracking-widest">Pedidos de profissionais para datas específicas</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Solicitações das Empresas</h3>
+              <p className="text-slate-400 dark:text-slate-500 text-[9px] sm:text-xs font-black uppercase tracking-widest">Pedidos de profissionais para datas específicas</p>
             </div>
           </div>
 
@@ -8293,9 +8343,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
             {companyRequests.filter(req => req.status === 'PENDING').map(req => {
               const client = clients.find(c => c.id === req.clientId);
               return (
-                <div key={req.id} className="p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+                <div key={req.id} className="p-6 sm:p-8 bg-slate-50 dark:bg-slate-950 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-6 transition-colors">
                   <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-slate-100 shrink-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white dark:bg-black rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm border border-slate-100 dark:border-slate-800 shrink-0 transition-colors">
                       <Building2 size={24} />
                     </div>
                     <div>
@@ -9238,13 +9288,13 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-black rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-transparent dark:border-slate-800 transition-colors"
           >
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
-              <h3 className="text-2xl font-black text-slate-900">Detalhes da Empresa</h3>
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10 transition-colors">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white">Detalhes da Empresa</h3>
               <button 
                 onClick={() => setShowDetailsModal(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               >
                 <X size={24} />
               </button>
@@ -9276,53 +9326,53 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Nome</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.name}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Nome</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.name}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">CNPJ</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.cnpj || 'Não informado'}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">CNPJ</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.cnpj || 'Não informado'}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Responsável</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.responsibleName}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Responsável</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.responsibleName}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Contato</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.phone}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Contato</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.phone}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Email</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.email}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Email</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.email}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Endereço</p>
-                    <p className="text-sm font-bold text-slate-700">{showDetailsModal.address}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl transition-colors border border-transparent dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Endereço</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{showDetailsModal.address}</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-lg font-bold text-slate-800 mb-4">Documentos</h4>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Documentos</h4>
                 {showDetailsModal.documents && showDetailsModal.documents.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {showDetailsModal.documents.map((doc, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                         <div className="flex items-center gap-3">
                           <FileText size={20} className="text-blue-500" />
                           <div>
-                            <p className="text-sm font-bold text-slate-700">{doc.name}</p>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{doc.name}</p>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              doc.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
-                              doc.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
-                              'bg-amber-100 text-amber-700'
+                              doc.status === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400' :
+                              doc.status === 'REJECTED' ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400' :
+                              'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
                             }`}>
                               {doc.status === 'APPROVED' ? 'APROVADO' : doc.status === 'REJECTED' ? 'REPROVADO' : 'PENDENTE'}
                             </span>
                           </div>
                         </div>
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
                           <Eye size={16} />
                         </a>
                       </div>
@@ -9334,26 +9384,26 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
               </div>
 
               <div>
-                <h4 className="text-lg font-bold text-slate-800 mb-4">Usuários Cadastrados</h4>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Usuários Cadastrados</h4>
                 <div className="space-y-3">
                   {companyUsers.filter(u => u.companyId === showDetailsModal.id).map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                       <div>
-                        <p className="text-sm font-bold text-slate-700">{user.fullName}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{user.fullName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          user.status === 'BLOCKED' ? 'bg-rose-100 text-rose-700' : 
-                          user.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                          'bg-emerald-100 text-emerald-700'
+                          user.status === 'BLOCKED' ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400' : 
+                          user.status === 'PENDING' ? 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400' :
+                          'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
                         }`}>
                           {user.status === 'BLOCKED' ? 'BLOQUEADO' : user.status === 'PENDING' ? 'PENDENTE' : 'ATIVO'}
                         </span>
                         {user.status === 'PENDING' && (
                           <button 
                             onClick={() => handleUpdateUserStatus(user.id, 'ACTIVE')}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-600 dark:hover:bg-emerald-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
                           >
                             <CheckCircle size={16} />
                             Liberar Acesso
@@ -9369,7 +9419,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
               </div>
 
               <div>
-                <h4 className="text-lg font-bold text-slate-800 mb-4">Funcionários que já atuaram</h4>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Funcionários que já atuaram</h4>
                 <div className="space-y-3">
                   {(() => {
                     const companyUnitClientIds = units.filter(u => u.companyId === showDetailsModal.id).map(u => u.clientId).filter(Boolean);
@@ -9380,19 +9430,19 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                     return companyEmployees.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {companyEmployees.map(emp => (
-                          <div key={emp.id} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={emp.id} className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                             {emp.photoUrl ? (
                               <img src={emp.photoUrl} alt={emp.firstName} className="w-10 h-10 rounded-lg object-cover" referrerPolicy="no-referrer" />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-100">
+                              <div className="w-10 h-10 rounded-lg bg-white dark:bg-black flex items-center justify-center text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800">
                                 <UserIcon size={18} />
                               </div>
                             )}
                             <div>
-                              <p className="text-sm font-bold text-slate-700">{emp.firstName} {emp.lastName}</p>
+                              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{emp.firstName} {emp.lastName}</p>
                               <div className="flex items-center gap-1">
                                 <Star size={10} className="text-amber-400 fill-amber-400" />
-                                <span className="text-[10px] font-bold text-slate-500">{emp.rating.toFixed(1)}</span>
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{emp.rating.toFixed(1)}</span>
                               </div>
                             </div>
                           </div>
@@ -9406,7 +9456,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
               </div>
 
               <div>
-                <h4 className="text-lg font-bold text-slate-800 mb-4">Serviços Realizados</h4>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Serviços Realizados</h4>
                 <div className="space-y-3">
                   {(() => {
                     const companyUnitClientIds = units.filter(u => u.companyId === showDetailsModal.id).map(u => u.clientId).filter(Boolean);
@@ -9418,20 +9468,20 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                           const emp = employees.find(e => e.id === as.employeeId);
                           const client = clients.find(c => c.id === as.clientId);
                           return (
-                            <div key={as.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div key={as.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-blue-600 border border-slate-100">
+                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-black flex items-center justify-center text-blue-600 border border-slate-100 dark:border-slate-800 transition-colors">
                                   <Briefcase size={18} />
                                 </div>
                                 <div>
-                                  <p className="text-sm font-bold text-slate-700">{emp ? `${emp.firstName} ${emp.lastName}` : 'Diarista'}</p>
+                                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{emp ? `${emp.firstName} ${emp.lastName}` : 'Diarista'}</p>
                                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{client?.name} • {formatDateBR(as.date)}</p>
                                 </div>
                               </div>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                as.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                as.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700' :
-                                'bg-blue-100 text-blue-700'
+                                as.status === 'COMPLETED' ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400' :
+                                as.status === 'CANCELLED' ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400' :
+                                'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
                               }`}>
                                 {as.status}
                               </span>
@@ -9914,7 +9964,7 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-          <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50 space-y-8 sticky top-24">
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-200/50 space-y-8 sticky top-24 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
@@ -10078,15 +10128,15 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                 <div 
                   key={emp.id} 
                   onClick={() => available && handleToggleEmployee(emp.id)}
-                  className={`bg-white p-6 rounded-[2rem] border-2 transition-all group relative cursor-pointer overflow-hidden ${
-                    isSelected ? 'border-blue-600 shadow-xl shadow-blue-500/10 bg-blue-50/5' : 
-                    available ? 'border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-500/5' : 'border-slate-100 opacity-60 grayscale'
+                  className={`bg-white dark:bg-slate-900 p-6 rounded-[2rem] border-2 transition-all group relative cursor-pointer overflow-hidden ${
+                    isSelected ? 'border-blue-600 shadow-xl shadow-blue-500/10 bg-blue-50/5 dark:bg-blue-900/10' : 
+                    available ? 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-lg hover:shadow-slate-500/5' : 'border-slate-100 dark:border-slate-800 opacity-60 grayscale'
                   }`}
                 >
-                  <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all ${isSelected ? 'bg-blue-600/5 scale-150' : 'bg-slate-50 group-hover:scale-150'}`}></div>
+                  <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all ${isSelected ? 'bg-blue-600/5 dark:bg-blue-400/5 scale-150' : 'bg-slate-50 dark:bg-slate-800 group-hover:scale-150'}`}></div>
                   
                   {!available && (
-                    <div className="absolute top-4 right-4 bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest z-20 border border-rose-100">
+                    <div className="absolute top-4 right-4 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest z-20 border border-rose-100 dark:border-rose-900/30">
                       Indisponível
                     </div>
                   )}
@@ -10097,7 +10147,7 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                   )}
                   
                   <div className="flex items-center gap-4 mb-6 relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow-md group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden border-2 border-white dark:border-slate-700 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center bg-white dark:bg-slate-800">
                       {emp.photoUrl ? (
                         <img 
                           src={emp.photoUrl} 
@@ -10106,32 +10156,32 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                           referrerPolicy="no-referrer" 
                         />
                       ) : (
-                        <UserIcon size={24} className="text-slate-300" />
+                        <UserIcon size={24} className="text-slate-300 dark:text-slate-600" />
                       )}
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 tracking-tight">{emp.firstName} {emp.lastName}</h4>
+                      <h4 className="font-black text-slate-900 dark:text-white tracking-tight">{emp.firstName} {emp.lastName}</h4>
                       <div className="flex items-center gap-1.5 mt-1">
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map(s => (
                             <Star 
                               key={s} 
                               size={10} 
-                              className={s <= emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} 
+                              className={s <= emp.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200 dark:text-slate-700'} 
                             />
                           ))}
                         </div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{emp.rating}.0</span>
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">{emp.rating}.0</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-3 relative z-10">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                       <span>Especialidade</span>
-                      <span className="text-slate-900">{emp.role === 'DIARISTA' ? 'Diarista' : emp.role}</span>
+                      <span className="text-slate-900 dark:text-slate-200">{emp.role === 'DIARISTA' ? 'Diarista' : emp.role}</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                       <span>Status</span>
                       <span className={available ? 'text-emerald-600' : 'text-rose-600'}>
                         {available ? 'Disponível' : 'Ocupado'}
@@ -10139,12 +10189,12 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between relative z-10">
+                  <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between relative z-10">
                     <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Diária</span>
-                      <span className="text-sm font-black text-slate-900 tracking-tight">R$ 180,00</span>
+                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Valor Diária</span>
+                      <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">R$ 180,00</span>
                     </div>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
                       <ChevronRight size={16} />
                     </div>
                   </div>
@@ -11237,7 +11287,7 @@ function PrivacyListItem({ title, description }: { title: string, description: s
   );
 }
 
-function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins, companyRequests }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[], companyRequests: CompanyRequest[] }) {
+function CompanyDashboard({ companyId, unitId, clients, assignments, employees, feedbacks, units, companies, invoices, bulletins, companyRequests, isDarkMode }: { companyId: string, unitId?: string, clients: Client[], assignments: Assignment[], employees: Employee[], feedbacks: Feedback[], units: Unit[], companies: Company[], invoices: Invoice[], bulletins: Bulletin[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
   if (!companyId) return <div className="p-8 text-center text-slate-500">Carregando dados da empresa...</div>;
   const [activeTab, setActiveTab] = useState<'STAFF' | 'BILLING' | 'FAVORITES' | 'MURAL' | 'REQUESTS'>('STAFF');
   const [currentPage, setCurrentPage] = useState(1);
@@ -11402,32 +11452,32 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
         className="space-y-10"
       >
         <div className="flex flex-col gap-1 px-2 sm:px-0 mb-2 sm:mb-0 items-center text-center sm:items-start sm:text-left">
-          <h2 className="text-base sm:text-4xl font-black text-slate-950 tracking-tight uppercase">Minhas Diarias</h2>
-          <p className="text-slate-500 font-medium text-[8px] sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
+          <h2 className="text-base sm:text-4xl font-black text-slate-950 dark:text-white tracking-tight uppercase">Minhas Diarias</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-[8px] sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
         </div>
 
-        <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
+        <div className="flex flex-nowrap sm:flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg sm:rounded-2xl w-fit max-w-[calc(100%-1rem)] sm:w-fit border border-slate-200/50 dark:border-slate-800 mx-auto sm:mx-0 overflow-x-auto no-scrollbar transition-colors">
           <button 
             onClick={() => setActiveTab('STAFF')}
-            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'STAFF' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'STAFF' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Equipe
           </button>
           <button 
             onClick={() => setActiveTab('BILLING')}
-            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'BILLING' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'BILLING' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Faturamento
           </button>
           <button 
             onClick={() => setActiveTab('FAVORITES')}
-            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FAVORITES' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'FAVORITES' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Favoritos
           </button>
           <button 
             onClick={() => setActiveTab('REQUESTS')}
-            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'REQUESTS' ? 'bg-white text-slate-950 shadow-xl shadow-slate-900/5' : 'text-slate-500 hover:text-slate-950'}`}
+            className={`flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-md sm:rounded-xl text-[7px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeTab === 'REQUESTS' ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xl shadow-slate-900/5' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Solicitações
           </button>
@@ -11644,17 +11694,26 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                <h3 className="text-lg font-black text-slate-900 mb-6">Gastos (Últimos 6 meses)</h3>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Gastos (Últimos 6 meses)</h3>
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={barData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#1e293b" : "#f1f5f9"} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
                       <RechartsTooltip 
-                        cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ fill: isDarkMode ? '#0f172a' : '#f8fafc' }}
+                        contentStyle={{ 
+                          borderRadius: '1rem', 
+                          border: 'none', 
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                          backgroundColor: isDarkMode ? '#020617' : '#ffffff',
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                        itemStyle={{ color: isDarkMode ? '#3b82f6' : '#2563eb' }}
                         formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Gastos']}
                       />
                       <Bar dataKey="Gastos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -11663,8 +11722,8 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                <h3 className="text-lg font-black text-slate-900 mb-6">Status das Diárias</h3>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Status das Diárias</h3>
                 <div className="h-72 w-full flex items-center justify-center">
                   {pieData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -11683,19 +11742,27 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                           ))}
                         </Pie>
                         <RechartsTooltip 
-                          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          contentStyle={{ 
+                            borderRadius: '1rem', 
+                            border: 'none', 
+                            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                            backgroundColor: isDarkMode ? '#020617' : '#ffffff',
+                            color: isDarkMode ? '#ffffff' : '#000000',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-slate-400 font-medium text-sm">Nenhum dado disponível</p>
+                    <p className="text-slate-400 dark:text-slate-500 font-medium text-sm">Nenhum dado disponível</p>
                   )}
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 mt-4">
                   {pieData.map((entry, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                      <span className="text-xs font-bold text-slate-600">{entry.name} ({entry.value})</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{entry.name} ({entry.value})</span>
                     </div>
                   ))}
                 </div>
@@ -14080,11 +14147,11 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto space-y-8"
     >
-      <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-[3rem] shadow-2xl shadow-slate-200 dark:shadow-black/50 border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600 relative">
           <div className="absolute -bottom-12 left-12">
-            <div className="w-24 h-24 rounded-[2rem] bg-white p-2 shadow-xl">
-              <div className="w-full h-full rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
+            <div className="w-24 h-24 rounded-[2rem] bg-white dark:bg-zinc-950 p-2 shadow-xl">
+              <div className="w-full h-full rounded-[1.5rem] bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 overflow-hidden">
                 {orgInfo.logoUrl ? (
                   <img src={orgInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                 ) : (
@@ -14098,26 +14165,26 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
         <div className="pt-12 sm:pt-16 p-6 sm:p-12 space-y-6 sm:space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tighter">{displayName}</h2>
+              <h2 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">{displayName}</h2>
               <p className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-[10px] mt-1">{role === 'AGENCY' ? 'Administrador Agência' : role === 'COMPANY' ? 'Gestor Empresa' : 'Diarista Profissional'}</p>
             </div>
             <button 
               onClick={handleSendResetEmail}
               disabled={resetStatus === 'LOADING'}
-              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all disabled:opacity-50"
+              className="px-6 py-3 bg-slate-900 dark:bg-white dark:text-black text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 dark:hover:bg-slate-200 transition-all disabled:opacity-50 shadow-lg"
             >
               {resetStatus === 'LOADING' ? 'Enviando...' : 'Redefinir Senha'}
             </button>
           </div>
 
           {resetStatus === 'SUCCESS' && (
-            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-sm font-medium">
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl text-emerald-600 dark:text-emerald-400 text-sm font-medium">
               E-mail de redefinição enviado com sucesso para {employee?.personalEmail || companyUser?.email || user?.email}!
             </div>
           )}
 
           {resetStatus === 'ERROR' && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-medium">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-red-600 dark:text-red-400 text-sm font-medium">
               {resetErrorMessage || 'Erro ao enviar e-mail de redefinição. Tente novamente mais tarde.'}
             </div>
           )}
@@ -14125,14 +14192,14 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-2">
               <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail de Login</label>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm">
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-200 text-sm">
                 {loginEmail}
               </div>
             </div>
             {personalEmail && (
               <div className="space-y-2">
                 <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail Pessoal</label>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 text-sm">
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-200 text-sm">
                   {personalEmail}
                 </div>
               </div>
@@ -14140,12 +14207,12 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
           </div>
 
           {(role === 'ADMIN' || role === 'AGENCY') && (
-            <div className="space-y-8 pt-8 border-t border-slate-100">
+            <div className="space-y-8 pt-8 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-900">Informações da conta</h3>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">Informações da conta</h3>
                 <button 
                   onClick={() => setIsEditing(!isEditing)}
-                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors"
+                  className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                 >
                   {isEditing ? 'Cancelar' : 'Editar Informações'}
                 </button>
@@ -14156,7 +14223,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Logotipo da organização</label>
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                    <div className="w-20 h-20 bg-slate-50 dark:bg-slate-950 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden relative group">
                       {orgInfo.logoUrl ? (
                         <img src={orgInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                       ) : (
@@ -14167,11 +14234,11 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       <div className="flex gap-2">
                         <button 
                           onClick={() => setOrgInfo(prev => ({ ...prev, logoUrl: '' }))}
-                          className="px-4 py-2 bg-white border border-red-100 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all"
+                          className="px-4 py-2 bg-white dark:bg-zinc-900 border border-red-100 dark:border-red-900/50 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all"
                         >
                           Excluir
                         </button>
-                        <label className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all cursor-pointer">
+                        <label className="px-4 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer">
                           Carregar
                           <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={!isEditing} />
                         </label>
@@ -14190,7 +14257,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.name}
                       onChange={e => setOrgInfo(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="StaffLink"
                     />
                   </div>
@@ -14203,7 +14270,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.email}
                       onChange={e => setOrgInfo(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="exemplo@email.com"
                     />
                   </div>
@@ -14216,7 +14283,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.legalName}
                       onChange={e => setOrgInfo(prev => ({ ...prev, legalName: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="StaffLink LTDA"
                     />
                   </div>
@@ -14229,7 +14296,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.addressLine1}
                       onChange={e => setOrgInfo(prev => ({ ...prev, addressLine1: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. 123 Rua Principal"
                     />
                   </div>
@@ -14242,7 +14309,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.addressLine2}
                       onChange={e => setOrgInfo(prev => ({ ...prev, addressLine2: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. Suíte 100"
                     />
                   </div>
@@ -14255,7 +14322,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.city}
                       onChange={e => setOrgInfo(prev => ({ ...prev, city: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. São Francisco"
                     />
                   </div>
@@ -14268,7 +14335,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.state}
                       onChange={e => setOrgInfo(prev => ({ ...prev, state: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. Califórnia"
                     />
                   </div>
@@ -14281,7 +14348,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.zipCode}
                       onChange={e => setOrgInfo(prev => ({ ...prev, zipCode: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. 94102"
                     />
                   </div>
@@ -14293,7 +14360,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.country}
                       onChange={e => setOrgInfo(prev => ({ ...prev, country: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm appearance-none"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm appearance-none"
                     >
                       <option value="Brasil">Brasil</option>
                       <option value="EUA">EUA</option>
@@ -14305,15 +14372,15 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Telefone da empresa</label>
                     <div className="flex gap-2">
-                      <div className="w-24 p-4 bg-slate-50 border-2 border-transparent rounded-2xl flex items-center gap-2">
-                        <span className="text-sm">🇧🇷 +55</span>
+                      <div className="w-24 p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl flex items-center gap-2">
+                        <span className="text-sm dark:text-white">🇧🇷 +55</span>
                       </div>
                       <input 
                         type="text"
                         disabled={!isEditing}
                         value={orgInfo.phone}
                         onChange={e => setOrgInfo(prev => ({ ...prev, phone: e.target.value }))}
-                        className="flex-1 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        className="flex-1 p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                         placeholder="(27) 99204-9176"
                       />
                     </div>
@@ -14327,7 +14394,7 @@ const UserProfile = ({ user, role, employee, companyUser, agency }: { user: User
                       disabled={!isEditing}
                       value={orgInfo.taxId}
                       onChange={e => setOrgInfo(prev => ({ ...prev, taxId: e.target.value }))}
-                      className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-transparent rounded-2xl focus:bg-white focus:dark:bg-black focus:border-blue-600 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 text-sm"
                       placeholder="Ex. 1234567890"
                     />
                   </div>
@@ -14851,18 +14918,18 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
 
   if (!hasSelectedPlan) {
     return (
-      <div className="min-h-screen bg-slate-50 py-20 px-4 overflow-y-auto">
+      <div className="min-h-screen bg-slate-50 dark:bg-black py-20 px-4 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-12 pb-20">
           <div className="text-center space-y-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-20 h-20 bg-brand-50 text-brand-500 rounded-3xl flex items-center justify-center mx-auto mb-6"
+              className="w-20 h-20 bg-brand-50 dark:bg-blue-900/20 text-brand-500 dark:text-blue-400 rounded-3xl flex items-center justify-center mx-auto mb-6"
             >
               <LayoutDashboard size={40} />
             </motion.div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tight font-display">Bem-vindo à StaffLink</h2>
-            <p className="text-slate-500 font-medium max-w-xl mx-auto">
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight font-display">Bem-vindo à StaffLink</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
               Você está quase lá! Como parte dos seus 30 dias de teste grátis, escolha o plano que melhor se adapta à sua operação após o período de experiência.
             </p>
           </div>
@@ -14875,21 +14942,21 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 transition-all flex flex-col hover:border-brand-200 hover:shadow-xl group"
+                  className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 transition-all flex flex-col hover:border-brand-200 dark:hover:border-blue-500/50 hover:shadow-xl group"
                 >
                   <div className="flex-1 space-y-6">
                     <div className="space-y-2">
-                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">{plan.name}</h3>
-                      <p className="text-3xl font-black text-brand-600">
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{plan.name}</h3>
+                      <p className="text-3xl font-black text-brand-600 dark:text-blue-500">
                         {plan.price === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-widest ml-1">/mês</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest ml-1">/mês</span>
                       </p>
                     </div>
 
                     <ul className="space-y-4">
                       {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-3 text-xs font-bold text-slate-600">
-                          <CheckCircle2 size={16} className="text-brand-500 mt-0.5 shrink-0" />
+                        <li key={i} className="flex items-start gap-3 text-xs font-bold text-slate-600 dark:text-slate-400">
+                          <CheckCircle2 size={16} className="text-brand-500 dark:text-blue-500 mt-0.5 shrink-0" />
                           {feature}
                         </li>
                       ))}
@@ -14899,7 +14966,7 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
                   <button
                     onClick={() => handleSelectPlan(plan.id)}
                     disabled={isUpdating}
-                    className="mt-10 py-5 bg-slate-950 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] transition-all hover:bg-brand-600 shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
+                    className="mt-10 py-5 bg-slate-950 dark:bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] transition-all hover:bg-brand-600 dark:hover:bg-blue-700 shadow-xl shadow-slate-900/10 dark:shadow-blue-500/10 active:scale-95 disabled:opacity-50"
                   >
                     {isUpdating ? 'Processando...' : `Selecionar ${plan.name}`}
                   </button>
@@ -14909,7 +14976,7 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
           </div>
 
           <div className="flex justify-center pt-8">
-            <button onClick={onLogout} className="text-slate-400 hover:text-slate-900 font-black uppercase tracking-widest text-[10px] flex items-center gap-2">
+            <button onClick={onLogout} className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white font-black uppercase tracking-widest text-[10px] flex items-center gap-2">
               Sair da Conta
             </button>
           </div>
@@ -14919,25 +14986,25 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-black flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-white p-12 rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-200/50 text-center space-y-8"
+        className="max-w-md w-full bg-white dark:bg-slate-900 p-12 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 text-center space-y-8"
       >
-        <div className="w-24 h-24 bg-brand-50 rounded-[32px] flex items-center justify-center text-brand-500 mx-auto">
+        <div className="w-24 h-24 bg-brand-50 dark:bg-blue-900/20 rounded-[32px] flex items-center justify-center text-brand-500 dark:text-blue-400 mx-auto">
           <CreditCard size={48} />
         </div>
         
         <div className="space-y-3">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight font-display text-center">Aguardando Pagamento</h2>
-          <p className="text-slate-500 font-medium leading-relaxed">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight font-display text-center">Aguardando Pagamento</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
             Plano <strong>{plans.find(p => p.id === agency.plan)?.name}</strong> selecionado! <br />
             Para liberar seu acesso e iniciar o período de 30 dias de teste grátis, aguardamos a confirmação do pagamento inicial ou validação do administrador.
           </p>
-          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3 text-left mt-6">
-            <AlertCircle className="text-amber-600 mt-1 shrink-0" size={20} />
-            <p className="text-xs text-amber-700 font-bold leading-relaxed">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-100 dark:border-amber-900/30 flex items-start gap-3 text-left mt-6">
+            <AlertCircle className="text-amber-600 dark:text-amber-400 mt-1 shrink-0" size={20} />
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-bold leading-relaxed">
               Dica: Entre em contato com nosso suporte para agilizar a liberação da sua conta.
             </p>
           </div>
@@ -14946,13 +15013,13 @@ function AgencyOnboarding({ user, agency, plans, onLogout }: { user: any, agency
         <div className="space-y-4">
           <button 
             disabled
-            className="w-full py-5 bg-slate-200 text-slate-400 rounded-[24px] font-black text-xs uppercase tracking-widest cursor-not-allowed"
+            className="w-full py-5 bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 rounded-[24px] font-black text-xs uppercase tracking-widest cursor-not-allowed"
           >
             Pagar com PIX (Indisponível)
           </button>
           <button 
             onClick={onLogout}
-            className="w-full py-5 bg-slate-100 text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+            className="w-full py-5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-[24px] font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
           >
             Sair da Conta
           </button>
