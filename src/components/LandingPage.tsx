@@ -67,7 +67,18 @@ export function LandingPage({
       <main className="pt-20">
         {/* Hero Section (Início) */}
         <section id="inicio" className="min-h-[calc(100vh-5rem)] flex items-center bg-brand-50/30 relative overflow-hidden">
+          {/* Background Images & Effects */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.05),transparent_50%)]" />
+          <div 
+            className="absolute inset-0 opacity-[0.12] pointer-events-none"
+            style={{ 
+              backgroundImage: 'url("https://i.imgur.com/lnpU0gB.jpeg")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }} 
+          />
+          
           <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col lg:flex-row items-center gap-16 relative z-10">
             <div className="flex-1 space-y-8 text-left">
               <motion.div
@@ -592,7 +603,7 @@ export function LandingPage({
       <footer className="bg-slate-900 py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2" translate="no">
-            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="h-8 w-auto brightness-0 invert opacity-50" />
+            <img src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" alt="Logotipo ProStaff Brasil" className="w-[100px] h-[60px] object-contain brightness-0 invert opacity-50" />
           </div>
           <div className="flex items-center gap-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">
             <span>© 2026 ProStaff Brasil</span>
