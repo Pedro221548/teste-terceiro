@@ -1789,7 +1789,7 @@ export default function App() {
     }
   }, []);
 
-  // Inactivity Auto-Refresh (30 seconds)
+  // Inactivity Auto-Refresh (1 minute)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -1797,7 +1797,7 @@ export default function App() {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         window.location.reload();
-      }, 30000); // 30 seconds
+      }, 60000); // 1 minute
     };
 
     resetTimer();
@@ -2212,9 +2212,27 @@ export default function App() {
       setUnits(filterByAgency(data));
     }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
-    const unsubCompanyRequests = subscribeToCollection<CompanyRequest>('companyRequests', (data) => {
-      // Employees only need requests, we filter by agency to not over-fetch.
-      setCompanyRequests(filterByAgency(data));
+    const unsubCompanyRequests = subscribeToCollection<CompanyRequest>('companyRequests', (docs) => {
+      const filtered = filterByAgency(docs);
+      
+      setCompanyRequests(prev => {
+        if (role === 'AGENCY' || role === 'ADMIN') {
+          const newReqs = filtered.filter(d => d.status === 'PENDING');
+          const prevReqs = prev.filter(d => d.status === 'PENDING');
+          
+          if (newReqs.length > prevReqs.length && prev.length > 0) {
+            playNotificationSound();
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('Nova Solicitação!', {
+                body: 'Uma nova solicitação de trabalho das empresas acabou de chegar.',
+                icon: '/favicon.ico'
+              });
+            }
+          }
+        }
+        return filtered;
+      });
     });
 
     const notificationConstraints = [];
