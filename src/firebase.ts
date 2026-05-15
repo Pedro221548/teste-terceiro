@@ -1,11 +1,34 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirestore, getDocFromServer, doc, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+
+let messagingInstance: any = null;
+try {
+  messagingInstance = getMessaging(app);
+} catch (e) {
+  console.warn("Firebase Messaging could not be initialized. It might not be supported in this browser environment.", e);
+}
+export const messaging = messagingInstance;
+
+export const generateToken = async () => {
+  if (!messaging) return null;
+  try {
+    const token = await getToken(messaging, {
+      vapidKey: 'BNllv5gxpVUvOlkDdbQLxxIwkmXcCArF-3e8S7Y-kc1D51qExP2Bc4FTw7BaQ1KmzeJF-nd80nn4BbHS1BR34G4'
+    });
+    return token;
+  } catch (error) {
+    console.error('An error occurred while retrieving token. ', error);
+    return null;
+  }
+}
+export { onMessage };
 
 // Habilitar persistência offline (Cache)
 enableMultiTabIndexedDbPersistence(db).catch((err) => {

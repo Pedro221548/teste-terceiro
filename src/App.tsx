@@ -80,7 +80,7 @@ import { Feed } from './components/Feed';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, AppNotification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
-import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
+import { auth, googleProvider, sendPasswordResetEmail, db, messaging, generateToken, onMessage } from './firebase';
 import { createNewUser } from './secondary-auth';
 import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { onSnapshot, doc, collection, query, getDocs } from 'firebase/firestore';
@@ -1789,36 +1789,9 @@ export default function App() {
     }
   }, []);
 
-  // Inactivity Auto-Refresh (1 minute)
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        window.location.reload();
-      }, 60000); // 1 minute
-    };
-
-    resetTimer();
-
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    
-    const handleActivity = () => {
-       resetTimer();
-    };
-
-    events.forEach(event => {
-      window.addEventListener(event, handleActivity, { passive: true });
-    });
-
-    return () => {
-      clearTimeout(timeoutId);
-      events.forEach(event => {
-        window.removeEventListener(event, handleActivity);
-      });
-    };
-  }, []);
+  // Real-time Firebase listeners handles updates immediately.
+  // We removed the auto-refresh because it resets the local state and prevents 
+  // delta-based real-time notifications from working correctly.
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -2111,11 +2084,42 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user && 'Notification' in window && Notification.permission === 'default') {
-      // Request notification permission for mobile/desktop
-      Notification.requestPermission().then(permission => {
-        console.log('Notification permission:', permission);
+    if (user && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(async permission => {
+          console.log('Notification permission:', permission);
+          if (permission === 'granted') {
+            const token = await generateToken();
+            if (token) {
+              console.log('FCM Token generated:', token);
+              await updateDocument('users', user.uid, { fcmToken: token });
+            }
+          }
+        });
+      } else if (Notification.permission === 'granted') {
+        generateToken().then(async token => {
+          if (token) {
+            console.log('FCM Token existing:', token);
+            await updateDocument('users', user.uid, { fcmToken: token });
+          }
+        });
+      }
+    }
+
+    if (messaging) {
+      const unsubscribeMsg = onMessage(messaging, (payload) => {
+        console.log('Message received in foreground: ', payload);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const notificationTitle = payload.notification?.title || 'Nova Notificação';
+          const notificationOptions = {
+            body: payload.notification?.body,
+            icon: '/favicon.ico'
+          };
+          new Notification(notificationTitle, notificationOptions);
+          playNotificationSound();
+        }
       });
+      return () => unsubscribeMsg();
     }
   }, [user]);
 
