@@ -5156,6 +5156,9 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const [prevOfferIds, setPrevOfferIds] = useState<string[]>([]);
+  const [cancelingAssignment, setCancelingAssignment] = useState<Assignment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCanceling, setIsCanceling] = useState(false);
   
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
@@ -5224,27 +5227,38 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     setTimeout(() => setShowSuccess(false), 3000);
   };
   
-  const handleCancelAssignment = async (assignment: Assignment) => {
-    try {
-      if (window.confirm("Atenção: Cancelamentos devem ser feitos com no mínimo 2h de antecedência para não prejudicar a logística da unidade. Tem certeza que deseja cancelar esta diária?")) {
-        await deleteDocument('assignments', assignment.id);
-        
-        // Notify agency that employee cancelled
-        await createDocument('notifications', {
-          userId: 'AGENCY',
-          agencyId: assignment.agencyId,
-          title: 'Cancelamento de Diária',
-          message: `O funcionário ${employee.firstName} ${employee.lastName} cancelou a diária do dia ${formatDateBR(assignment.date)}. Uma nova vaga foi reaberta.`,
-          type: 'ALERT',
-          read: false,
-          createdAt: new Date().toISOString()
-        });
+  const handleCancelAssignment = (assignment: Assignment) => {
+    setCancelingAssignment(assignment);
+    setCancelReason('');
+  };
 
-        toast.success('Diária cancelada com sucesso. Obrigado por avisar!');
-      }
+  const confirmCancelAssignment = async () => {
+    if (!cancelingAssignment) return;
+    try {
+      setIsCanceling(true);
+      await deleteDocument('assignments', cancelingAssignment.id);
+      
+      const reasonText = cancelReason.trim() ? ` Motivo: ${cancelReason}` : '';
+      
+      // Notify agency that employee cancelled
+      await createDocument('notifications', {
+        userId: 'AGENCY',
+        agencyId: cancelingAssignment.agencyId,
+        title: 'Cancelamento de Diária',
+        message: `O funcionário ${employee?.firstName} ${employee?.lastName} cancelou a diária do dia ${formatDateBR(cancelingAssignment.date)}. Uma nova vaga foi reaberta.${reasonText}`,
+        type: 'ALERT',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+
+      toast.success('Diária cancelada com sucesso. Obrigado por avisar!');
+      setCancelingAssignment(null);
+      setCancelReason('');
     } catch (error) {
       console.error(error);
       toast.error('Erro ao cancelar diária.');
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -5858,6 +5872,64 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Cancel Assignment Modal */}
+      {cancelingAssignment && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isCanceling && setCancelingAssignment(null)}></div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl relative z-10"
+          >
+            <div className="p-8 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200">
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Cancelar Diária</h3>
+                  <p className="text-sm font-medium text-slate-500">Atenção: Cancelamentos devem ser feitos com no mínimo 2h de antecedência para não prejudicar a logística da unidade.</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Motivo (Opcional)</label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none transition-all h-32 resize-none"
+                  placeholder="Por que você está cancelando esta diária?"
+                ></textarea>
+              </div>
+              
+              <div className="flex gap-4 pt-4 border-t border-slate-100">
+                <button 
+                  onClick={() => setCancelingAssignment(null)}
+                  disabled={isCanceling}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-slate-200 transition-all disabled:opacity-50"
+                >
+                  Voltar
+                </button>
+                <button 
+                  onClick={confirmCancelAssignment}
+                  disabled={isCanceling}
+                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-rose-700 transition-all shadow-xl shadow-rose-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isCanceling ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Cancelando...</span>
+                    </>
+                  ) : (
+                    'Confirmar Cancelamento'
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
     </motion.div>
@@ -11607,6 +11679,55 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   const companyUser = companyUsers.find(cu => cu.id === companyUserId);
   const company = companies.find(c => c.id === companyUser?.companyId);
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && companyUser) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast('A imagem deve ter no máximo 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 400;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          
+          try {
+            await updateDocument('companyUsers', companyUser.id, { photoUrl: compressedBase64 });
+            toast.success('Foto de perfil atualizada no sistema interno!', { duration: 5000 });
+            if (auth.currentUser) {
+              await updateProfile(auth.currentUser, { photoURL: compressedBase64 });
+            }
+          } catch (err: any) {
+             const errorStr = err.message || String(err);
+             toast.error(errorStr.includes('too large') || errorStr.includes('1,048,576') ? 'A imagem é muito grande mesmo após compressão. Cancele e tente uma imagem com menos detalhes.' : 'Erro ao atualizar foto de perfil.');
+          }
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (!companyUser) {
     return (
       <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
@@ -11636,21 +11757,25 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full -mr-32 -mt-32 z-0" />
         
         <div className="relative z-10 shrink-0">
-          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl">
+          <label className="block w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl cursor-pointer relative group">
             {companyUser.photoUrl ? (
               <img 
                 src={companyUser.photoUrl} 
                 alt="" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:opacity-50 transition-opacity"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-600 font-black text-4xl">
+              <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-600 font-black text-4xl group-hover:opacity-50 transition-opacity">
                 {companyUser.fullName[0]}
               </div>
             )}
-          </div>
-          <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-2 rounded-xl shadow-lg border-2 border-white">
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+              <Camera size={24} className="text-white drop-shadow-md" />
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+          </label>
+          <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-2 rounded-xl shadow-lg border-2 border-white pointer-events-none">
             <CheckCircle size={16} />
           </div>
         </div>
@@ -11796,6 +11921,56 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, pr
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && employee) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast('A imagem deve ter no máximo 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 400;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          
+          try {
+            await updateDocument('employees', employee.id, { photoUrl: compressedBase64 });
+            toast.success('Foto de perfil atualizada no sistema interno!', { duration: 5000 });
+            // For Firebase Auth compatibility we'll also update the user photoURL
+            if (auth.currentUser) {
+              await updateProfile(auth.currentUser, { photoURL: compressedBase64 });
+            }
+          } catch (err: any) {
+             const errorStr = err.message || String(err);
+             toast.error(errorStr.includes('too large') || errorStr.includes('1,048,576') ? 'A imagem é muito grande mesmo após compressão. Cancele e tente uma imagem com menos detalhes.' : 'Erro ao atualizar foto de perfil.');
+          }
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (!employee) {
     return (
       <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center space-y-4">
@@ -11880,19 +12055,23 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, pr
         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 z-0" />
         
         <div className="relative z-10 shrink-0">
-          <div className="w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl flex items-center justify-center bg-white">
+          <label className="block w-32 h-32 rounded-[2rem] bg-slate-100 overflow-hidden border-4 border-white shadow-xl flex items-center justify-center bg-white cursor-pointer relative group">
             {employee.photoUrl ? (
               <img 
                 src={employee.photoUrl} 
                 alt="" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:opacity-50 transition-opacity"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <UserIcon size={48} className="text-slate-300" />
+              <UserIcon size={48} className="text-slate-300 group-hover:opacity-50 transition-opacity" />
             )}
-          </div>
-          <div className={`absolute -bottom-1 -right-1 ${employee.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'} text-white p-2 rounded-xl shadow-lg border-2 border-white`}>
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+              <Camera size={24} className="text-white drop-shadow-md" />
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+          </label>
+          <div className={`absolute -bottom-1 -right-1 ${employee.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'} text-white p-2 rounded-xl shadow-lg border-2 border-white pointer-events-none`}>
             {employee.status === 'ACTIVE' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
           </div>
         </div>
@@ -12088,6 +12267,14 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
   const [editDate, setEditDate] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
+  const [requestStep, setRequestStep] = useState<1 | 2>(1);
+  const [reqQuantity, setReqQuantity] = useState(1);
+  const [reqClientId, setReqClientId] = useState('');
+  const [reqStartDate, setReqStartDate] = useState('');
+  const [reqEndDate, setReqEndDate] = useState('');
+  const [isSubmittingReq, setIsSubmittingReq] = useState(false);
+
   const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
   const allAssignments = assignments.filter(a => {
@@ -12153,6 +12340,62 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
       Gastos: expenses
     };
   });
+
+  const handleCreateRequestSubmit = async () => {
+    if (!reqClientId || !reqStartDate || reqQuantity < 1) {
+      toast.error('Preencha os campos obrigatórios.');
+      return;
+    }
+    const end = reqEndDate || reqStartDate;
+    if (end < reqStartDate) {
+      toast.error('Data final inválida.');
+      return;
+    }
+
+    setIsSubmittingReq(true);
+    try {
+      const datesToRequest: string[] = [];
+      let currentDate = new Date(reqStartDate);
+      currentDate = new Date(currentDate.getTime() + currentDate.getTimezoneOffset() * 60000);
+      const limitDate = new Date(end);
+      let limitDateLocal = new Date(limitDate.getTime() + limitDate.getTimezoneOffset() * 60000);
+
+      while (currentDate <= limitDateLocal) {
+        datesToRequest.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      const client = clients.find(c => c.id === reqClientId);
+      const agencyId = company?.agencyId || (client ? client.agencyId : '');
+      
+      for (const date of datesToRequest) {
+        await createDocument('companyRequests', {
+          agencyId,
+          companyId,
+          clientId: reqClientId,
+          employeeIds: [],
+          quantity: reqQuantity,
+          date,
+          status: 'PENDING',
+          broadcasted: true,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      toast.success('Solicitação enviada com sucesso!');
+      setIsCreatingRequest(false);
+      setRequestStep(1);
+      setReqClientId('');
+      setReqStartDate('');
+      setReqEndDate('');
+      setReqQuantity(1);
+    } catch (e) {
+      toast.error('Erro ao enviar solicitação.');
+      console.error(e);
+    } finally {
+      setIsSubmittingReq(false);
+    }
+  };
 
   const handleEvaluate = async () => {
     if (!evaluatingEmployee) return;
@@ -12284,6 +12527,28 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                 value={myAssignments.find(a => a.date > today)?.date ? formatDateBR(myAssignments.find(a => a.date > today)!.date) : 'Nenhuma'} 
                 color="emerald"
               />
+            </div>
+
+            <div 
+              onClick={() => {
+                setActiveTab('REQUESTS');
+                setIsCreatingRequest(true);
+                setRequestStep(1);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer rounded-[2.5rem] p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-indigo-600/20 active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-6 text-white text-center sm:text-left">
+                <div className="w-16 h-16 bg-indigo-500/50 rounded-2xl flex items-center justify-center shrink-0">
+                  <span className="text-3xl">✨</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-black tracking-tight mb-1">Solicitar Nova Diarista</h3>
+                  <p className="text-indigo-200 font-medium text-sm sm:text-base">Precisa de reforço? Peça uma ou mais diaristas agora mesmo.</p>
+                </div>
+              </div>
+              <div className="flex bg-white text-indigo-600 px-6 py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shrink-0 items-center justify-center w-full sm:w-auto">
+                Fazer Solicitação
+              </div>
             </div>
 
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden group">
@@ -12587,8 +12852,129 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
           </div>
         ) : activeTab === 'REQUESTS' ? (
           <div className="space-y-4 px-4 sm:px-0">
-            {myRequests.length === 0 ? (
-              <div className="p-12 text-center text-slate-400">Nenhuma solicitação encontrada.</div>
+            {!isCreatingRequest && (
+              <div className="flex justify-end mb-4">
+                <button 
+                  onClick={() => setIsCreatingRequest(true)} 
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  Nova Solicitação
+                </button>
+              </div>
+            )}
+            
+            {isCreatingRequest ? (
+              <div className="bg-white rounded-[2rem] p-6 sm:p-10 border border-slate-200 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 z-0 opacity-50" />
+                <div className="relative z-10 space-y-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Nova Solicitação</h3>
+                      <p className="text-sm font-medium text-slate-500">Passo {requestStep} de 2</p>
+                    </div>
+                    {requestStep === 2 && (
+                       <button onClick={() => setRequestStep(1)} className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors uppercase tracking-widest">Seta Voltar</button>
+                    )}
+                    <button onClick={() => setIsCreatingRequest(false)} className="text-slate-400 hover:text-slate-600">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  {requestStep === 1 ? (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unidade de Destino</label>
+                        <select
+                          value={reqClientId}
+                          onChange={(e) => setReqClientId(e.target.value)}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        >
+                          <option value="">Selecione uma unidade</option>
+                          {myUnits.map(u => (
+                            <option key={u.id} value={u.clientId}>{u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Data Início</label>
+                          <input
+                            type="date"
+                            min={today}
+                            value={reqStartDate}
+                            onChange={(e) => setReqStartDate(e.target.value)}
+                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Data Fim (Opcional)</label>
+                          <input
+                            type="date"
+                            min={reqStartDate || today}
+                            value={reqEndDate}
+                            onChange={(e) => setReqEndDate(e.target.value)}
+                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantidade de Diaristas por dia</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={reqQuantity}
+                          onChange={(e) => setReqQuantity(parseInt(e.target.value))}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!reqClientId || !reqStartDate || reqQuantity < 1) {
+                            toast.error('Preencha os campos obrigatórios (Unidade, Data Início e Quantidade).');
+                            return;
+                          }
+                          setRequestStep(2);
+                        }}
+                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all"
+                      >
+                        Avançar para Revisão
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 text-center">
+                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm border border-slate-100">
+                           <Users size={24} className="text-indigo-600" />
+                         </div>
+                         <h4 className="text-lg font-black text-slate-900 uppercase">Revise sua Solicitação</h4>
+                         <p className="text-slate-500 font-medium text-sm">
+                           Você está solicitando <strong className="text-slate-900">{reqQuantity} diarista(s)</strong> para a unidade <strong className="text-slate-900">{myUnits.find(u => u.clientId === reqClientId)?.name}</strong>.
+                           <br/><br/>
+                           Período: <strong className="text-slate-900">{formatDateBR(reqStartDate)}</strong> {reqEndDate && reqEndDate !== reqStartDate ? ` até ${formatDateBR(reqEndDate)}` : ''}.
+                         </p>
+                      </div>
+                      
+                      <button
+                        onClick={handleCreateRequestSubmit}
+                        disabled={isSubmittingReq}
+                        className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 active:scale-[0.98] transition-all disabled:opacity-50 flex justify-center items-center gap-2"
+                      >
+                        {isSubmittingReq ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Enviando...
+                          </>
+                        ) : 'Confirmar e Enviar'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : myRequests.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-medium">Nenhuma solicitação encontrada no momento.</div>
             ) : (
               myRequests.map(req => {
                 const unit = units.find(u => u.clientId === req.clientId);

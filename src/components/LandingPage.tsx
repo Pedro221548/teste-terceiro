@@ -168,83 +168,26 @@ export function LandingPage({
               transition={{ delay: 0.5, duration: 0.8 }}
               className="flex-1 relative"
             >
-              {/* Dashboard Mockup - 100% Code Based (Fast Render) */}
+              {/* Dashboard Video */}
               <div className={`relative rounded-[2rem] p-3 sm:p-4 shadow-2xl border transition-all duration-500 group overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-slate-950/50' : 'bg-slate-100 border-slate-200'}`}>
                 <div className={`absolute inset-0 opacity-50 bg-gradient-to-tr from-brand-50 to-transparent ${isDarkMode ? 'from-brand-500/10' : ''}`} />
                 
                 {/* Window Controls */}
-                <div className="flex items-center gap-1.5 mb-4 ml-2">
+                <div className="flex items-center gap-1.5 mb-4 ml-2 relative z-10">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-400/50" />
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-400/50" />
                   <div className="w-2.5 h-2.5 rounded-full bg-brand-400/50" />
                 </div>
 
-                <div className={`rounded-2xl shadow-sm border overflow-hidden flex h-full min-h-[400px] transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  {/* Sidebar Mockup */}
-                  <div className={`w-12 sm:w-16 flex flex-col items-center py-6 gap-6 transition-colors duration-500 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-900'}`}>
-                    <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white scale-75">
-                      <Layout size={18} />
-                    </div>
-                    {[Layout, Users, Calendar, DollarSign, Activity, Layers].map((Icon, idx) => (
-                      <div key={idx} className={`text-slate-500 hover:text-brand-400 transition-colors ${idx === 0 ? 'text-brand-400' : ''}`}>
-                        <Icon size={18} />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Main Content Mockup */}
-                  <div className={`flex-1 p-6 space-y-6 transition-colors duration-500 ${isDarkMode ? 'bg-slate-950/50' : 'bg-slate-50/50'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`h-4 w-32 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                      <div className={`h-8 w-8 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {[
-                        { label: 'Diaristas Ativos', value: '142', icon: Users, color: 'brand' },
-                        { label: 'Contratos/Mês', value: 'R$ 42k', icon: DollarSign, color: 'blue' }
-                      ].map((stat, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border shadow-sm space-y-2 transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
-                          <div className="flex items-center justify-between">
-                            <stat.icon size={14} className="text-slate-400" />
-                            <TrendingUp size={12} className="text-brand-500" />
-                          </div>
-                          <div className="text-xl font-black tracking-tight">{stat.value}</div>
-                          <div className={`text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{stat.label}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Chart Mockup */}
-                    <div className={`p-4 rounded-xl border shadow-sm h-32 relative flex flex-col justify-end gap-1 transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-                      <div className={`absolute top-4 left-4 h-3 w-20 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`} />
-                      <div className="flex items-end gap-1.5 h-16">
-                        {[40, 70, 45, 90, 65, 80, 50, 85, 60, 95].map((h, i) => (
-                          <motion.div 
-                            key={i}
-                            initial={{ height: 0 }}
-                            animate={{ height: `${h}%` }}
-                            transition={{ delay: 1 + (i * 0.1), duration: 1 }}
-                            className={`flex-1 transition-colors rounded-t-sm ${isDarkMode ? 'bg-brand-500/20 hover:bg-brand-500' : 'bg-brand-100 hover:bg-brand-500'}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Activity List */}
-                    <div className="space-y-3">
-                      {[1, 2].map((_, i) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`} />
-                          <div className="flex-1 space-y-1.5">
-                            <div className={`h-2 w-full rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`} />
-                            <div className={`h-2 w-2/3 rounded-full ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                <div className={`rounded-2xl shadow-sm border overflow-hidden relative flex h-full transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <video 
+                    src="https://i.imgur.com/tfqEw6z.mp4" 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    className="w-full h-auto object-cover block"
+                  />
                 </div>
 
                 {/* Decorative Elements */}
