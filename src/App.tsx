@@ -1789,6 +1789,37 @@ export default function App() {
     }
   }, []);
 
+  // Inactivity Auto-Refresh (30 seconds)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        window.location.reload();
+      }, 30000); // 30 seconds
+    };
+
+    resetTimer();
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    const handleActivity = () => {
+       resetTimer();
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, []);
+
   useEffect(() => {
     const handleInteraction = () => {
       setAudioEnabled(true);
