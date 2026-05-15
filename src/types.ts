@@ -221,6 +221,7 @@ export interface Assignment {
   
   // New Features
   paymentStatus: 'PENDING' | 'PAID' | 'PROCESSING';
+  createdAt?: string;
 }
 
 export interface Feedback {
@@ -290,7 +291,7 @@ export interface EmployeeRegistration {
   profession?: string;
 }
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   agencyId: string;
   userId: string;

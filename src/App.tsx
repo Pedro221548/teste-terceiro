@@ -77,7 +77,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
-import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, Notification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
+import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, AppNotification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db } from './firebase';
@@ -1757,7 +1757,7 @@ export default function App() {
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   const [currentUnitId, setCurrentUnitId] = useState<string | null>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -2080,6 +2080,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (user && 'Notification' in window && Notification.permission === 'default') {
+      // Request notification permission for mobile/desktop
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!isAuthReady) return;
 
     const unsubs: (() => void)[] = [];
@@ -2190,7 +2199,7 @@ export default function App() {
       }
     }
 
-    const unsubNotifications = subscribeToCollection<Notification>('notifications', (data) => {
+    const unsubNotifications = subscribeToCollection<AppNotification>('notifications', (data) => {
       setNotifications(data);
     }, notificationConstraints);
 
@@ -5088,11 +5097,13 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins, companyRequests, isDarkMode }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins, companyRequests, isDarkMode }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: AppNotification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
+  const [prevOfferIds, setPrevOfferIds] = useState<string[]>([]);
+  
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
   const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -5117,6 +5128,22 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     if (assignedCount >= req.quantity) return false;
     return true;
   });
+
+  useEffect(() => {
+    const currentOfferIds = myOffers.map(o => o.id);
+    const newOffers = currentOfferIds.filter(id => !prevOfferIds.includes(id));
+    if (newOffers.length > 0 && prevOfferIds.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification('Nova Vaga!', {
+        body: 'Uma nova solicitação de trabalho está disponível para você!',
+        icon: '/favicon.ico'
+      });
+      console.log('Mobile notification sent for new offers');
+    }
+    // Update ref/state if it changed
+    if (currentOfferIds.join(',') !== prevOfferIds.join(',')) {
+      setPrevOfferIds(currentOfferIds);
+    }
+  }, [myOffers]);
 
   const getDayCheckins = (date: string) => {
     return checkins.filter(ci => 
@@ -5158,6 +5185,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         status: 'SCHEDULED',
         value: 0, // Will be set by agency or default
         confirmed: true, // Employee already confirmed by accepting
+        paymentStatus: 'PENDING',
         createdAt: new Date().toISOString()
       };
       await createDocument('assignments', newAssignment);
@@ -5342,7 +5370,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                       <Briefcase size={40} className="animate-pulse" />
                     </div>
                     <div className="text-center sm:text-left space-y-2">
-                      <h4 className="text-2xl font-black text-emerald-900 dark:text-emerald-400 tracking-tight uppercase">Nova Solicitação: {client?.razaoSocial}</h4>
+                      <h4 className="text-2xl font-black text-emerald-900 dark:text-emerald-400 tracking-tight uppercase">Nova Solicitação: {client?.name}</h4>
                       <p className="text-base font-medium text-emerald-700 dark:text-emerald-500 max-w-md leading-relaxed">
                         Data: {formatDateBR(offer.date)}<br/>
                         Vagas totais: {offer.quantity}
@@ -11585,7 +11613,7 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   );
 }
 
-function EmployeeProfile({ employeeId, employees, assignments, notifications, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], pricing: PricingConfig }) {
+function EmployeeProfile({ employeeId, employees, assignments, notifications, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: AppNotification[], pricing: PricingConfig }) {
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
