@@ -783,6 +783,181 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
   );
 }
 
+function SubscriptionFlow({ 
+  plan, 
+  user, 
+  onComplete, 
+  onCancel,
+  isDarkMode 
+}: { 
+  plan: Plan, 
+  user: any, 
+  onComplete: (planId: PlanType) => void,
+  onCancel: () => void,
+  isDarkMode: boolean 
+}) {
+  const [step, setStep] = useState<'SUMMARY' | 'PAYMENT' | 'CONFIRMATION'>('SUMMARY');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handlePayment = () => {
+    setIsProcessing(true);
+    // Simulate payment processing
+    setTimeout(() => {
+      setIsProcessing(false);
+      setStep('CONFIRMATION');
+    }, 2000);
+  };
+
+  if (step === 'SUMMARY') {
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`max-w-xl w-full p-8 sm:p-12 rounded-[2.5rem] border shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
+        >
+          <div className="text-center mb-10">
+            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 transition-colors ${isDarkMode ? 'bg-brand-500/10 text-brand-400' : 'bg-brand-50 text-brand-500'}`}>
+              <FileText size={40} />
+            </div>
+            <h3 className="text-3xl font-black tracking-tight font-display mb-2">Resumo da Assinatura</h3>
+            <p className={`font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Confirme os detalhes do seu plano antes de prosseguir.</p>
+          </div>
+
+          <div className={`p-6 rounded-2xl border mb-8 transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Plano Selecionado</span>
+              <span className="text-brand-500 font-black uppercase tracking-tight">{plan.name}</span>
+            </div>
+            <div className="space-y-3">
+              {plan.features.slice(0, 4).map((f, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm font-medium">
+                  <CheckCircle2 size={16} className="text-brand-500" />
+                  <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 pt-6 border-t border-dashed border-slate-200 dark:border-slate-800 flex justify-between items-center">
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Valor Mensal</span>
+              <span className="text-2xl font-black tracking-tighter">
+                {plan.price === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <button 
+              onClick={onCancel}
+              className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${isDarkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={() => setStep('PAYMENT')}
+              className="flex-1 py-4 bg-brand-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/20"
+            >
+              Ir para Pagamento
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (step === 'PAYMENT') {
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className={`max-w-xl w-full p-8 sm:p-12 rounded-[2.5rem] border shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
+        >
+          <div className="text-center mb-10">
+            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 transition-colors ${isDarkMode ? 'bg-brand-500/10 text-brand-400' : 'bg-brand-50 text-brand-500'}`}>
+              <CreditCard size={40} />
+            </div>
+            <h3 className="text-3xl font-black tracking-tight font-display mb-2">Pagamento</h3>
+            <p className={`font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Insira os dados do seu cartão para ativar o plano.</p>
+          </div>
+
+          <div className="space-y-6 mb-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome no Cartão</label>
+              <input 
+                type="text" 
+                placeholder="Ex: JOÃO A SILVA"
+                className={`w-full p-4 border rounded-2xl text-sm font-bold outline-none transition-all ${isDarkMode ? 'bg-black border-slate-800' : 'bg-slate-50 border-slate-100 focus:bg-white'}`}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Número do Cartão</label>
+              <div className="relative">
+                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="0000 0000 0000 0000"
+                  className={`w-full pl-12 pr-4 py-4 border rounded-2xl text-sm font-bold outline-none transition-all ${isDarkMode ? 'bg-black border-slate-800' : 'bg-slate-50 border-slate-100 focus:bg-white'}`}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Validade</label>
+                <input 
+                  type="text" 
+                  placeholder="MM/AA"
+                  className={`w-full p-4 border rounded-2xl text-sm font-bold outline-none transition-all ${isDarkMode ? 'bg-black border-slate-800' : 'bg-slate-50 border-slate-100 focus:bg-white'}`}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">CVV</label>
+                <input 
+                  type="text" 
+                  placeholder="000"
+                  className={`w-full p-4 border rounded-2xl text-sm font-bold outline-none transition-all ${isDarkMode ? 'bg-black border-slate-800' : 'bg-slate-50 border-slate-100 focus:bg-white'}`}
+                />
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={handlePayment}
+            disabled={isProcessing}
+            className="w-full py-5 bg-brand-500 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            {isProcessing ? 'Processando...' : `Pagar ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}`}
+            <ArrowRight size={18} />
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`max-w-xl w-full p-12 rounded-[3rem] border shadow-2xl text-center transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
+      >
+        <div className="w-24 h-24 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-emerald-500/20">
+          <CheckCircle2 size={56} />
+        </div>
+        <h3 className="text-4xl font-black tracking-tight font-display mb-4">Pagamento Confirmado!</h3>
+        <p className={`text-lg font-medium mb-12 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+          Seu plano <span className="text-brand-500 font-bold">{plan.name}</span> foi ativado com sucesso. Agora você tem acesso total aos recursos contratados.
+        </p>
+        <button 
+          onClick={() => onComplete(plan.id)}
+          className="w-full py-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all shadow-xl active:scale-95"
+        >
+          Ir para o Dashboard
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units: Unit[], companies: Company[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
@@ -1477,11 +1652,28 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>('AGENCY');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [staffingSubTab, setStaffingSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>('STAFFING');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [passwordToVerify, setPasswordToVerify] = useState('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  // Subscription Flow States
+  const [pendingSubscriptionPlan, setPendingSubscriptionPlan] = useState<Plan | null>(() => {
+    const saved = localStorage.getItem('pendingSubscriptionPlan');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [subscriptionStep, setSubscriptionStep] = useState<'IDLE' | 'SUMMARY' | 'PAYMENT' | 'CONFIRMATION'>('IDLE');
+
+  useEffect(() => {
+    if (pendingSubscriptionPlan) {
+      localStorage.setItem('pendingSubscriptionPlan', JSON.stringify(pendingSubscriptionPlan));
+    } else {
+      localStorage.removeItem('pendingSubscriptionPlan');
+    }
+  }, [pendingSubscriptionPlan]);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -1499,6 +1691,10 @@ export default function App() {
   const handleTabChange = (tab: string) => {
     if (tab === activeTab) return;
     
+    if (tab === 'staffing') {
+      setStaffingSubTab('STAFFING');
+    }
+
     const currentAgency = agencies.find(a => a.id === currentAgencyId);
     if (currentAgency?.plan === 'STARTER') {
       const restrictedForStarter = ['feed', 'ponto', 'employee_ponto', 'access_flow', 'feedbacks', 'pricing', 'reports'];
@@ -1697,14 +1893,17 @@ export default function App() {
     }
   };
 
-  const getScaleValue = (rating: number) => {
-    if (pricing.type === 'STARS') {
-      const p = pricing.stars?.[rating.toString()];
+  const getScaleValue = (emp: Employee) => {
+    const prof = emp.profession;
+    const targetPricing = (prof && pricing.professions?.[prof]) || pricing;
+
+    if (targetPricing.type === 'STARS') {
+      const p = targetPricing.stars?.[emp.rating.toString()];
       return p ? p.employee + p.company : 0;
     } else {
       const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
       const day = daysOfWeek[new Date().getDay()];
-      const p = pricing.weekly?.[day];
+      const p = targetPricing.weekly?.[day];
       return p ? p.employee + p.company : 0;
     }
   };
@@ -1806,6 +2005,10 @@ export default function App() {
           }
           setRole(currentRole);
           
+          if (pendingSubscriptionPlan) {
+            setSubscriptionStep('SUMMARY');
+          }
+
           if (userDoc.agencyId) {
             setCurrentAgencyId(userDoc.agencyId);
           } else if (currentRole === 'AGENCY') {
@@ -1969,7 +2172,10 @@ export default function App() {
       setUnits(filterByAgency(data));
     }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
-    const unsubCompanyRequests = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyRequest>('companyRequests', (data) => setCompanyRequests(filterByAgency(data))) : () => {};
+    const unsubCompanyRequests = subscribeToCollection<CompanyRequest>('companyRequests', (data) => {
+      // Employees only need requests, we filter by agency to not over-fetch.
+      setCompanyRequests(filterByAgency(data));
+    });
 
     const notificationConstraints = [];
     if (role !== 'ADMIN') {
@@ -2084,6 +2290,41 @@ export default function App() {
     } catch (error) {
       console.error('Firebase Auth error:', error);
       setLoginError('E-mail ou senha incorretos.');
+    }
+  };
+
+  const handleSubscriptionComplete = async (planId: PlanType) => {
+    if (!currentAgencyId) return;
+    
+    try {
+      const selectedPlan = plans.find(p => p.id === planId);
+      await setDocument('agencies', currentAgencyId, {
+        plan: planId,
+        subscriptionStatus: 'ACTIVE',
+        maxEmployees: selectedPlan?.maxEmployees || 50,
+        maxCompanies: selectedPlan?.maxCompanies || 10,
+        updatedAt: new Date().toISOString()
+      }, true); // Merge true
+      
+      toast.success('Assinatura ativada com sucesso!');
+      setPendingSubscriptionPlan(null);
+      setSubscriptionStep('IDLE');
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error('Error activating subscription:', error);
+      toast.error('Erro ao ativar assinatura.');
+    }
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    setPendingSubscriptionPlan(plan);
+    if (!user) {
+      setRole('AGENCY_REGISTRATION');
+      const params = new URLSearchParams(window.location.search);
+      params.set('role', 'AGENCY_REGISTRATION');
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    } else {
+      setSubscriptionStep('SUMMARY');
     }
   };
 
@@ -2210,6 +2451,7 @@ export default function App() {
           plans={plans}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
+          onSelectPlan={handleSelectPlan}
         />
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50">v1.1.0</div>
       </div>
@@ -2230,6 +2472,25 @@ export default function App() {
   }
 
   const currentAgencyPlan = agencies.find(a => a.id === currentAgencyId)?.plan;
+
+  if (user && pendingSubscriptionPlan && subscriptionStep !== 'IDLE') {
+    return (
+      <ErrorBoundary>
+        <Toaster position="top-center" />
+        <SubscriptionFlow 
+          plan={pendingSubscriptionPlan}
+          user={user}
+          isDarkMode={isDarkMode}
+          onComplete={handleSubscriptionComplete}
+          onCancel={() => {
+            setPendingSubscriptionPlan(null);
+            setSubscriptionStep('IDLE');
+          }}
+        />
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -2352,6 +2613,7 @@ export default function App() {
                       pricing={pricing}
                       ratingLabel={ratingLabel}
                       setActiveTab={setActiveTab}
+                      setStaffingSubTab={setStaffingSubTab}
                       clients={clients}
                       feedbacks={feedbacks}
                       companies={companies}
@@ -2448,6 +2710,7 @@ export default function App() {
                       pricing={pricing}
                       ratingLabel={ratingLabel}
                       setActiveTab={setActiveTab}
+                      setStaffingSubTab={setStaffingSubTab}
                       clients={clients}
                       feedbacks={feedbacks}
                       companies={companies}
@@ -2504,6 +2767,7 @@ export default function App() {
                       selectedAgencyId={selectedAgencyId}
                       checkins={checkins}
                       agencies={agencies}
+                      initialSubTab={staffingSubTab}
                     />
                   </div>
                 )}
@@ -2648,6 +2912,7 @@ export default function App() {
                       bulletins={bulletins}
                       invoices={invoices}
                       checkins={checkins}
+                      companyRequests={companyRequests}
                       isDarkMode={isDarkMode}
                     />
                   </div>
@@ -3675,7 +3940,7 @@ function SuperAdminPlans({ plans }: { plans: Plan[] }) {
   );
 }
 
-function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans, companyRequests, isDarkMode }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
+function AgencyDashboard({ assignments, employees, contacts, employeeRegistrations, pricing, ratingLabel, setActiveTab, setStaffingSubTab, clients, feedbacks, companies, units, role, agencies, selectedAgencyId, onClearAgency, onSelectAgency, agencyId, companyUsers, plans, companyRequests, isDarkMode }: { assignments: Assignment[], employees: Employee[], contacts: ContactRequest[], employeeRegistrations: EmployeeRegistration[], pricing: PricingConfig, ratingLabel: string, setActiveTab: (tab: string) => void, setStaffingSubTab?: (tab: 'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES') => void, clients: Client[], feedbacks: Feedback[], companies: Company[], units: Unit[], role: string, agencies: Agency[], selectedAgencyId?: string | null, onClearAgency?: () => void, onSelectAgency?: (id: string) => void, agencyId: string | null, companyUsers: CompanyUser[], plans: Plan[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
   const [selectedRegistration, setSelectedRegistration] = useState<EmployeeRegistration | null>(null);
   const [showProcessRegistrationModal, setShowProcessRegistrationModal] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
@@ -3683,6 +3948,11 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
   const [maxEmployees, setMaxEmployees] = useState<string>('');
   const [maxCompanies, setMaxCompanies] = useState<string>('');
   const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
+  const [dashboardPricingProfession, setDashboardPricingProfession] = useState<string>('default');
+
+  const targetPricing = dashboardPricingProfession === 'default'
+    ? pricing
+    : (pricing.professions?.[dashboardPricingProfession] || pricing);
 
   const handleUpdateLimits = async () => {
     if (!editingAgencyLimits) return;
@@ -3864,6 +4134,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             value={totalEmployees.toString()} 
             trend="Ativos"
             color="purple"
+            onClick={() => setActiveTab('registrations')}
           />
           <StatCard 
             icon={<Briefcase size={24} />} 
@@ -4116,7 +4387,10 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
             value={companyRequests.filter(r => r.status === 'PENDING').length.toString()} 
             trend="Pendentes"
             color="amber"
-            onClick={() => setActiveTab('staffing')}
+            onClick={() => {
+              if (setStaffingSubTab) setStaffingSubTab('REQUESTS');
+              setActiveTab('staffing');
+            }}
           />
         )}
         <StatCard 
@@ -4125,6 +4399,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           value={totalCompanies.toString()} 
           trend="Cadastradas"
           color="blue"
+          onClick={() => setActiveTab('companies')}
         />
         <StatCard 
           icon={<CheckCircle2 size={24} />} 
@@ -4157,6 +4432,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           value={totalEmployees.toString()} 
           trend="Cadastrados"
           color="purple"
+          onClick={() => setActiveTab('registrations')}
         />
         <StatCard 
           icon={<Briefcase size={24} />} 
@@ -4298,28 +4574,42 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 transition-all group-hover:scale-110 duration-1000"></div>
           
           <div className="relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 mb-8">
               <div className="flex items-center gap-6">
                 <div className="w-16 h-16 bg-slate-950 dark:bg-brand-500 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-950/20 dark:shadow-black/20 shrink-0 rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                  {pricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
+                  {targetPricing.type === 'STARS' ? <Star size={32} className="fill-yellow-400 text-yellow-400" /> : <Calendar size={32} />}
                 </div>
                 <div>
                   <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                    Tabela de Preços {pricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
+                    Tabela de Preços {targetPricing.type === 'STARS' ? `por ${ratingLabel}` : 'por Dia'}
                   </h3>
                   <p className="text-sm text-slate-400 dark:text-slate-500 font-medium tracking-wide">Valores baseados na configuração atual do sistema.</p>
                 </div>
               </div>
-              {pricing.type === 'DAILY' && (
-                <div className="px-5 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-900/50 w-fit shadow-sm">
-                  Hoje: {todayName}
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {(Object.keys(pricing.professions || {}).length > 0) && (
+                  <select 
+                    value={dashboardPricingProfession} 
+                    onChange={e => setDashboardPricingProfession(e.target.value)}
+                    className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 transition-colors shadow-sm"
+                  >
+                    <option value="">Selecione uma função...</option>
+                    {Object.keys(pricing.professions || {}).map(prof => (
+                      <option key={prof} value={prof}>{prof}</option>
+                    ))}
+                  </select>
+                )}
+                {targetPricing.type === 'DAILY' && (
+                  <div className="px-5 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-900/50 w-fit shadow-sm">
+                    Hoje: {todayName}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-              {pricing.type === 'STARS' ? (
-                Object.entries(pricing.stars || {}).map(([stars, p]) => (
+              {targetPricing.type === 'STARS' ? (
+                Object.entries(targetPricing.stars || {}).map(([stars, p]) => (
                   <div key={stars} className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-6 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all group/price relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover/price:scale-150 duration-700"></div>
                     <div className="flex gap-1.5 relative z-10">
@@ -4338,7 +4628,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
                 ))
               ) : (
                 ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map(day => {
-                  const p = pricing.weekly?.[day] || { employee: 0, company: 0 };
+                  const p = targetPricing.weekly?.[day] || { employee: 0, company: 0 };
                   const isToday = day === todayName;
                   return (
                     <div key={day} className={`p-8 rounded-[2.5rem] border flex flex-col items-center gap-6 transition-all group/price relative overflow-hidden transition-colors duration-500 ${isToday ? 'bg-slate-950 dark:bg-brand-600 border-slate-950 dark:border-brand-600 text-white shadow-2xl shadow-slate-950/30 dark:shadow-brand-600/30 scale-105 z-10 font-bold' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 dark:text-slate-100'}`}>
@@ -4798,7 +5088,7 @@ function StatCard({ icon, label, value, trend, alert, color = 'blue', onClick }:
   );
 }
 
-function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins, isDarkMode }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[], isDarkMode: boolean }) {
+function EmployeeSchedule({ employeeId, employees, assignments, notifications, clients, units, companies, agencies, bulletins, invoices, checkins, companyRequests, isDarkMode }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: Notification[], clients: Client[], units: Unit[], companies: Company[], agencies: Agency[], bulletins: Bulletin[], invoices: Invoice[], checkins: CheckIn[], companyRequests: CompanyRequest[], isDarkMode: boolean }) {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'UNAVAILABILITY' | 'FINANCE' | 'MURAL'>('SCHEDULE');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
@@ -4814,6 +5104,19 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     .sort((a, b) => b.date.localeCompare(a.date));
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
   const myBulletins = bulletins.filter(b => b.targetRoles.includes('EMPLOYEE'));
+
+  const myOffers = companyRequests.filter(req => {
+    if (!req.broadcasted) return false;
+    if (req.status !== 'PENDING') return false;
+    if (req.date < todayStr) return false;
+    if (employee && req.agencyId !== employee.agencyId) return false;
+    const isAssigned = assignments.some(a => a.employeeId === employeeId && a.clientId === req.clientId && a.date === req.date && a.status !== 'CANCELLED');
+    if (isAssigned) return false;
+    if (employee?.unavailableDates?.includes(req.date)) return false;
+    const assignedCount = assignments.filter(a => a.clientId === req.clientId && a.date === req.date && a.status !== 'CANCELLED').length;
+    if (assignedCount >= req.quantity) return false;
+    return true;
+  });
 
   const getDayCheckins = (date: string) => {
     return checkins.filter(ci => 
@@ -4841,6 +5144,30 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     setTimeout(() => setShowSuccess(false), 3000);
   };
   
+  const handleAcceptOffer = async (req: CompanyRequest) => {
+    try {
+      // Find unitId if company uses units. The simplest is we don't know the exact unit if there are multiple.
+      // Usually clientId represents the unit if it's a matrix structure.
+      const newAssignment: Omit<Assignment, 'id'> = {
+        agencyId: req.agencyId,
+        companyId: req.companyId,
+        clientId: req.clientId,
+        unitId: '', // Default to empty
+        employeeId: employeeId,
+        date: req.date,
+        status: 'SCHEDULED',
+        value: 0, // Will be set by agency or default
+        confirmed: true, // Employee already confirmed by accepting
+        createdAt: new Date().toISOString()
+      };
+      await createDocument('assignments', newAssignment);
+      toast.success('Você aceitou a vaga e ela já está na sua agenda!');
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao aceitar vaga.');
+    }
+  };
+
   if (!employee) {
     return (
       <div className="bg-white dark:bg-slate-900 p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 text-center space-y-6 shadow-sm transition-colors duration-500">
@@ -4989,6 +5316,51 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                 </div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Job Offers Section */}
+      {myOffers.length > 0 && (
+        <div className="space-y-6 mt-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+            <h3 className="text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-[0.2em]">Vagas Disponíveis</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-6">
+            {myOffers.map(offer => {
+              const client = clients.find(c => c.id === offer.clientId);
+              return (
+                <motion.div 
+                  key={offer.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 text-slate-900 dark:text-white p-8 sm:p-12 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between gap-10 shadow-emerald-200 relative overflow-hidden group"
+                >
+                  <div className="flex items-center gap-8 relative z-10">
+                    <div className="w-20 h-20 rounded-[2.5rem] bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                      <Briefcase size={40} className="animate-pulse" />
+                    </div>
+                    <div className="text-center sm:text-left space-y-2">
+                      <h4 className="text-2xl font-black text-emerald-900 dark:text-emerald-400 tracking-tight uppercase">Nova Solicitação: {client?.razaoSocial}</h4>
+                      <p className="text-base font-medium text-emerald-700 dark:text-emerald-500 max-w-md leading-relaxed">
+                        Data: {formatDateBR(offer.date)}<br/>
+                        Vagas totais: {offer.quantity}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto relative z-10">
+                    <button 
+                      onClick={() => handleAcceptOffer(offer)}
+                      className="w-full sm:w-auto px-8 py-6 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl active:scale-95"
+                    >
+                      Aceitar Vaga
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -5731,7 +6103,10 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   });
 
   const currentAgency = agencies.find(a => a.id === (selectedAgencyId || agencyId));
-  const professions = currentAgency?.segment || ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
+  const agencyProfessions = Object.keys(currentAgency?.pricing?.professions || {});
+  const baseProfessions = currentAgency?.segment || [];
+  const defaultProfessions = ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
+  const professions = Array.from(new Set([...baseProfessions, ...agencyProfessions, ...defaultProfessions])).sort();
 
   const handleEdit = (emp: Employee) => {
     setFormData({
@@ -7231,12 +7606,16 @@ function AccessFlow({
   );
 }
 
-function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins, agencies }: { user: any, employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (rating: number) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[], agencies: Agency[] }) {
+function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, companyRequests, companies, units, agencyId, selectedAgencyId, checkins, agencies, initialSubTab = 'STAFFING' }: { user: any, employees: Employee[], assignments: Assignment[], clients: Client[], getScaleValue: (emp: Employee) => number, companyRequests: CompanyRequest[], companies: Company[], units: Unit[], agencyId: string | null, selectedAgencyId?: string | null, checkins: CheckIn[], agencies: Agency[], initialSubTab?: 'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES' }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [filterType, setFilterType] = useState<'RATING' | 'COMPLAINTS'>('RATING');
   const [professionFilter, setProfessionFilter] = useState('ALL');
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
-  const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>('STAFFING');
+  const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>(initialSubTab);
+
+  React.useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
   const [rejectingRequest, setRejectingRequest] = useState<CompanyRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -7286,8 +7665,10 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
 
   const targetAgencyId = selectedAgencyId || agencyId;
   const currentAgency = agencies.find(a => a.id === targetAgencyId);
+  const agencyProfessions = Object.keys(currentAgency?.pricing?.professions || {});
   const professions = Array.from(new Set([
     ...(currentAgency?.segment || []),
+    ...agencyProfessions,
     ...employees.filter(e => e.agencyId === targetAgencyId).map(e => e.profession).filter(Boolean) as string[]
   ])).sort();
 
@@ -7339,8 +7720,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
     setSelectedClientId(req.clientId);
     setSelectedDate(req.date);
     setActiveSubTab('STAFFING');
-    // Mark as being attended
-    await updateDocument('companyRequests', req.id, { status: 'PENDING' });
+    // Mark as being attended and broadcast it to employees
+    await updateDocument('companyRequests', req.id, { status: 'PENDING', broadcasted: true });
+    toast.success('Solicitação em atendimento! Notificações enviadas aos profissionais.');
   };
 
   const handleFinishRequest = async () => {
@@ -7406,7 +7788,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
       clientId: selectedClientId,
       unitId: unit?.id,
       date: selectedDate,
-      value: getScaleValue(emp.rating),
+      value: getScaleValue(emp),
       status: 'SCHEDULED',
       confirmed: false,
       paymentStatus: 'PENDING'
@@ -7647,7 +8029,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
 
       {activeSubTab === 'STAFFING' ? (
         <div className="flex flex-col gap-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
@@ -7672,6 +8054,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
               <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
                 {clients
                   .filter(cli => units.some(u => u.clientId === cli.id))
+                  .filter(cli => professionFilter === 'ALL' || units.some(u => u.clientId === cli.id && companies.find(c => c.id === u.companyId)?.services?.includes(professionFilter)))
                   .map(cli => (
                   <button 
                     key={cli.id}
@@ -7690,42 +8073,13 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                 ))}
               </div>
             </div>
-
-            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
-                  Critério de Filtro
-                </h3>
-                <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-[1.5rem]">
-                  <button 
-                    onClick={() => setFilterType('RATING')}
-                    className={`flex flex-col items-center justify-center gap-2 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                      filterType === 'RATING' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    <Star size={16} className={filterType === 'RATING' ? 'fill-yellow-400 text-yellow-400' : ''} />
-                    Estrelas
-                  </button>
-                  <button 
-                    onClick={() => setFilterType('COMPLAINTS')}
-                    className={`flex flex-col items-center justify-center gap-2 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                      filterType === 'COMPLAINTS' ? 'bg-white text-blue-600 shadow-lg shadow-slate-200/50' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    <AlertCircle size={16} />
-                    Queixas
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">3</div>
                   Buscar Profissional
                 </h3>
                 {searchTerm && (
@@ -7753,7 +8107,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
 
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm w-full flex flex-col justify-between">
               <h3 className="text-base sm:text-lg font-black text-slate-900 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">5</div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs">4</div>
                 Tipo de Serviço
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -7783,7 +8137,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
           <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">6</div>
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-sm">5</div>
               Equipe Disponível
             </h3>
             <div className="px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100 w-fit">
@@ -7842,7 +8196,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                       </div>
                     </div>
                     <div className="bg-blue-50 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-blue-100">
-                      <p className="text-[9px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {getScaleValue(emp.rating)}</p>
+                      <p className="text-[9px] sm:text-[10px] text-blue-600 font-black uppercase tracking-widest">R$ {getScaleValue(emp)}</p>
                     </div>
                   </div>
                   
@@ -8468,6 +8822,56 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
 function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agencyId, selectedAgencyId }: { pricing: PricingConfig, ratingLabel: string, setPricing: (p: PricingConfig) => void, setRatingLabel: (l: string) => void, agencyId: string | null, selectedAgencyId?: string | null }) {
   const [localPricing, setLocalPricing] = useState<PricingConfig>(pricing);
   const [localLabel, setLocalLabel] = useState(ratingLabel);
+  const [selectedProfession, setSelectedProfession] = useState<string>(Object.keys(pricing.professions || {})[0] || '');
+  const [isAddingProfession, setIsAddingProfession] = useState(false);
+  const [newProfessionName, setNewProfessionName] = useState('');
+
+  const targetPricing = selectedProfession 
+    ? (localPricing.professions?.[selectedProfession] || {
+        type: localPricing.type || 'STARS',
+        stars: localPricing.stars ? { ...localPricing.stars } : { '1': { employee: 0, company: 0 }, '2': { employee: 0, company: 0 }, '3': { employee: 0, company: 0 }, '4': { employee: 0, company: 0 }, '5': { employee: 0, company: 0 } },
+        weekly: localPricing.weekly ? { ...localPricing.weekly } : {}
+      })
+    : null;
+
+  const updateTargetPricing = (updater: (prev: typeof targetPricing) => typeof targetPricing) => {
+    if (!selectedProfession || !targetPricing) return;
+    setLocalPricing(prev => {
+      const currentProfessions = prev.professions || {};
+      const currentTarget = currentProfessions[selectedProfession] || {
+        type: prev.type || 'STARS',
+        stars: prev.stars ? JSON.parse(JSON.stringify(prev.stars)) : {},
+        weekly: prev.weekly ? JSON.parse(JSON.stringify(prev.weekly)) : {}
+      };
+      const result = updater(currentTarget);
+      return {
+        ...prev,
+        professions: {
+          ...currentProfessions,
+          [selectedProfession]: result
+        }
+      };
+    });
+  };
+
+  const handleAddProfession = () => {
+    if (!newProfessionName.trim()) return;
+    const name = newProfessionName.trim();
+    setLocalPricing(prev => ({
+      ...prev,
+      professions: {
+        ...(prev.professions || {}),
+        [name]: {
+          type: prev.type,
+          stars: JSON.parse(JSON.stringify(prev.stars)),
+          weekly: JSON.parse(JSON.stringify(prev.weekly))
+        }
+      }
+    }));
+    setSelectedProfession(name);
+    setNewProfessionName('');
+    setIsAddingProfession(false);
+  };
 
   const handleSave = async () => {
     const targetAgencyId = selectedAgencyId || agencyId;
@@ -8499,20 +8903,6 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
           <p className="text-sm sm:text-base text-slate-500 font-medium">Defina os valores das diárias e o sistema de classificação.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner w-full sm:w-auto">
-            <button 
-              onClick={() => setLocalPricing({ ...localPricing, type: 'STARS' })}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'STARS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Por {localLabel}
-            </button>
-            <button 
-              onClick={() => setLocalPricing({ ...localPricing, type: 'DAILY' })}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${localPricing.type === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Por Dia
-            </button>
-          </div>
           <button 
             onClick={handleSave}
             className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 whitespace-nowrap"
@@ -8523,19 +8913,94 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
         </div>
       </div>
 
+      <div className="bg-white p-4 sm:p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center overflow-x-auto custom-scrollbar">
+        <div className="flex gap-2">
+          {Object.keys(localPricing.professions || {}).map(prof => (
+            <button 
+              key={prof}
+              onClick={() => setSelectedProfession(prof)}
+              className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedProfession === prof ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              <Briefcase size={14} />
+              {prof}
+            </button>
+          ))}
+        </div>
+        
+        <div className="hidden sm:block w-px h-8 bg-slate-200 mx-2"></div>
+        
+        {!isAddingProfession ? (
+          <button 
+            onClick={() => setIsAddingProfession(true)}
+            className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center gap-2"
+          >
+            <Plus size={14} />
+            Nova Função
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input 
+              type="text" 
+              placeholder="Ex: Vigilante"
+              className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 w-full sm:w-48"
+              value={newProfessionName}
+              onChange={e => setNewProfessionName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddProfession()}
+              autoFocus
+            />
+            <button onClick={handleAddProfession} className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
+              <CheckCircle2 size={18} />
+            </button>
+            <button onClick={() => setIsAddingProfession(false)} className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-colors">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {selectedProfession && targetPricing && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
         <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 shadow-sm space-y-6 sm:space-y-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-              {localPricing.type === 'STARS' ? <Star size={20} /> : <Calendar size={20} />}
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                {targetPricing.type === 'STARS' ? <Star size={20} /> : <Calendar size={20} />}
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {targetPricing.type === 'STARS' ? `Valores por ${localLabel}` : 'Valores por Dia da Semana'}
+              </h3>
             </div>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {localPricing.type === 'STARS' ? `Valores por ${localLabel}` : 'Valores por Dia da Semana'}
-            </h3>
+          </div>
+          
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner w-full relative z-10">
+            <button 
+              onClick={() => updateTargetPricing(prev => ({ ...prev, type: 'STARS' }))}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${targetPricing.type === 'STARS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Por {localLabel}
+              <div className="group/tooltip relative">
+                <HelpCircle size={14} className={`${targetPricing.type === 'STARS' ? 'text-blue-400 hover:text-blue-600' : 'text-slate-400 hover:text-slate-600'} transition-colors`} />
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-slate-900 text-[10px] text-white font-medium normal-case rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-20 pointer-events-none text-center leading-tight">
+                  Valores variam conforme a qualificação ({localLabel}) do funcionário.
+                </div>
+              </div>
+            </button>
+            <button 
+              onClick={() => updateTargetPricing(prev => ({ ...prev, type: 'DAILY' }))}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${targetPricing.type === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Por Dia
+              <div className="group/tooltip relative">
+                <HelpCircle size={14} className={`${targetPricing.type === 'DAILY' ? 'text-blue-400 hover:text-blue-600' : 'text-slate-400 hover:text-slate-600'} transition-colors`} />
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-slate-900 text-[10px] text-white font-medium normal-case rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-20 pointer-events-none text-center leading-tight">
+                  Valores fixos baseados no dia da semana do serviço.
+                </div>
+              </div>
+            </button>
           </div>
 
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
-            {localPricing.type === 'STARS' ? (
+            {targetPricing.type === 'STARS' ? (
               ['1', '2', '3', '4', '5'].map(stars => (
                 <div key={stars} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 hover:border-blue-200 transition-colors group">
                   <div className="flex items-center justify-between">
@@ -8556,11 +9021,13 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
                         <input 
                           type="number" 
                           className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                          value={localPricing.stars?.[stars]?.employee || 0}
+                          value={targetPricing.stars?.[stars]?.employee || 0}
                           onChange={e => {
-                            const newStars = { ...(localPricing.stars || {}) };
-                            newStars[stars] = { ...newStars[stars], employee: Number(e.target.value) };
-                            setLocalPricing({ ...localPricing, stars: newStars });
+                            updateTargetPricing(prev => {
+                              const newStars = { ...(prev.stars || {}) };
+                              newStars[stars] = { ...newStars[stars], employee: Number(e.target.value) };
+                              return { ...prev, stars: newStars };
+                            });
                           }}
                         />
                       </div>
@@ -8572,11 +9039,13 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
                         <input 
                           type="number" 
                           className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                          value={localPricing.stars?.[stars]?.company || 0}
+                          value={targetPricing.stars?.[stars]?.company || 0}
                           onChange={e => {
-                            const newStars = { ...(localPricing.stars || {}) };
-                            newStars[stars] = { ...newStars[stars], company: Number(e.target.value) };
-                            setLocalPricing({ ...localPricing, stars: newStars });
+                            updateTargetPricing(prev => {
+                              const newStars = { ...(prev.stars || {}) };
+                              newStars[stars] = { ...newStars[stars], company: Number(e.target.value) };
+                              return { ...prev, stars: newStars };
+                            });
                           }}
                         />
                       </div>
@@ -8598,11 +9067,13 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
                         <input 
                           type="number" 
                           className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                          value={localPricing.weekly?.[day]?.employee || 0}
+                          value={targetPricing.weekly?.[day]?.employee || 0}
                           onChange={e => {
-                            const newWeekly = { ...(localPricing.weekly || {}) };
-                            newWeekly[day] = { ...newWeekly[day], employee: Number(e.target.value) };
-                            setLocalPricing({ ...localPricing, weekly: newWeekly });
+                            updateTargetPricing(prev => {
+                              const newWeekly = { ...(prev.weekly || {}) };
+                              newWeekly[day] = { ...newWeekly[day], employee: Number(e.target.value) };
+                              return { ...prev, weekly: newWeekly };
+                            });
                           }}
                         />
                       </div>
@@ -8614,11 +9085,13 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
                         <input 
                           type="number" 
                           className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
-                          value={localPricing.weekly?.[day]?.company || 0}
+                          value={targetPricing.weekly?.[day]?.company || 0}
                           onChange={e => {
-                            const newWeekly = { ...(localPricing.weekly || {}) };
-                            newWeekly[day] = { ...newWeekly[day], company: Number(e.target.value) };
-                            setLocalPricing({ ...localPricing, weekly: newWeekly });
+                            updateTargetPricing(prev => {
+                              const newWeekly = { ...(prev.weekly || {}) };
+                              newWeekly[day] = { ...newWeekly[day], company: Number(e.target.value) };
+                              return { ...prev, weekly: newWeekly };
+                            });
                           }}
                         />
                       </div>
@@ -8681,6 +9154,7 @@ function AgencyPricing({ pricing, ratingLabel, setPricing, setRatingLabel, agenc
           </div>
         </div>
       </div>
+      )}
     </motion.div>
   );
 }
@@ -8695,6 +9169,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
   const [showDeleteCompanyConfirm, setShowDeleteCompanyConfirm] = useState<string | null>(null);
   const [showDeleteUnitConfirm, setShowDeleteUnitConfirm] = useState<string | null>(null);
   const [showEditCompanyModal, setShowEditCompanyModal] = useState<Company | null>(null);
+  const [showServicesModal, setShowServicesModal] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     responsibleName: '',
@@ -8728,6 +9203,15 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       }
     }
   }, [unitData.managerName, selectedAgencyId, agencyId, agencies]);
+  const targetAgencyIdForProfessions = selectedAgencyId || agencyId;
+  const currentAgencyForProfessions = agencies.find(a => a.id === targetAgencyIdForProfessions);
+  const agencyProfessions2 = Object.keys(currentAgencyForProfessions?.pricing?.professions || {});
+  const professions = Array.from(new Set([
+    ...(currentAgencyForProfessions?.segment || []),
+    ...agencyProfessions2,
+    ...employees.filter(e => e.agencyId === targetAgencyIdForProfessions).map(e => e.profession).filter(Boolean) as string[]
+  ])).sort();
+
   const [userData, setUserData] = useState({
     fullName: '',
     unitId: '',
@@ -8756,6 +9240,17 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
   const handleUpdateCompanyStatus = async (id: string, status: 'ACTIVE' | 'PENDING' | 'BLOCKED') => {
     await updateDocument('companies', id, { status });
+  };
+
+  const handleUpdateServices = async (company: Company, newServices: string[]) => {
+    try {
+      await updateDocument('companies', company.id, { services: newServices });
+      setShowServicesModal(null);
+      toast.success('Serviços atualizados com sucesso!');
+    } catch (error) {
+      console.error('Error updating services:', error);
+      toast.error('Erro ao atualizar serviços.');
+    }
   };
 
   const handleUpdateUserStatus = async (userId: string, status: 'ACTIVE' | 'PENDING' | 'BLOCKED') => {
@@ -9030,13 +9525,13 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 sm:gap-8 place-items-stretch">
         {filteredCompanies.map(company => (
-          <div key={company.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden">
+          <div key={company.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden w-full max-w-[642px] mx-auto">
             <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full -mr-20 -mt-20 transition-all group-hover:scale-150"></div>
             
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8 relative z-10">
-              <div className="flex items-center gap-4 sm:gap-5">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-8 relative z-10 w-full">
+              <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-[280px]">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-[1.5rem] flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner shrink-0">
                   <Building2 size={28} className="sm:w-8 sm:h-8" />
                 </div>
@@ -9054,87 +9549,105 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-                {company.status === 'PENDING' && (
+              <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 sm:gap-3 shrink-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-50/80 rounded-[2rem] border border-slate-100/80 shadow-inner shrink-0 flex-nowrap">
+                  {company.status === 'PENDING' && (
+                    <button 
+                      onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
+                      className="p-2 sm:p-2.5 text-emerald-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                      title="Aprovar Empresa"
+                    >
+                      <CheckCircle size={18} />
+                    </button>
+                  )}
+                  {company.status === 'ACTIVE' && (
+                    <button 
+                      onClick={() => handleUpdateCompanyStatus(company.id, 'BLOCKED')}
+                      className="p-2 sm:p-2.5 text-rose-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                      title="Bloquear Empresa"
+                    >
+                      <Lock size={18} />
+                    </button>
+                  )}
+                  {company.status === 'BLOCKED' && (
+                    <button 
+                      onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
+                      className="p-2 sm:p-2.5 text-emerald-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                      title="Desbloquear Empresa"
+                    >
+                      <Unlock size={18} />
+                    </button>
+                  )}
+                  {(company.status === 'PENDING' || company.status === 'ACTIVE' || company.status === 'BLOCKED') && (
+                    <div className="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
+                  )}
                   <button 
-                    onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
-                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
-                    title="Aprovar Empresa"
+                    onClick={() => setShowDetailsModal(company)}
+                    className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Ver Detalhes"
                   >
-                    <CheckCircle size={18} className="sm:w-5 sm:h-5" />
+                    <Eye size={18} />
                   </button>
-                )}
-                {company.status === 'ACTIVE' && (
                   <button 
-                    onClick={() => handleUpdateCompanyStatus(company.id, 'BLOCKED')}
-                    className="p-3 bg-rose-50 text-rose-600 rounded-xl sm:rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm shrink-0"
-                    title="Bloquear Empresa"
+                    onClick={() => setShowServicesModal(company)}
+                    className={`p-2 sm:p-2.5 rounded-full transition-all shrink-0 relative group/btn ${company.services?.length ? 'bg-indigo-50 text-indigo-600 shadow-sm border border-indigo-100/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-white hover:shadow-md'}`}
+                    title="Meus Serviços"
                   >
-                    <Lock size={18} className="sm:w-5 sm:h-5" />
+                    <Briefcase size={18} />
+                    {company.services && company.services.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white pointer-events-none shadow-sm">{company.services.length}</span>
+                    )}
                   </button>
-                )}
-                {company.status === 'BLOCKED' && (
                   <button 
-                    onClick={() => handleUpdateCompanyStatus(company.id, 'ACTIVE')}
-                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
-                    title="Desbloquear Empresa"
+                    onClick={() => setShowUserModal(company.id)}
+                    className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Criar Acesso"
                   >
-                    <Unlock size={18} className="sm:w-5 sm:h-5" />
+                    <UserPlus size={18} />
                   </button>
-                )}
-                <button 
-                  onClick={() => setShowDetailsModal(company)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Ver Detalhes"
-                >
-                  <Eye size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button 
-                  onClick={() => setShowUserModal(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Criar Acesso"
-                >
-                  <UserPlus size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button 
-                  onClick={() => handleSendRegistrationLink(company)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Enviar Link de Cadastro"
-                >
-                  <LinkIcon size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button 
-                  onClick={() => setShowUnitModal(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Adicionar Unidade"
-                >
-                  <Plus size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button 
-                  onClick={() => {
-                    setFormData({
-                      name: company.name,
-                      responsibleName: company.responsibleName,
-                      cnpj: company.cnpj,
-                      phone: company.phone,
-                      email: company.email,
-                      address: company.address || '',
-                      paymentDay: company.paymentDay || ''
-                    });
-                    setShowEditCompanyModal(company);
-                  }}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Editar Empresa"
-                >
-                  <Edit2 size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button 
-                  onClick={() => setShowDeleteCompanyConfirm(company.id)}
-                  className="p-3 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Excluir Empresa"
-                >
-                  <Trash2 size={18} className="sm:w-5 sm:h-5" />
-                </button>
+                  <button 
+                    onClick={() => handleSendRegistrationLink(company)}
+                    className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-white hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Enviar Link de Cadastro"
+                  >
+                    <LinkIcon size={18} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button 
+                    onClick={() => setShowUnitModal(company.id)}
+                    className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-white text-slate-400 hover:text-blue-600 border border-slate-100 shadow-sm hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Adicionar Unidade"
+                  >
+                    <Plus size={18} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setFormData({
+                        name: company.name,
+                        responsibleName: company.responsibleName,
+                        cnpj: company.cnpj,
+                        phone: company.phone,
+                        email: company.email,
+                        address: company.address || '',
+                        paymentDay: company.paymentDay || ''
+                      });
+                      setShowEditCompanyModal(company);
+                    }}
+                    className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-white text-slate-400 hover:text-blue-600 border border-slate-100 shadow-sm hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Editar Empresa"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setShowDeleteCompanyConfirm(company.id)}
+                    className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-white text-slate-400 hover:text-rose-600 border border-slate-100 shadow-sm hover:shadow-md rounded-full transition-all shrink-0"
+                    title="Excluir Empresa"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -9759,6 +10272,68 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
                   Confirmar Unidade
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {showServicesModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                    <Briefcase size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Serviços</h3>
+                    <p className="text-xs text-slate-400 font-medium">Defina os serviços prestados para <span className="font-bold text-slate-600">{showServicesModal.name}</span></p>
+                  </div>
+                </div>
+                <button onClick={() => setShowServicesModal(null)} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+                <div className="space-y-4">
+                  {professions.map(prof => {
+                    const isSelected = showServicesModal.services?.includes(prof) || false;
+                    return (
+                      <div key={prof} className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${isSelected ? 'border-indigo-600 bg-indigo-50/30' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
+                        <span className={`font-bold ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{prof}</span>
+                        <button 
+                          onClick={() => {
+                            const current = showServicesModal.services || [];
+                            const updated = isSelected ? current.filter(s => s !== prof) : [...current, prof];
+                            setShowServicesModal({ ...showServicesModal, services: updated });
+                          }}
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-100'}`}
+                        >
+                          {isSelected ? <CheckCircle2 size={20} /> : <Plus size={20} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {professions.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-sm font-bold text-slate-500">Nenhum serviço/profissão cadastrada na agência.</p>
+                      <p className="text-xs font-medium text-slate-400 mt-2">Adicione nas Configurações de Preço.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-8 border-t border-slate-100 bg-white shrink-0">
+                <button 
+                  onClick={() => handleUpdateServices(showServicesModal, showServicesModal.services || [])}
+                  className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
+                >
+                  Salvar Serviços
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -12674,8 +13249,8 @@ function AgencyRegistrationForm({ onComplete, plans }: { onComplete: () => void,
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const segments = ['Logística', 'Construção', 'Limpeza', 'Portaria', 'Industrial', 'Outros'];
-  const serviceTypes = ['Logística', 'Construção', 'Limpeza', 'Portaria', 'Industrial', 'Outros'];
+  const segments = ['Logística', 'Condomínios', 'Limpeza', 'Eventos', 'Industrial', 'Outros'];
+  const serviceTypes = ['Logística', 'Condomínios', 'Limpeza', 'Eventos', 'Industrial', 'Outros'];
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -13189,7 +13764,10 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
   const params = new URLSearchParams(window.location.search);
   const agencyId = params.get('agencyId');
   const currentAgency = agencies.find(a => a.id === agencyId);
-  const professions = currentAgency?.segment || ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
+  const agencyProfessions = Object.keys(currentAgency?.pricing?.professions || {});
+  const baseProfessions = currentAgency?.segment || [];
+  const defaultProfessions = ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração'];
+  const professions = Array.from(new Set([...baseProfessions, ...agencyProfessions, ...defaultProfessions])).sort();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);

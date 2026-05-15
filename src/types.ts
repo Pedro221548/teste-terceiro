@@ -148,6 +148,7 @@ export interface Company {
   paymentDay?: string;
   createdAt: string;
   status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
+  services?: string[];
   documents?: {
     id: string;
     name: string;
@@ -242,11 +243,18 @@ export interface ContactRequest {
   date: string;
 }
 
+export interface ProfessionPricing {
+  type: 'STARS' | 'DAILY';
+  stars: Record<string, { employee: number, company: number }>;
+  weekly: Record<string, { employee: number, company: number }>;
+}
+
 export interface PricingConfig {
   agencyId?: string;
   type: 'STARS' | 'DAILY';
   stars: Record<string, { employee: number, company: number }>;
   weekly: Record<string, { employee: number, company: number }>;
+  professions?: Record<string, ProfessionPricing>;
 }
 
 export interface CompanyRequest {
@@ -258,6 +266,7 @@ export interface CompanyRequest {
   quantity: number;
   date: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  broadcasted?: boolean;
   createdAt: string;
 }
 

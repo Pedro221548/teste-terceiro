@@ -20,6 +20,7 @@ interface LandingPageProps {
   plans: Plan[];
   isDarkMode: boolean;
   setIsDarkMode: (val: boolean) => void;
+  onSelectPlan?: (plan: Plan) => void;
 }
 
 export function LandingPage({
@@ -37,7 +38,8 @@ export function LandingPage({
   resetStatus,
   plans,
   isDarkMode,
-  setIsDarkMode
+  setIsDarkMode,
+  onSelectPlan
 }: LandingPageProps) {
   const [showLogin, setShowLogin] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -545,6 +547,17 @@ export function LandingPage({
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
                         <span className={`text-sm font-black transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
                       </div>
+                      <button 
+                        onClick={() => onSelectPlan && onSelectPlan(plan)}
+                        className={`w-full mt-4 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
+                          isPopular 
+                            ? 'bg-brand-500 text-white hover:bg-brand-600 shadow-brand-500/20' 
+                            : (isDarkMode ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10')
+                        }`}
+                      >
+                        Assinar Plano
+                        <ArrowRight size={16} />
+                      </button>
                     </div>
                   </motion.div>
                 );

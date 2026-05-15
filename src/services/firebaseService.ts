@@ -111,10 +111,10 @@ export const createDocument = async <T extends object>(collectionName: string, d
   }
 };
 
-export const setDocument = async <T extends object>(collectionName: string, id: string, data: T) => {
+export const setDocument = async <T extends object>(collectionName: string, id: string, data: T, merge = false) => {
   try {
     const docRef = doc(db, collectionName, id);
-    await setDoc(docRef, data);
+    await setDoc(docRef, data, { merge });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${collectionName}/${id}`);
   }

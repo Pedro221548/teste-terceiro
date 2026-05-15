@@ -261,7 +261,7 @@ service cloud.firestore {
 
     match /assignments/{assignmentId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || isAgency() || isCompany();
+      allow create: if isSuperAdmin() || isAgency() || isCompany() || isEmployee();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany() || isEmployee();
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
