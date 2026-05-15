@@ -76,7 +76,7 @@ export async function createServer() {
 
   app.post("/api/send-push", async (req, res) => {
     try {
-      const { tokens, title, body, icon, targetRoles, targetAgencyId, targetUserId } = req.body;
+      const { tokens, title, body, icon, targetRoles, targetAgencyId, targetUserId, targetCompanyId } = req.body;
       
       if (admin.apps.length === 0) {
         return res.status(500).json({ error: 'Firebase Admin not initialized' });
@@ -89,7 +89,7 @@ export async function createServer() {
         (Array.isArray(tokens) ? tokens : [tokens]).forEach(t => userTokens.add(t));
       }
 
-      if (targetRoles || targetAgencyId || targetUserId) {
+      if (targetRoles || targetAgencyId || targetUserId || targetCompanyId) {
         const usersSnapshot = await db.collection('users').get();
         usersSnapshot.forEach(doc => {
           const user = doc.data();
@@ -98,6 +98,7 @@ export async function createServer() {
             if (targetRoles && targetRoles.includes(user.role)) match = true;
             if (targetAgencyId && user.agencyId === targetAgencyId) match = true;
             if (targetUserId && user.id === targetUserId) match = true;
+            if (targetCompanyId && user.companyId === targetCompanyId) match = true;
             
             if (match) {
               userTokens.add(user.fcmToken);

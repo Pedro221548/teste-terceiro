@@ -5224,7 +5224,31 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
     setTimeout(() => setShowSuccess(false), 3000);
   };
   
-  const handleAcceptOffer = async (req: CompanyRequest) => {
+  const handleCancelAssignment = async (assignment: Assignment) => {
+    try {
+      if (window.confirm("Atenção: Cancelamentos devem ser feitos com no mínimo 2h de antecedência para não prejudicar a logística da unidade. Tem certeza que deseja cancelar esta diária?")) {
+        await deleteDocument('assignments', assignment.id);
+        
+        // Notify agency that employee cancelled
+        await createDocument('notifications', {
+          userId: 'AGENCY',
+          agencyId: assignment.agencyId,
+          title: 'Cancelamento de Diária',
+          message: `O funcionário ${employee.firstName} ${employee.lastName} cancelou a diária do dia ${formatDateBR(assignment.date)}. Uma nova vaga foi reaberta.`,
+          type: 'ALERT',
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+
+        toast.success('Diária cancelada com sucesso. Obrigado por avisar!');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao cancelar diária.');
+    }
+  };
+
+    const handleAcceptOffer = async (req: CompanyRequest) => {
     try {
       // Find unitId if company uses units. The simplest is we don't know the exact unit if there are multiple.
       // Usually clientId represents the unit if it's a matrix structure.
@@ -5242,6 +5266,33 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         createdAt: new Date().toISOString()
       };
       await createDocument('assignments', newAssignment);
+      
+      // Notify Company
+      await createDocument('notifications', {
+        userId: 'COMPANY_' + req.companyId,
+        agencyId: req.agencyId,
+        title: 'Vaga Aceita!',
+        message: `O funcionário ${employee?.firstName} ${employee?.lastName} aceitou a vaga para o dia ${formatDateBR(req.date)}.`,
+        type: 'SUCCESS',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+
+      // Push Notification
+      try {
+        await fetch('/api/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'Vaga Aceita!',
+            body: `Um profissional aceitou a solicitação de vaga para o dia ${formatDateBR(req.date)}.`,
+            targetCompanyId: req.companyId
+          })
+        });
+      } catch(e) {
+        console.warn("Failed to send push notification via API");
+      }
+
       toast.success('Você aceitou a vaga e ela já está na sua agenda!');
     } catch (error) {
       console.error(error);
@@ -5411,6 +5462,8 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           <div className="grid grid-cols-1 gap-6">
             {myOffers.map(offer => {
               const client = clients.find(c => c.id === offer.clientId);
+              const isLocationLink = client?.location?.startsWith('http') || client?.location?.startsWith('www');
+              
               return (
                 <motion.div 
                   key={offer.id}
@@ -5418,16 +5471,42 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 text-slate-900 dark:text-white p-8 sm:p-12 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between gap-10 shadow-emerald-200 relative overflow-hidden group"
                 >
-                  <div className="flex items-center gap-8 relative z-10">
-                    <div className="w-20 h-20 rounded-[2.5rem] bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                  <div className="flex items-center gap-8 relative z-10 w-full">
+                    <div className="w-20 h-20 rounded-[2.5rem] bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 rotate-6 group-hover:rotate-0 transition-transform duration-500 shrink-0">
                       <Briefcase size={40} className="animate-pulse" />
                     </div>
-                    <div className="text-center sm:text-left space-y-2">
+                    <div className="text-center sm:text-left space-y-3 w-full">
                       <h4 className="text-2xl font-black text-emerald-900 dark:text-emerald-400 tracking-tight uppercase">Nova Solicitação: {client?.name}</h4>
-                      <p className="text-base font-medium text-emerald-700 dark:text-emerald-500 max-w-md leading-relaxed">
-                        Data: {formatDateBR(offer.date)}<br/>
-                        Vagas totais: {offer.quantity}
-                      </p>
+                      <div className="flex flex-col gap-2">
+                        <p className="text-base font-medium text-emerald-700 dark:text-emerald-500 max-w-md leading-relaxed">
+                          Data: {formatDateBR(offer.date)}<br/>
+                          Vagas totais: {offer.quantity}
+                        </p>
+                        
+                        {client?.location && (
+                          <div className="mt-2">
+                            {isLocationLink ? (
+                              <a 
+                                href={client.location.startsWith('http') ? client.location : `https://${client.location}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                              >
+                                <MapPin size={14} /> Ver Localização no Mapa
+                              </a>
+                            ) : (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.location)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors cursor-pointer"
+                              >
+                                <MapPin size={14} /> {client.location} - Ver no Mapa
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -5570,7 +5649,15 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                             <p className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight">R$ {as.value.toFixed(2)}</p>
                             <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">Valor Líquido</p>
                           </div>
-                          <span className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500">Confirmado</span>
+                          <div className="flex flex-col gap-2 items-end">
+                            <span className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 border border-blue-500 text-center w-full">Confirmado</span>
+                            <button 
+                              onClick={() => handleCancelAssignment(as)}
+                              className="text-[9px] sm:text-[10px] px-4 sm:px-6 py-1.5 sm:py-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black uppercase tracking-widest transition-colors border border-rose-100 text-center w-full"
+                            >
+                              Cancelar Diária
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
