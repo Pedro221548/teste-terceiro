@@ -23,8 +23,23 @@ export async function createServer() {
         
         process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
         
+        let credential;
+        if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+          try {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+            credential = admin.credential.cert(serviceAccount);
+            console.log("Firebase Admin initialized via FIREBASE_SERVICE_ACCOUNT_KEY");
+          } catch(e) {
+            console.error("Invalid FIREBASE_SERVICE_ACCOUNT_KEY JSON format", e);
+            credential = admin.credential.applicationDefault();
+          }
+        } else {
+          credential = admin.credential.applicationDefault();
+          console.log("Firebase Admin initialized via Application Default Credentials");
+        }
+
         admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
+          credential,
           projectId: config.projectId
         });
         console.log("Firebase Admin initialized successfully.");
@@ -57,6 +72,60 @@ export async function createServer() {
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", env: process.env.NODE_ENV });
+  });
+
+  app.post("/api/send-push", async (req, res) => {
+    try {
+      const { tokens, title, body, icon, targetRoles, targetAgencyId, targetUserId } = req.body;
+      
+      if (admin.apps.length === 0) {
+        return res.status(500).json({ error: 'Firebase Admin not initialized' });
+      }
+
+      const db = getFirestore(firestoreDatabaseId);
+      const userTokens = new Set<string>();
+
+      if (tokens) {
+        (Array.isArray(tokens) ? tokens : [tokens]).forEach(t => userTokens.add(t));
+      }
+
+      if (targetRoles || targetAgencyId || targetUserId) {
+        const usersSnapshot = await db.collection('users').get();
+        usersSnapshot.forEach(doc => {
+          const user = doc.data();
+          if (user.fcmToken) {
+            let match = false;
+            if (targetRoles && targetRoles.includes(user.role)) match = true;
+            if (targetAgencyId && user.agencyId === targetAgencyId) match = true;
+            if (targetUserId && user.id === targetUserId) match = true;
+            
+            if (match) {
+              userTokens.add(user.fcmToken);
+            }
+          }
+        });
+      }
+
+      const finalTokens = Array.from(userTokens);
+
+      if (finalTokens.length === 0) {
+        return res.status(400).json({ error: 'No valid tokens found to send to' });
+      }
+
+      const message = {
+        notification: {
+          title: title || 'Nova Notificação',
+          body: body || 'Alguém interagiu no sistema.',
+        },
+        tokens: finalTokens,
+      };
+
+      const response = await admin.messaging().sendEachForMulticast(message);
+      res.json({ success: true, response });
+    } catch (error) {
+      console.error('Error sending push:', error);
+      res.status(500).json({ error: 'Failed to send push notification', details: String(error) });
+    }
   });
 
   // Global error handler to ensure JSON responses

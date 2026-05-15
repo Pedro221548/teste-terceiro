@@ -7803,6 +7803,25 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
     setActiveSubTab('STAFFING');
     // Mark as being attended and broadcast it to employees
     await updateDocument('companyRequests', req.id, { status: 'PENDING', broadcasted: true });
+    
+    const targetAgencyId = selectedAgencyId || agencyId;
+    if (targetAgencyId) {
+      try {
+        await fetch('/api/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'Nova Vaga Disponível!',
+            body: `Uma nova solicitação de trabalho está disponível para você na plataforma.`,
+            targetRoles: ['EMPLOYEE'],
+            targetAgencyId: targetAgencyId
+          })
+        });
+      } catch(e) {
+        console.warn("Failed to send push notification to employees via API");
+      }
+    }
+
     toast.success('Solicitação em atendimento! Notificações enviadas aos profissionais.');
   };
 
@@ -10594,6 +10613,24 @@ function CompanyDiaristas({ companyId, unitId, clients, employees, assignments, 
         await createDocument('companyRequests', req);
       }
       
+      // Notify agency via push
+      if (selectedUnit?.agencyId) {
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: 'Nova Solicitação de Trabalho',
+              body: `A unidade ${selectedUnit.name} solicitou ${quantity} profissionais.`,
+              targetRoles: ['AGENCY', 'ADMIN'],
+              targetAgencyId: selectedUnit.agencyId
+            })
+          });
+        } catch(e) {
+          console.warn("Failed to send push notification via API");
+        }
+      }
+
       toast.success('Solicitação enviada com sucesso para a agência!');
       setSelectedEmployeeIds([]);
       setQuantity(1);
