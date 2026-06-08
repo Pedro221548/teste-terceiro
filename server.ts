@@ -174,6 +174,19 @@ export async function createServer() {
     res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
   });
 
+  // PWA manifest
+  app.get('/manifest.json', (req, res) => {
+    res.header('Content-Type', 'application/manifest+json');
+    res.sendFile(path.join(process.cwd(), 'public/manifest.json'));
+  });
+
+  // Service Worker
+  app.get('/sw.js', (req, res) => {
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Service-Worker-Allowed', '/');
+    res.sendFile(path.join(process.cwd(), 'public/firebase-messaging-sw.js'));
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
