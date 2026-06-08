@@ -978,8 +978,8 @@ function UnitQRManager({ units, companies, agencyId, selectedAgencyId }: { units
     setIsSubmitting(true);
     try {
       const targetAgencyId = selectedAgencyId || agencyId;
-      const unitId = Math.random().toString(36).substr(2, 9);
-      const clientId = Math.random().toString(36).substr(2, 9);
+      const unitId = crypto.randomUUID();
+      const clientId = crypto.randomUUID();
 
       // Create internal client for the unit
       await createDocument('clients', {
@@ -1643,7 +1643,7 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
@@ -3214,7 +3214,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   const handleAddAgency = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const id = Math.random().toString(36).substr(2, 9);
+      const id = crypto.randomUUID();
       const starterPlan = plans.find(p => p.id === 'STARTER');
       
       await setDocument('agencies', id, {
@@ -9547,7 +9547,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       }
     }
 
-    const companyId = Math.random().toString(36).substr(2, 9);
+    const companyId = crypto.randomUUID();
     const newCompany: Company = {
       id: companyId,
       ...formData,
@@ -9559,7 +9559,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
     // If password provided, create the user documents
     if (formData.password) {
-      const userId = Math.random().toString(36).substr(2, 9);
+      const userId = crypto.randomUUID();
       const newUser: Omit<CompanyUser, 'id'> = {
         agencyId: targetAgencyId,
         companyId: companyId,
@@ -9631,7 +9631,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     
     // Create a CompanyUser for the unit manager
     if (unitData.login && unitData.password) {
-      const userId = Math.random().toString(36).substr(2, 9);
+      const userId = crypto.randomUUID();
       const newUser: CompanyUser = {
         id: userId,
         agencyId: targetAgencyId,
@@ -9696,7 +9696,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     const domain = company.name.toLowerCase().replace(/\s+/g, '') + '.com';
     const login = `${userData.fullName.toLowerCase().replace(/\s+/g, '.')}@${domain}`;
 
-    const userId = Math.random().toString(36).substr(2, 9);
+    const userId = crypto.randomUUID();
     const newUser: CompanyUser = {
       id: userId,
       agencyId: targetAgencyId,
@@ -13862,7 +13862,7 @@ function AgencyRegistrationForm({ onComplete, plans }: { onComplete: () => void,
       const newUid = userCredential.user.uid;
       console.log('Firebase Auth user created with UID:', newUid);
 
-      const agencyId = Math.random().toString(36).substr(2, 9);
+      const agencyId = crypto.randomUUID();
       
       const starterPlan = plans.find(p => p.id === 'STARTER');
       

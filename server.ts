@@ -129,6 +129,23 @@ export async function createServer() {
     }
   });
 
+  app.post("/api/delete-user", async (req, res) => {
+    try {
+      const { uid } = req.body;
+      if (!uid) {
+        return res.status(400).json({ error: "Missing uid" });
+      }
+      if (admin.apps.length === 0) {
+        return res.status(500).json({ error: "Firebase Admin not initialized" });
+      }
+      await admin.auth().deleteUser(uid);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting user via Admin SDK:", error);
+      res.status(500).json({ error: "Failed to delete user", details: error.message });
+    }
+  });
+
   // Global error handler to ensure JSON responses
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error("Global error:", err);

@@ -1,12 +1,14 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
-import { getFirestore, getDocFromServer, doc, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getDocFromServer, doc } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+}, (firebaseConfig as any).firestoreDatabaseId);
 
 let messagingInstance: any = null;
 try {
@@ -29,15 +31,6 @@ export const generateToken = async () => {
   }
 }
 export { onMessage };
-
-// Habilitar persistência offline (Cache)
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Múltiplas abas abertas, persistência ativada em apenas uma.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Navegador não suporta persistência offline.');
-  }
-});
 
 export const googleProvider = new GoogleAuthProvider();
 export { sendPasswordResetEmail };
