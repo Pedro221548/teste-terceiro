@@ -21,8 +21,11 @@ export const messaging = messagingInstance;
 export const generateToken = async () => {
   if (!messaging) return null;
   try {
+    await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+    const swReg = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
-      vapidKey: 'BNllv5gxpVUvOlkDdbQLxxIwkmXcCArF-3e8S7Y-kc1D51qExP2Bc4FTw7BaQ1KmzeJF-nd80nn4BbHS1BR34G4'
+      vapidKey: 'BNllv5gxpVUvOlkDdbQLxxIwkmXcCArF-3e8S7Y-kc1D51qExP2Bc4FTw7BaQ1KmzeJF-nd80nn4BbHS1BR34G4',
+      serviceWorkerRegistration: swReg
     });
     return token;
   } catch (error) {

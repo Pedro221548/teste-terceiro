@@ -90,15 +90,29 @@ export async function createServer() {
       }
 
       if (targetRoles || targetAgencyId || targetUserId || targetCompanyId) {
-        const usersSnapshot = await db.collection('users').get();
-        usersSnapshot.forEach(doc => {
+        let query: any = db.collection('users');
+        
+        if (targetAgencyId) {
+          query = query.where('agencyId', '==', targetAgencyId);
+        }
+        if (targetCompanyId) {
+          query = query.where('companyId', '==', targetCompanyId);
+        }
+
+        const usersSnapshot = await query.get();
+        usersSnapshot.forEach((doc: any) => {
           const user = doc.data();
           if (user.fcmToken) {
-            let match = false;
-            if (targetRoles && targetRoles.includes(user.role)) match = true;
-            if (targetAgencyId && user.agencyId === targetAgencyId) match = true;
-            if (targetUserId && user.id === targetUserId) match = true;
-            if (targetCompanyId && user.companyId === targetCompanyId) match = true;
+            let match = true;
+            
+            // If targetRoles is provided, ensure user's role is in the list
+            if (targetRoles && user.role && !targetRoles.includes(user.role)) {
+              match = false;
+            }
+            // If targetUserId is provided, ensure user matches it
+            if (targetUserId && user.id !== targetUserId) {
+              match = false;
+            }
             
             if (match) {
               userTokens.add(user.fcmToken);

@@ -2113,9 +2113,15 @@ export default function App() {
           const notificationTitle = payload.notification?.title || 'Nova Notificação';
           const notificationOptions = {
             body: payload.notification?.body,
-            icon: '/favicon.ico'
+            icon: '/favicon.ico',
+            requireInteraction: true,
+            vibrate: [200, 100, 200]
           };
-          new Notification(notificationTitle, notificationOptions);
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(notificationTitle, notificationOptions);
+            });
+          }
           playNotificationSound();
         }
       });
@@ -2227,10 +2233,14 @@ export default function App() {
           if (newReqs.length > prevReqs.length && prev.length > 0) {
             playNotificationSound();
             
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('Nova Solicitação!', {
-                body: 'Uma nova solicitação de trabalho das empresas acabou de chegar.',
-                icon: '/favicon.ico'
+            if ('Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification('Nova Solicitação!', {
+                  body: 'Uma nova solicitação de trabalho das empresas acabou de chegar.',
+                  icon: '/favicon.ico',
+                  requireInteraction: true,
+                  vibrate: [200, 100, 200]
+                });
               });
             }
           }
@@ -5188,10 +5198,14 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
   useEffect(() => {
     const currentOfferIds = myOffers.map(o => o.id);
     const newOffers = currentOfferIds.filter(id => !prevOfferIds.includes(id));
-    if (newOffers.length > 0 && prevOfferIds.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('Nova Vaga!', {
-        body: 'Uma nova solicitação de trabalho está disponível para você!',
-        icon: '/favicon.ico'
+    if (newOffers.length > 0 && prevOfferIds.length > 0 && 'Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification('Nova Vaga!', {
+          body: 'Uma nova solicitação de trabalho está disponível para você!',
+          icon: '/favicon.ico',
+          requireInteraction: true,
+          vibrate: [200, 100, 200]
+        });
       });
       console.log('Mobile notification sent for new offers');
     }
