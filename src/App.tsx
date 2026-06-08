@@ -82,7 +82,7 @@ import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db, messaging, generateToken, onMessage } from './firebase';
 import { createNewUser } from './secondary-auth';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential, updateProfile } from 'firebase/auth';
 import { onSnapshot, doc, collection, query, getDocs } from 'firebase/firestore';
 import { 
   subscribeToCollection, 
@@ -149,7 +149,7 @@ class ErrorBoundary extends Component<any, any> {
             >
               Recarregar Página
             </button>
-            {process.env.NODE_ENV === 'development' && (
+            {this.state.error && (
               <pre className="mt-4 p-4 bg-gray-100 dark:bg-slate-950 rounded-sm text-left text-xs overflow-auto max-h-40 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-800">
                 {this.state.error?.message || JSON.stringify(this.state.error)}
               </pre>
