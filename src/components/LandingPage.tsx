@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Building2, Users, HelpCircle, ChevronDown, Phone, X, TrendingUp, Calendar, DollarSign, Layers, Layout, Moon, Sun } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Play, ShieldCheck, Activity, Briefcase, Sparkles, Building2, Users, HelpCircle, ChevronDown, Phone, X, TrendingUp, Calendar, DollarSign, Layers, Layout, Moon, Sun } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { Plan } from '../types';
 
@@ -78,7 +78,7 @@ export function LandingPage({
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="Logotipo ProStaff Brasil" 
-                className={`w-[200px] h-[140px] object-contain transition-all duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
+                className={`w-[140px] h-[40px] object-contain transition-all duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
               />
             </div>
             <nav className="hidden md:flex items-center gap-8">
@@ -108,9 +108,9 @@ export function LandingPage({
           {/* Hero Section (Início) */}
           <section id="inicio" className={`min-h-[calc(100vh-5rem)] flex items-center relative overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950/50' : 'bg-brand-50/30'}`}>
             {/* Background Images & Effects */}
-            <div className={`absolute inset-0 transition-opacity duration-1000 ${isDarkMode ? 'bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.1),transparent_50%)]' : 'bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.05),transparent_50%)]'}`} />
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${isDarkMode ? 'bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.1),transparent_50%)]' : 'bg-[radial-gradient(circle_at_50%_50%,rgba(61,92,234,0.1),transparent_50%)]'}`} />
             <div 
-              className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${isDarkMode ? 'opacity-[0.03]' : 'opacity-[0.05] sm:opacity-[0.12]'}`}
+              className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${isDarkMode ? 'opacity-[0.08]' : 'opacity-[0.18]'}`}
               style={{ 
                 backgroundImage: 'url("https://i.imgur.com/lnpU0gB.jpeg")',
                 backgroundSize: 'cover',
@@ -152,10 +152,10 @@ export function LandingPage({
                 className="flex flex-col sm:flex-row items-center gap-4 justify-start"
               >
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
-                  <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-4 bg-brand-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/20 w-full text-center">
+                  <a href="/?role=AGENCY_REGISTRATION" className="px-8 py-5 bg-brand-500 text-white rounded-xl font-bold text-sm hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/20 w-full text-center">
                     Comece Gratuitamente
                   </a>
-                  <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest text-center">
+                  <p className="text-xs font-medium text-slate-400 text-center">
                     3 Meses de Acesso Completo • 10 Empresas • 50 Diaristas
                   </p>
                 </div>
@@ -212,7 +212,7 @@ export function LandingPage({
               </p>
             </div>
 
-            <div className="space-y-32">
+            <div className="space-y-24">
               {[
                 {
                   title: "Dashboard de Gestão Operacional",
@@ -236,43 +236,45 @@ export function LandingPage({
                   color: "bg-amber-600"
                 }
               ].map((profile, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: profile.reverse ? 50 : -50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8 }}
-                  className={`flex flex-col ${profile.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-24`}
-                >
-                  <div className="flex-1 space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg ${profile.color} flex items-center justify-center text-white font-black text-xs shadow-lg`}>
-                        0{i + 1}
+                <React.Fragment key={i}>
+                  {i > 0 && <hr className={`border-t transition-colors ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`} />}
+                  <motion.div
+                    initial={{ opacity: 0, x: profile.reverse ? 50 : -50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                    className={`flex flex-col ${profile.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-24`}
+                  >
+                    <div className="flex-1 space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg ${profile.color} flex items-center justify-center text-white font-black text-xs shadow-lg`}>
+                          0{i + 1}
+                        </div>
+                        <h4 className={`text-2xl md:text-3xl font-black tracking-tight transition-colors duration-500 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{profile.title}</h4>
                       </div>
-                      <h4 className={`text-2xl md:text-3xl font-black tracking-tight transition-colors duration-500 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{profile.title}</h4>
+                      <p className={`text-lg font-medium leading-relaxed transition-colors duration-500 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {profile.description}
+                      </p>
+                      <div className={`flex items-center gap-4 text-xs font-semibold border-l-2 pl-4 py-1 transition-colors duration-500 ${isDarkMode ? 'border-slate-800 text-slate-500' : 'border-slate-100 text-slate-400'}`}>
+                        Interface Web & Mobile • 100% Responsivo • Tempo Real
+                      </div>
                     </div>
-                    <p className={`text-lg font-medium leading-relaxed transition-colors duration-500 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {profile.description}
-                    </p>
-                    <div className={`flex items-center gap-4 text-[10px] font-black uppercase tracking-widest border-l-2 pl-4 py-1 transition-colors duration-500 ${isDarkMode ? 'border-slate-800 text-slate-500' : 'border-slate-100 text-slate-400'}`}>
-                      Interface Web & Mobile • 100% Responsivo • Tempo Real
+                    <div className="flex-1 relative group">
+                      <div className={`absolute inset-0 rounded-3xl -rotate-2 group-hover:rotate-0 transition-transform duration-500 ${isDarkMode ? 'bg-white/5' : 'bg-slate-900/5'}`} />
+                      <motion.div 
+                        whileHover={{ scale: 1.02 }}
+                        className={`relative rounded-3xl overflow-hidden shadow-2xl border transition-colors duration-500 ${isDarkMode ? 'shadow-slate-950/50 border-slate-800 bg-slate-900' : 'shadow-slate-200 border-slate-200 bg-white'}`}
+                      >
+                        <img 
+                          src={profile.image} 
+                          alt={profile.title} 
+                          className="w-full h-auto object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </motion.div>
                     </div>
-                  </div>
-                  <div className="flex-1 relative group">
-                    <div className={`absolute inset-0 rounded-3xl -rotate-2 group-hover:rotate-0 transition-transform duration-500 ${isDarkMode ? 'bg-white/5' : 'bg-slate-900/5'}`} />
-                    <motion.div 
-                      whileHover={{ scale: 1.02 }}
-                      className={`relative rounded-3xl overflow-hidden shadow-2xl border transition-colors duration-500 ${isDarkMode ? 'shadow-slate-950/50 border-slate-800 bg-slate-900' : 'shadow-slate-200 border-slate-200 bg-white'}`}
-                    >
-                      <img 
-                        src={profile.image} 
-                        alt={profile.title} 
-                        className="w-full h-auto object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    </motion.div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </React.Fragment>
               ))}
             </div>
           </div>
@@ -442,8 +444,10 @@ export function LandingPage({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className={`relative flex flex-col p-8 rounded-[2rem] border transition-all duration-500 hover:shadow-2xl group ${
-                      isPopular ? 'border-brand-500 shadow-xl shadow-brand-500/10 md:-translate-y-4 z-20' : (isDarkMode ? 'bg-slate-950 border-slate-800 z-10' : 'bg-white border-slate-200 z-10')
-                    } ${isPopular && isDarkMode ? 'bg-slate-950/80 backdrop-blur-sm' : ''} ${isPopular && !isDarkMode ? 'bg-white' : ''}`}
+                      isEnterprise ? (isDarkMode ? 'bg-purple-950/20 border-purple-900/50' : 'bg-purple-50/50 border-purple-100/80') :
+                      isPopular ? (isDarkMode ? 'bg-brand-950/20 border-brand-800/50 shadow-brand-500/10 md:-translate-y-4' : 'bg-brand-50/30 border-brand-200 shadow-brand-500/10 md:-translate-y-4') : 
+                      (isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200')
+                    } z-10`}
                   >
                     {isPopular && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-500 text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-500/20">
@@ -457,14 +461,14 @@ export function LandingPage({
                         isPopular ? (isDarkMode ? 'bg-brand-500/10 text-brand-400' : 'bg-brand-100 text-brand-500') :
                         (isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600')
                       }`}>
-                        {isEnterprise ? <ShieldCheck size={28} /> : isPopular ? <Activity size={28} /> : <Briefcase size={28} />}
+                        {isEnterprise ? <ShieldCheck size={28} /> : isPopular ? <Activity size={28} /> : <Sparkles size={28} />}
                       </div>
-                      <h4 className={`font-black uppercase tracking-tight text-xl mb-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h4>
+                      <h4 className={`font-semibold text-xl mb-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h4>
                       <div className="flex items-baseline gap-1">
                         <span className={`text-4xl font-black tracking-tighter transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                           {plan.price === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.price)}
                         </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{plan.price === 0 ? '/período' : '/mês'}</span>
+                        <span className="text-xs font-semibold text-slate-400">{plan.price === 0 ? '/período' : '/mês'}</span>
                       </div>
                     </div>
 
@@ -483,19 +487,19 @@ export function LandingPage({
 
                     <div className={`pt-6 border-t space-y-3 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                       <div className="flex items-center justify-between px-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diaristas</span>
-                        <span className={`text-sm font-black transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
+                        <span className="text-xs font-semibold text-slate-400">Diaristas</span>
+                        <span className={`text-sm font-bold transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.maxEmployees === 9999 ? 'Ilimitado' : plan.maxEmployees}</span>
                       </div>
                       <div className="flex items-center justify-between px-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresas</span>
-                        <span className={`text-sm font-black transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
+                        <span className="text-xs font-semibold text-slate-400">Empresas</span>
+                        <span className={`text-sm font-bold transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.maxCompanies === 9999 ? 'Ilimitado' : plan.maxCompanies}</span>
                       </div>
                       <button 
                         onClick={() => onSelectPlan && onSelectPlan(plan)}
-                        className={`w-full mt-4 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
-                          isPopular 
-                            ? 'bg-brand-500 text-white hover:bg-brand-600 shadow-brand-500/20' 
-                            : (isDarkMode ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10')
+                        className={`w-full mt-4 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
+                          isEnterprise ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-purple-600/20' :
+                          isPopular ? 'bg-brand-500 text-white hover:bg-brand-600 shadow-brand-500/20' : 
+                          (isDarkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10')
                         }`}
                       >
                         Assinar Plano
@@ -539,7 +543,7 @@ export function LandingPage({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <h4 className={`text-lg font-black uppercase tracking-tight transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.title}</h4>
+                    <h4 className={`text-lg font-bold transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.title}</h4>
                     <p className={`text-sm font-medium leading-relaxed px-4 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{item.desc}</p>
                   </div>
                 </motion.div>
@@ -561,6 +565,8 @@ export function LandingPage({
 
             <div className="space-y-4">
               {[
+                { q: 'Os dados ficam em servidores no Brasil?', a: 'Sim! Utilizamos infraestrutura em nuvem segura para garantir alta disponibilidade e conformidade com a LGPD no Brasil.' },
+                { q: 'Há integração com sistemas de folha de pagamento?', a: 'Temos exportação facilitada de relatórios de horas, extras e comissões, além de APIs em desenvolvimento para os principais ERPs.' },
                 { q: 'Posso trocar de plano depois?', a: 'Sim! Você pode fazer o upgrade ou downgrade do seu plano a qualquer momento diretamente pelo painel administrativo.' },
                 { q: 'Como funciona o suporte técnico?', a: 'Oferecemos suporte via chat em tempo real e WhatsApp para todos os planos, com prioridade para os planos Professional e Enterprise.' },
                 { q: 'Existe período de fidelidade?', a: 'Não. Nossos planos são mensais e você pode cancelar a qualquer momento sem multas ou taxas escondidas.' }
@@ -570,7 +576,7 @@ export function LandingPage({
                     onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
                     className={`w-full p-6 flex items-center justify-between text-left transition-colors ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}
                   >
-                    <span className={`font-black uppercase tracking-tight text-sm transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{faq.q}</span>
+                    <span className={`font-semibold text-sm transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{faq.q}</span>
                     <ChevronDown 
                       size={20} 
                       className={`text-slate-400 transition-transform duration-300 ${openFaqIndex === i ? 'rotate-180' : ''}`} 
