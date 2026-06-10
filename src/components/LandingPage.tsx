@@ -77,7 +77,7 @@ export function LandingPage({
               <img 
                 src="https://i.ibb.co/xtTR9t20/Logotipo-Pro-Staff-Brasil-corporativo-removebg-preview.png" 
                 alt="Logotipo ProStaff Brasil" 
-                className={`w-[140px] h-[40px] object-contain transition-all duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
+                className={`w-[141px] h-[119px] object-contain transition-all duration-500 ${isDarkMode ? 'brightness-0 invert' : ''}`} 
               />
             </div>
             <nav className="hidden md:flex items-center gap-8">
