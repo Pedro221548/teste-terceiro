@@ -46,33 +46,32 @@ export function LandingPage({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className={`min-h-screen font-sans scroll-smooth transition-all duration-500 ${isDarkMode ? 'bg-black text-slate-100' : 'bg-[#F8F9FA] text-slate-900 selection:bg-brand-100 selection:text-brand-900'}`}>
+    <div className={`min-h-screen font-sans scroll-smooth transition-all duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#F8F9FA] text-slate-900 selection:bg-brand-100 selection:text-brand-900'}`}>
       <style>{`
         /* Custom styles for component-specific dark mode */
-        .landing-dark .bg-white { background-color: #000000 !important; }
-        .landing-dark .bg-slate-50 { background-color: #000000 !important; }
-        .landing-dark .bg-slate-100 { background-color: #0c0c0c !important; }
-        .landing-dark .bg-brand-50\/30 { background-color: #000000 !important; }
-        .landing-dark .bg-brand-50 { background-color: #0c0c0c !important; }
+        .landing-dark .bg-white { background-color: #020617 !important; }
+        .landing-dark .bg-slate-50 { background-color: #020617 !important; }
+        .landing-dark .bg-slate-100 { background-color: #0f172a !important; }
+        .landing-dark .bg-brand-50\\/30 { background-color: #020617 !important; }
+        .landing-dark .bg-brand-50 { background-color: #0f172a !important; }
         .landing-dark .text-slate-900 { color: #f8fafc !important; }
         .landing-dark .text-slate-800 { color: #f1f5f9 !important; }
         .landing-dark .text-slate-700 { color: #e2e8f0 !important; }
         .landing-dark .text-slate-600 { color: #cbd5e1 !important; }
         .landing-dark .text-slate-500 { color: #94a3b8 !important; }
-        .landing-dark .text-slate-400 { color: #64748b !important; }
-        .landing-dark .border-slate-50 { border-color: #0c0c0c !important; }
+        .landing-dark .border-slate-50 { border-color: #0f172a !important; }
         .landing-dark .border-slate-100 { border-color: #1e293b !important; }
         .landing-dark .border-slate-200 { border-color: #334155 !important; }
-        .landing-dark header { background-color: rgba(0, 0, 0, 0.95) !important; border-bottom-color: #1e293b !important; }
-        .landing-dark footer { border-top-color: #1e293b !important; background-color: #000000 !important; }
-        .landing-dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important; }
-        .landing-dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important; }
+        .landing-dark header { background-color: rgba(2, 6, 23, 0.95) !important; border-bottom-color: #1e293b !important; }
+        .landing-dark footer { border-top-color: #1e293b !important; background-color: #020617 !important; }
+        .landing-dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(2, 6, 23, 0.5) !important; }
+        .landing-dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(2, 6, 23, 0.7), 0 8px 10px -6px rgba(2, 6, 23, 0.7) !important; }
       `}</style>
       
       <div className={isDarkMode ? 'landing-dark' : ''}>
         <Toaster position="top-center" />
         {/* Header */}
-        <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-500 ${isDarkMode ? 'bg-black/90 border-slate-800' : 'bg-[#F8F9FA]/80 border-brand-100/50'}`}>
+        <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-500 ${isDarkMode ? 'bg-slate-950/90 border-slate-800' : 'bg-[#F8F9FA]/80 border-brand-100/50'}`}>
           <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)} translate="no">
               <img 
