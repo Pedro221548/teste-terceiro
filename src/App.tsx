@@ -96,13 +96,21 @@ import {
   or
 } from './services/firebaseService';
 
-function formatDateBR(dateString: string) {
-  if (!dateString) return 'Nenhuma';
-  if (dateString.includes('-') && !dateString.includes('T')) {
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
+function formatDateBR(dateString: string | Date | undefined | null) {
+  if (!dateString) return '--/--/----';
+  try {
+    const ds = typeof dateString === 'string' ? dateString : dateString.toISOString();
+    if (ds.includes('-') && !ds.includes('T')) {
+      const [year, month, day] = ds.split('-');
+      if (!year || !month || !day) return '--/--/----';
+      return `${day}/${month}/${year}`;
+    }
+    const date = new Date(ds);
+    if (isNaN(date.getTime())) return '--/--/----';
+    return date.toLocaleDateString('pt-BR');
+  } catch (error) {
+    return '--/--/----';
   }
-  return new Date(dateString).toLocaleDateString('pt-BR');
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -118,6 +126,17 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
+}
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
 }
 
 function formatTime(dateString: string) {
@@ -169,7 +188,7 @@ interface MenuItem {
   color: string;
 }
 
-function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPhoto, handleLogout, agencyPlan, setIsMobileMenuOpen, isDarkMode, setIsDarkMode }: { 
+function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPhoto, handleLogout, agencyPlan, setIsMobileMenuOpen, isDarkMode, setIsDarkMode, unreadNotifications = 0 }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -180,7 +199,8 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   agencyPlan?: PlanType,
   setIsMobileMenuOpen: (open: boolean) => void,
   isDarkMode: boolean,
-  setIsDarkMode: (val: boolean) => void
+  setIsDarkMode: (val: boolean) => void,
+  unreadNotifications?: number
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -303,15 +323,27 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
           </div>
 
           <div className="flex items-center gap-4">
-            {role === 'AGENCY' && (
+            {role !== 'ADMIN' && (
               <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+                onClick={() => setActiveTab(role === 'EMPLOYEE' ? 'employee_profile' : role === 'COMPANY' ? 'company_profile' : 'dashboard')}
+                className="relative p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                title="Notificações"
               >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                <Bell size={20} />
+                {unreadNotifications > 0 && (
+                  <span className="absolute top-1 right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-900 border-none">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
               </button>
             )}
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+              title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
             <div className="hidden sm:block text-right">
               <p className="text-xs font-black text-slate-900 dark:text-white leading-none mb-1">{userName || 'Usuário'}</p>
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{role === 'AGENCY' ? 'Agência' : role === 'ADMIN' ? 'Admin' : role === 'COMPANY' ? 'Empresa' : 'Colaborador'}</p>
@@ -417,7 +449,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   );
 }
 
-function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userName, userPhoto, handleLogout, agencyPlan, isDarkMode, setIsDarkMode }: { 
+function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, userName, userPhoto, handleLogout, agencyPlan, isDarkMode, setIsDarkMode, unreadNotifications = 0 }: { 
   role: string, 
   activeTab: string, 
   setActiveTab: (tab: string) => void,
@@ -428,7 +460,8 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
   handleLogout: () => void,
   agencyPlan?: PlanType,
   isDarkMode: boolean,
-  setIsDarkMode: (val: boolean) => void
+  setIsDarkMode: (val: boolean) => void,
+  unreadNotifications?: number
 }) {
   const allMenuItems: MenuItem[] = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Início', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50 dark:text-blue-400 dark:bg-blue-900/20' },
@@ -543,14 +576,12 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
                 className="h-10 w-auto dark:brightness-0 dark:invert"
                 referrerPolicy="no-referrer"
               />
-              {role === 'AGENCY' && (
-                <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                >
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-              )}
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
             </div>
             <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800">
@@ -651,7 +682,7 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
   );
 }
 
-function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, onComplete: () => void, handleLogout: () => void }) {
+function ChangePasswordScreen({ user, onComplete, handleLogout, isDarkMode, setIsDarkMode }: { user: any, onComplete: () => void, handleLogout: () => void, isDarkMode: boolean, setIsDarkMode: (val: boolean) => void }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -696,11 +727,20 @@ function ChangePasswordScreen({ user, onComplete, handleLogout }: { user: any, o
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 relative ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+      <div className="absolute top-4 right-4 relative z-10">
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+          title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden"
+        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden relative z-0"
       >
         <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-100 dark:shadow-blue-900/20">
@@ -788,13 +828,15 @@ function SubscriptionFlow({
   user, 
   onComplete, 
   onCancel,
-  isDarkMode 
+  isDarkMode,
+  setIsDarkMode
 }: { 
   plan: Plan, 
   user: any, 
   onComplete: (planId: PlanType) => void,
   onCancel: () => void,
-  isDarkMode: boolean 
+  isDarkMode: boolean,
+  setIsDarkMode: (val: boolean) => void
 }) {
   const [step, setStep] = useState<'SUMMARY' | 'PAYMENT' | 'CONFIRMATION'>('SUMMARY');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -810,11 +852,20 @@ function SubscriptionFlow({
 
   if (step === 'SUMMARY') {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`min-h-screen flex items-center justify-center p-4 relative transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+        <div className="absolute top-4 right-4 relative z-10">
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+            title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`max-w-xl w-full p-8 sm:p-12 rounded-[2.5rem] border shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
+          className={`max-w-xl w-full p-8 sm:p-12 rounded-[2.5rem] border shadow-2xl relative z-0 transition-colors duration-500 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
         >
           <div className="text-center mb-10">
             <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 transition-colors ${isDarkMode ? 'bg-brand-500/10 text-brand-400' : 'bg-brand-50 text-brand-500'}`}>
@@ -1642,6 +1693,39 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
   );
 }
 
+function AgencyPendingScreen({ status, onLogout, isDarkMode, setIsDarkMode }: { status?: string, onLogout: () => void, isDarkMode: boolean, setIsDarkMode: (val: boolean) => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black p-4 relative">
+      <div className="absolute top-4 right-4">
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+          title={isDarkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl max-w-md w-full text-center border border-slate-200 dark:border-slate-800">
+        <div className="w-20 h-20 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-400">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Conta em Análise</h2>
+        <p className="text-slate-500 dark:text-slate-400 mb-8 font-medium">
+          {status === 'BLOCKED' 
+            ? 'Sua conta foi bloqueada. Entre em contato com o suporte.'
+            : 'Seu cadastro está sendo analisado pela nossa equipe. Você receberá um e-mail assim que for liberado.'}
+        </p>
+        <button
+          onClick={onLogout}
+          className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+        >
+          Sair
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -1664,7 +1748,10 @@ export default function App() {
     const saved = localStorage.getItem('pendingSubscriptionPlan');
     return saved ? JSON.parse(saved) : null;
   });
-  const [subscriptionStep, setSubscriptionStep] = useState<'IDLE' | 'SUMMARY' | 'PAYMENT' | 'CONFIRMATION'>('IDLE');
+  const [subscriptionStep, setSubscriptionStep] = useState<'IDLE' | 'SUMMARY' | 'PAYMENT' | 'CONFIRMATION'>(() => {
+    const saved = localStorage.getItem('pendingSubscriptionPlan');
+    return saved ? 'SUMMARY' : 'IDLE';
+  });
 
   useEffect(() => {
     if (pendingSubscriptionPlan) {
@@ -1960,7 +2047,8 @@ export default function App() {
       console.warn('Audio not enabled yet. User must interact with the page first.');
       return;
     }
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    // CORRIGIDO: Usar asset local em vez de URL externa hardcoded
+    const audio = new Audio('/sounds/notification.mp3');
     audio.play().catch(e => {
       if (e.name === 'NotAllowedError') {
         setAudioEnabled(false);
@@ -1987,9 +2075,8 @@ export default function App() {
       });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser);
+      if (process.env.NODE_ENV === 'development') console.debug('Auth ready:', firebaseUser?.uid);
       if (firebaseUser) {
-        console.log('User is authenticated:', firebaseUser.uid);
         const urlParams = new URLSearchParams(window.location.search);
         const urlRole = urlParams.get('role') as UserRole;
 
@@ -2003,10 +2090,6 @@ export default function App() {
             return;
           }
           let currentRole = userDoc.role;
-          if ((firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') && currentRole !== 'ADMIN') {
-            currentRole = 'ADMIN';
-            await updateDocument('users', firebaseUser.uid, { role: 'ADMIN' });
-          }
           setRole(currentRole);
           
           if (pendingSubscriptionPlan) {
@@ -2051,8 +2134,8 @@ export default function App() {
           if ((currentRole as string) === 'ADMIN') defaultTab = 'admin_dashboard';
           setActiveTab(defaultTab);
         } else {
-          // Default role based on email or URL param
-          let defaultRole: UserRole = (firebaseUser.email === 'pedroass.11577@gmail.com' || firebaseUser.email === 'pedroassfenandes.25@gmail.com') ? 'ADMIN' : 'REGISTRATION';
+          // Default role based on URL param or fallback
+          let defaultRole: UserRole = 'REGISTRATION';
           if (urlRole === 'REGISTRATION' || urlRole === 'COMPANY_REGISTRATION' || urlRole === 'AGENCY_REGISTRATION') {
             defaultRole = urlRole;
           }
@@ -2070,7 +2153,7 @@ export default function App() {
         }
         setUser(firebaseUser);
       } else {
-        setUser(prev => (prev as any)?.isCustom ? prev : null);
+        setUser(null);
         setCurrentAgencyId(null);
         setCurrentCompanyId(null);
         setCurrentUnitId(null);
@@ -2114,8 +2197,7 @@ export default function App() {
           const notificationOptions = {
             body: payload.notification?.body,
             icon: '/favicon.ico',
-            requireInteraction: true,
-            vibrate: [200, 100, 200]
+            requireInteraction: true
           };
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(reg => {
@@ -2143,7 +2225,29 @@ export default function App() {
       };
     }
 
-    unsubs.push(subscribeToCollection<CheckIn>('checkins', setCheckins));
+    const agencyForQueries = currentAgencyId || selectedAgencyId;
+    if (agencyForQueries) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const qCheckins = query(
+        collection(db, 'checkins'),
+        where('agencyId', '==', agencyForQueries),
+        where('timestamp', '>=', thirtyDaysAgo.toISOString())
+      );
+      unsubs.push(onSnapshot(qCheckins, (snapshot) => {
+        setCheckins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CheckIn)));
+      }));
+    } else if (role === 'ADMIN') {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const qCheckins = query(
+        collection(db, 'checkins'),
+        where('timestamp', '>=', thirtyDaysAgo.toISOString())
+      );
+      unsubs.push(onSnapshot(qCheckins, (snapshot) => {
+        setCheckins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CheckIn)));
+      }));
+    }
 
     if (role === 'ADMIN') {
       unsubs.push(subscribeToCollection<Agency>('agencies', setAgencies));
@@ -2238,8 +2342,7 @@ export default function App() {
                 reg.showNotification('Nova Solicitação!', {
                   body: 'Uma nova solicitação de trabalho das empresas acabou de chegar.',
                   icon: '/favicon.ico',
-                  requireInteraction: true,
-                  vibrate: [200, 100, 200]
+                  requireInteraction: true
                 });
               });
             }
@@ -2266,10 +2369,6 @@ export default function App() {
       setNotifications(data);
     }, notificationConstraints);
 
-    const unsubMessages = subscribeToCollection<Message>('messages', (data) => {
-      setMessages(data);
-    });
-
     const unsubBulletins = subscribeToCollection<Bulletin>('bulletins', (data) => {
       setBulletins(data);
     }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []);
@@ -2290,7 +2389,6 @@ export default function App() {
       unsubCompanyUsers();
       unsubCompanyRequests();
       unsubNotifications();
-      unsubMessages();
       unsubBulletins();
       unsubInvoices();
       unsubs.forEach(unsub => unsub());
@@ -2311,41 +2409,7 @@ export default function App() {
     e.preventDefault();
     setLoginError(null);
 
-    // 1. Check in companyUsers
-    const cUser = companyUsers.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
-    if (cUser) {
-      await signOut(auth);
-      setUser({
-        uid: cUser.id,
-        email: cUser.email,
-        displayName: cUser.fullName,
-        photoURL: cUser.photoUrl,
-        isCustom: true,
-        clientId: cUser.unitId ? units.find(u => u.id === cUser.unitId)?.clientId : null
-      });
-      setRole('COMPANY');
-      setCurrentAgencyId(cUser.agencyId);
-      return;
-    }
-
-    // 2. Check in employees
-    const eUser = employees.find(e => e.loginEmail?.toLowerCase() === emailInput.toLowerCase() && e.password === passwordInput);
-    if (eUser) {
-      await signOut(auth);
-      setUser({
-        uid: eUser.id,
-        email: eUser.loginEmail,
-        displayName: `${eUser.firstName} ${eUser.lastName}`,
-        photoURL: eUser.photoUrl,
-        isCustom: true
-      });
-      setRole('EMPLOYEE');
-      setCurrentAgencyId(eUser.agencyId);
-      return;
-    }
-
-    // 4. Attempt Firebase Authentication
-    console.log("DEBUG: Attempting login with:", emailInput, passwordInput);
+    // Default Firebase Authentication
     try {
       const userCredential = await signInWithEmailAndPassword(auth, emailInput, passwordInput);
       const firebaseUser = userCredential.user;
@@ -2361,6 +2425,7 @@ export default function App() {
       return;
     } catch (error) {
       console.error('Firebase Auth error:', error);
+      setPasswordInput(''); // CORRIGIDO: Senha é limpa após erro de login
       setLoginError('E-mail ou senha incorretos.');
     }
   };
@@ -2537,6 +2602,8 @@ export default function App() {
           user={user} 
           onComplete={() => setNeedsPasswordChange(false)} 
           handleLogout={handleLogout}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
       </ErrorBoundary>
@@ -2544,6 +2611,12 @@ export default function App() {
   }
 
   const currentAgencyPlan = agencies.find(a => a.id === currentAgencyId)?.plan;
+  const agencyInfo = agencies.find(a => a.id === currentAgencyId);
+
+  // CORRIGIDO: Se agência logada estiver PENDING/BLOCKED, redirecionar para tela bloqueio.
+  if (role === 'AGENCY' && agencyInfo && agencyInfo.status !== 'ACTIVE') {
+    return <AgencyPendingScreen status={agencyInfo.status} onLogout={handleLogout} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />;
+  }
 
   if (user && pendingSubscriptionPlan && subscriptionStep !== 'IDLE') {
     return (
@@ -2553,6 +2626,7 @@ export default function App() {
           plan={pendingSubscriptionPlan}
           user={user}
           isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
           onComplete={handleSubscriptionComplete}
           onCancel={() => {
             setPendingSubscriptionPlan(null);
@@ -2563,6 +2637,9 @@ export default function App() {
       </ErrorBoundary>
     );
   }
+
+  // CORRIGIDO: Badge de notificações não lidas
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <ErrorBoundary>
@@ -2595,6 +2672,7 @@ export default function App() {
           setIsMobileMenuOpen={setIsMobileMenuOpen}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
+          unreadNotifications={unreadCount}
         />
 
         <MobileSidebar 
@@ -2624,6 +2702,7 @@ export default function App() {
           agencyPlan={currentAgencyPlan}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
+          unreadNotifications={unreadCount}
         />
 
         <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-slate-50 dark:bg-black transition-colors duration-500">
@@ -3074,7 +3153,8 @@ export default function App() {
           <BottomNav 
             role={role} 
             activeTab={activeTab} 
-            setActiveTab={handleTabChange} 
+            handleTabChange={handleTabChange} 
+            agencyPlan={agencyInfo?.plan}
           />
           <div className="fixed bottom-20 lg:bottom-4 right-4 z-[9999] pointer-events-none opacity-100 text-[10px] font-black text-slate-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200/50 dark:border-slate-800/50 transition-all">v1.1.0</div>
         </div>
@@ -3125,12 +3205,15 @@ function SidebarItem({ icon, label, active, onClick, color }: SidebarItemProps) 
   );
 }
 
-function BottomNav({ role, activeTab, setActiveTab }: { 
+function BottomNav({ role, activeTab, handleTabChange, agencyPlan }: { 
   role: string, 
   activeTab: string, 
-  setActiveTab: (tab: string) => void 
+  handleTabChange: (tab: string) => void,
+  agencyPlan?: PlanType
 }) {
-  const menuItems: MenuItem[] = role === 'ADMIN' ? [
+  const restrictedForStarter = ['feed', 'ponto', 'access_flow', 'feedbacks', 'pricing', 'reports'];
+  
+  const menuItemsRaw: MenuItem[] = role === 'ADMIN' ? [
     { id: 'admin_dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'admin_agencies', label: 'Agências', icon: ShieldCheck, color: 'text-accent-violet bg-violet-50' },
     { id: 'admin_plans', label: 'Planos', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50' },
@@ -3140,7 +3223,8 @@ function BottomNav({ role, activeTab, setActiveTab }: {
     { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
     { id: 'access_flow', label: 'Fluxo', icon: Activity, color: 'text-accent-rose bg-rose-50' },
-    { id: 'access_control', label: 'Ponto', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
+    // CORRIGIDO: O id correto para a aba de Ponto é 'ponto'
+    { id: 'ponto', label: 'Ponto', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
     { id: 'profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
   ] : role === 'COMPANY' ? [
     { id: 'manager_dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
@@ -3150,8 +3234,13 @@ function BottomNav({ role, activeTab, setActiveTab }: {
   ] : [
     { id: 'employee_profile', label: 'Perfil', icon: UserIcon, color: 'text-brand-600 bg-brand-50' },
     { id: 'employee_schedule', label: 'Agenda', icon: Calendar, color: 'text-accent-violet bg-violet-50' },
-    { id: 'employee_ponto', label: 'Bater Ponto', icon: Scan, color: 'text-accent-rose bg-rose-50' },
+    { id: 'employee_ponto', label: 'Bater Ponto', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
   ];
+
+  // CORRIGIDO: Aplicando restrições do plano STARTER para agências
+  const menuItems = menuItemsRaw.filter(item =>
+    role !== 'AGENCY' || agencyPlan !== 'STARTER' || !restrictedForStarter.includes(item.id)
+  );
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-2 py-1.5 z-40 pb-safe">
@@ -3162,7 +3251,8 @@ function BottomNav({ role, activeTab, setActiveTab }: {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              // CORRIGIDO: Usando handleTabChange para aplicar os guards de senha corretamente
+              onClick={() => handleTabChange(item.id)}
               className={`flex flex-col items-center gap-0.5 p-1.5 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400'}`}
             >
               <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
@@ -5203,8 +5293,7 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
         reg.showNotification('Nova Vaga!', {
           body: 'Uma nova solicitação de trabalho está disponível para você!',
           icon: '/favicon.ico',
-          requireInteraction: true,
-          vibrate: [200, 100, 200]
+          requireInteraction: true
         });
       });
       console.log('Mobile notification sent for new offers');
@@ -6151,7 +6240,6 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
 
       // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
       const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
-      console.log("DEBUG: Creating user with:", emailForAuth, password);
       
       const newUid = await createNewUser(emailForAuth, password);
 
@@ -6403,10 +6491,12 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
 
   const highComplaintEmployees = employees.filter(emp => emp.complaints >= 3);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.cpf.includes(searchTerm) ||
-      emp.phone.includes(searchTerm);
+    const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      emp.cpf.includes(debouncedSearchTerm) ||
+      emp.phone.includes(debouncedSearchTerm);
     const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
     const matchesProfession = professionFilter === 'ALL' || emp.profession === professionFilter;
     return matchesSearch && matchesCategory && matchesProfession;
@@ -9573,28 +9663,28 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
 
     // If password provided, create the user documents
     if (formData.password) {
-      const userId = crypto.randomUUID();
-      const newUser: Omit<CompanyUser, 'id'> = {
+      // Create Firebase Auth user via secondary app
+      const newUid = await createNewUser(formData.email, formData.password);
+      
+      const newUser: Omit<CompanyUser, 'id' | 'password'> = {
         agencyId: targetAgencyId,
         companyId: companyId,
         fullName: formData.responsibleName,
         email: formData.email,
-        password: formData.password,
         role: 'COMPANY',
         status: 'PENDING',
         createdAt: new Date().toISOString()
       };
-      await setDocument('companyUsers', userId, { ...newUser, id: userId });
+      await setDocument('companyUsers', newUid, { ...newUser, id: newUid });
       
-      await setDocument('users', userId, {
-        id: userId,
+      await setDocument('users', newUid, {
+        id: newUid,
         role: 'COMPANY',
         companyId: companyId,
         agencyId: targetAgencyId,
         email: formData.email,
         fullName: formData.responsibleName,
         status: 'PENDING',
-        password: formData.password, // Store password for custom login
         createdAt: new Date().toISOString()
       });
     }
@@ -9645,30 +9735,30 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     
     // Create a CompanyUser for the unit manager
     if (unitData.login && unitData.password) {
-      const userId = crypto.randomUUID();
-      const newUser: CompanyUser = {
-        id: userId,
+      // Create Firebase Auth user via secondary app
+      const newUid = await createNewUser(unitData.login, unitData.password);
+      
+      const newUser: Omit<CompanyUser, 'password'> = {
+        id: newUid,
         agencyId: targetAgencyId,
         companyId: showUnitModal,
         unitId: unitId,
         fullName: unitData.managerName,
         email: unitData.login,
-        password: unitData.password,
         role: 'COMPANY',
         status: 'PENDING',
         createdAt: new Date().toISOString()
       };
-      await setDocument('companyUsers', userId, newUser);
+      await setDocument('companyUsers', newUid, newUser);
 
-      await setDocument('users', userId, {
-        id: userId,
+      await setDocument('users', newUid, {
+        id: newUid,
         role: 'COMPANY',
         companyId: showUnitModal,
         agencyId: targetAgencyId,
         email: unitData.login,
         fullName: unitData.managerName,
         status: 'PENDING',
-        password: unitData.password,
         createdAt: new Date().toISOString()
       });
     }
@@ -9710,31 +9800,31 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     const domain = company.name.toLowerCase().replace(/\s+/g, '') + '.com';
     const login = `${userData.fullName.toLowerCase().replace(/\s+/g, '.')}@${domain}`;
 
-    const userId = crypto.randomUUID();
-    const newUser: CompanyUser = {
-      id: userId,
+    // Create Firebase Auth user via secondary app
+    const newUid = await createNewUser(login, userData.password);
+
+    const newUser: Omit<CompanyUser, 'password'> = {
+      id: newUid,
       agencyId: targetAgencyId,
       companyId: showUserModal,
       unitId: userData.unitId!,
       fullName: userData.fullName,
       email: login,
-      password: userData.password,
       role: 'COMPANY',
       status: 'PENDING',
       createdAt: new Date().toISOString()
     };
 
-    await setDocument('companyUsers', userId, newUser);
+    await setDocument('companyUsers', newUid, newUser);
     
-    await setDocument('users', userId, {
-      id: userId,
+    await setDocument('users', newUid, {
+      id: newUid,
       role: 'COMPANY',
       companyId: showUserModal,
       agencyId: targetAgencyId,
       email: login,
       fullName: userData.fullName,
       status: 'PENDING',
-      password: userData.password,
       createdAt: new Date().toISOString()
     });
     
@@ -9747,9 +9837,11 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
     toast.success(`Usuário criado com sucesso!\nLogin: ${login}`);
   };
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
   const filteredCompanies = companies.filter(company => {
-    const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (company.cnpj && company.cnpj.includes(searchTerm));
+    const matchesSearch = company.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+                          (company.cnpj && company.cnpj.includes(debouncedSearchTerm));
     const matchesStatus = statusFilter === 'ALL' || company.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -11450,13 +11542,14 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
   units: Unit[],
   agencyId: string | null 
 }) {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+  const [startDate, setStartDate] = useState(new Date().toISOString().substring(0, 8) + '01');
+  const [endDate, setEndDate] = useState(new Date().toISOString().substring(0, 10));
 
   const handleExportEmployees = async (format: 'excel' | 'pdf') => {
-    const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
+    const periodAssignments = assignments.filter(a => a.date >= startDate && a.date <= endDate && a.status === 'COMPLETED');
     
     const reportData = employees.map(emp => {
-      const empAssignments = monthAssignments.filter(a => a.employeeId === emp.id);
+      const empAssignments = periodAssignments.filter(a => a.employeeId === emp.id);
       const daysWorked = empAssignments.length;
       const totalValue = empAssignments.reduce((acc, curr) => acc + curr.value, 0);
       
@@ -11480,18 +11573,18 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
     ];
 
     if (format === 'excel') {
-      await exportToExcel(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`);
+      await exportToExcel(reportData, columns, `Relatorio_Diaristas_${startDate}_A_${endDate}`);
     } else {
-      exportToPDF(reportData, columns, `Relatorio_Diaristas_${selectedMonth}`, `Relatório de Diaristas - ${selectedMonth}`);
+      exportToPDF(reportData, columns, `Relatorio_Diaristas_${startDate}_A_${endDate}`, `Relatório de Diaristas - ${formatDateBR(startDate)} a ${formatDateBR(endDate)}`);
     }
   };
 
   const handleExportCompanies = async (format: 'excel' | 'pdf') => {
-    const monthAssignments = assignments.filter(a => a.date.startsWith(selectedMonth) && a.status === 'COMPLETED');
+    const periodAssignments = assignments.filter(a => a.date >= startDate && a.date <= endDate && a.status === 'COMPLETED');
     
     const reportData = companies.map(comp => {
       const compUnits = units.filter(u => u.companyId === comp.id);
-      const compAssignments = monthAssignments.filter(a => compUnits.some(u => u.clientId === a.clientId));
+      const compAssignments = periodAssignments.filter(a => compUnits.some(u => u.clientId === a.clientId));
       
       if (compAssignments.length === 0) return null;
 
@@ -11518,9 +11611,9 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
     ];
 
     if (format === 'excel') {
-      await exportToExcel(reportData, columns, `Relatorio_Empresas_${selectedMonth}`);
+      await exportToExcel(reportData, columns, `Relatorio_Empresas_${startDate}_A_${endDate}`);
     } else {
-      exportToPDF(reportData, columns, `Relatorio_Empresas_${selectedMonth}`, `Relatório de Empresas - ${selectedMonth}`);
+      exportToPDF(reportData, columns, `Relatorio_Empresas_${startDate}_A_${endDate}`, `Relatório de Empresas - ${formatDateBR(startDate)} a ${formatDateBR(endDate)}`);
     }
   };
 
@@ -11532,17 +11625,26 @@ function AgencyReports({ employees, assignments, clients, companies, units, agen
     >
       <div className="flex flex-col gap-1">
         <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Relatórios de Exportação</h2>
-        <p className="text-slate-500 font-medium">Gere planilhas detalhadas dos processos mensais.</p>
+        <p className="text-slate-500 font-medium">Gere planilhas detalhadas dos processos selecionando um período específico.</p>
       </div>
 
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="w-full sm:w-auto">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Mês de Referência</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Data Inicial</label>
             <input 
-              type="month" 
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full sm:w-64 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
+            />
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Data Final</label>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full sm:w-64 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700"
             />
           </div>
@@ -13556,7 +13658,6 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           email: formData.email,
           fullName: formData.fullName,
           status: 'PENDING',
-          password: formData.password,
           createdAt: new Date().toISOString()
         });
 

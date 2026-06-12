@@ -236,7 +236,7 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isAuthenticated();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(employeeId) || isCompany();
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(employeeId);
@@ -250,21 +250,21 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isSuperAdmin() || isAgency() || isCompany() || isAuthenticated();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
     }
 
     match /assignments/{assignmentId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isSuperAdmin() || isAgency() || isCompany() || isEmployee();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany() || (isEmployee() && resource.data.employeeId == request.auth.uid);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || (isEmployee() && resource.data.employeeId == request.auth.uid);
     }
 
     match /feedbacks/{feedbackId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isAuthenticated();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
@@ -279,28 +279,28 @@ service cloud.firestore {
 
     match /companies/{companyId} {
       allow get: if true;
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isSuperAdmin() || isAgency();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /units/{unitId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isSuperAdmin() || isAgency() || isCompany() || isAuthenticated();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompanyOwner(resource.data);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompanyOwner(resource.data);
     }
 
     match /companyUsers/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isSuperAdmin() || isAgency() || isOwner(userId);
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(userId);
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
     }
 
     match /companyRequests/{requestId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isAuthenticated();
       allow update: if isSuperAdmin() || isAgencyOwner(resource.data) || isCompany();
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
@@ -339,14 +339,14 @@ service cloud.firestore {
     }
 
     match /feedPosts/{postId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if (isSuperAdmin() || isAgency()) && isValidFeedPost(request.resource.data);
       allow update: if (isSuperAdmin() || isAgency()) && isValidFeedPost(request.resource.data);
       allow delete: if isSuperAdmin() || isAgency();
     }
 
     match /feedComments/{commentId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isAuthenticated() && isValidFeedComment(request.resource.data);
       allow update: if isAuthenticated() && (isSuperAdmin() || isAgency() || resource.data.userId == request.auth.uid) && isValidFeedComment(request.resource.data);
       allow delete: if isAuthenticated() && (isSuperAdmin() || isAgency() || resource.data.userId == request.auth.uid);
@@ -360,7 +360,7 @@ service cloud.firestore {
     }
 
     match /checkins/{checkinId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || resource.data.agencyId == getAgencyId());
       allow create: if isAuthenticated();
       allow update: if isSuperAdmin() || isAgency();
       allow delete: if isSuperAdmin() || isAgency();
