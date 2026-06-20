@@ -65,7 +65,8 @@ import {
   QrCode,
   Scan,
   MapPin,
-  Camera
+  Camera,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -6588,6 +6589,9 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'DIARISTA' | 'CONTRATADO'>('ALL');
   const [professionFilter, setProfessionFilter] = useState<string>('ALL');
   const [linkCategory, setLinkCategory] = useState<'DIARISTA' | 'CONTRATADO'>('DIARISTA');
+  const [regStep, setRegStep] = useState(1);
+  const [generatedEmail, setGeneratedEmail] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
 
   const pendingManagers = companyUsers.filter(cu => cu.status === 'PENDING');
 
@@ -6642,6 +6646,7 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
       profession: emp.profession || '',
     });
     setIsEditing(true);
+    setRegStep(1);
     setShowForm(true);
     setSelectedEmployee(emp);
   };
@@ -6806,32 +6811,89 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
     if (isEditing && selectedEmployee) {
       await updateDocument('employees', selectedEmployee.id, formData);
       toast.success('Cadastro atualizado com sucesso!');
+      setShowForm(false);
+      setIsEditing(false);
+      setSelectedEmployee(null);
+      setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', eSocialUrl: '', category: 'DIARISTA', profession: '' });
+      setRegStep(1);
     } else {
-      // Check limits
-      const agency = agencies.find(a => a.id === targetAgencyId);
-      if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
-        const currentEmployees = employees.length;
-        if (currentEmployees >= agency.maxEmployees) {
-          toast(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
-          return;
+      // Create path
+      if (regStep === 1) {
+        // Check limits
+        const agency = agencies.find(a => a.id === targetAgencyId);
+        if (agency && agency.maxEmployees !== undefined && agency.maxEmployees !== null) {
+          const currentEmployees = employees.length;
+          if (currentEmployees >= agency.maxEmployees) {
+            toast(`Limite de funcionários atingido (${agency.maxEmployees}). Entre em contato com o administrador para aumentar o limite.`);
+            return;
+          }
+        }
+
+        // Generate email and password
+        const cleanFirst = formData.firstName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const cleanLast = formData.lastName.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const currentAgency = agencies.find(a => a.id === targetAgencyId);
+        const agencyDomainName = currentAgency?.tradeName 
+          ? currentAgency.tradeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+          : currentAgency?.name 
+            ? currentAgency.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+            : 'b11';
+        const domain = `${agencyDomainName || 'b11'}.com`;
+        const emailForAuth = `${cleanFirst}.${cleanLast}@${domain}`;
+        const pwd = Math.random().toString(36).slice(-8);
+
+        setGeneratedEmail(emailForAuth);
+        setGeneratedPassword(pwd);
+        setRegStep(2);
+      } else if (regStep === 2) {
+        const loadingId = toast.loading('Criando credenciais e finalizando cadastro...');
+        try {
+          // 1. Create Firebase Auth user
+          const newUid = await createNewUser(generatedEmail, generatedPassword);
+
+          // 2. Create employee record with the new UID
+          const newEmp = {
+            ...formData,
+            username: generatedEmail.split('@')[0],
+            loginEmail: generatedEmail,
+            agencyId: targetAgencyId,
+            rating: 1,
+            status: 'ACTIVE',
+            complaints: 0,
+          };
+          await setDocument('employees', newUid, newEmp);
+
+          // 3. Create user authorization role document
+          await setDocument('users', newUid, {
+            role: 'EMPLOYEE',
+            email: formData.personalEmail,
+            agencyId: targetAgencyId,
+            forcePasswordChange: true,
+            createdAt: new Date().toISOString()
+          });
+
+          toast.success('Cadastro concluído!', { id: loadingId });
+
+          // 4. Redirect to WhatsApp with credentials
+          const cleanPhone = formData.phone.replace(/\D/g, '');
+          const message = `Olá, ${formData.firstName}! Seu cadastro completo no ProStaff Brasil foi realizado.\n\nAqui estão seus dados para acesso:\n📧 Login: ${generatedEmail}\n🔑 Senha: ${generatedPassword}\n\nAcesse pelo site: Prostaff.com`;
+          const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+          window.open(whatsappUrl, '_blank');
+
+          // Clean up and reset states
+          setShowForm(false);
+          setIsEditing(false);
+          setSelectedEmployee(null);
+          setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', eSocialUrl: '', category: 'DIARISTA', profession: '' });
+          setRegStep(1);
+          setGeneratedEmail('');
+          setGeneratedPassword('');
+        } catch (error: any) {
+          console.error('Error creating user/employee:', error);
+          toast.error('Erro ao finalizar cadastro: ' + error.message, { id: loadingId });
         }
       }
-
-      const newEmp: Omit<Employee, 'id'> = {
-        ...formData,
-        agencyId: targetAgencyId,
-        rating: 1,
-        status: 'PENDING',
-        complaints: 0,
-      };
-      await createDocument('employees', newEmp);
-      toast.success('Funcionário cadastrado com sucesso!');
     }
-
-    setShowForm(false);
-    setIsEditing(false);
-    setSelectedEmployee(null);
-    setFormData({ firstName: '', lastName: '', cpf: '', birthDate: '', phone: '', personalEmail: '', lgpdAuthorized: false, photoUrl: '', docUrl: '', eSocialUrl: '', category: 'DIARISTA', profession: '' });
   };
 
   return (
@@ -6910,7 +6972,12 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
             Enviar Link
           </button>
           <button 
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setRegStep(1);
+              setGeneratedEmail('');
+              setGeneratedPassword('');
+              setShowForm(true);
+            }}
             className="flex-1 sm:w-auto flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-600 text-white rounded-lg sm:rounded-[1.5rem] font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
           >
             <UserPlus size={12} className="sm:w-[14px] sm:h-[14px]" />
@@ -7000,185 +7067,271 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
             )}
             <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{isEditing ? 'Editar Cadastro' : 'Cadastro Direto'}</h3>
-                <p className="text-[10px] text-slate-400 font-medium">{isEditing ? 'Atualize os dados.' : 'Preencha os dados.'}</p>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                  {regStep === 2 ? 'Cadastro Direto - Acesso' : isEditing ? 'Editar Cadastro' : 'Cadastro Direto'}
+                </h3>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {regStep === 2 ? 'Verifique as credenciais geradas.' : isEditing ? 'Atualize os dados.' : 'Preencha os dados.'}
+                </p>
               </div>
-              <button onClick={() => { setShowForm(false); setIsEditing(false); setSelectedEmployee(null); }} className="p-2 bg-white border border-slate-200 text-slate-400 rounded-lg hover:bg-slate-50 transition-all">
+              <button onClick={() => { setShowForm(false); setIsEditing(false); setSelectedEmployee(null); setRegStep(1); setGeneratedEmail(''); setGeneratedPassword(''); }} className="p-2 bg-white border border-slate-200 text-slate-400 rounded-lg hover:bg-slate-50 transition-all">
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleRegister} className="p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Nome</label>
-                  <input 
-                    required
-                    type="text" 
-                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                    value={formData.firstName}
-                    onChange={e => setFormData({...formData, firstName: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Sobrenome</label>
-                  <input 
-                    required
-                    type="text" 
-                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                    value={formData.lastName}
-                    onChange={e => setFormData({...formData, lastName: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Categoria</label>
-                <select 
-                  required
-                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                  value={formData.category}
-                  onChange={e => setFormData({...formData, category: e.target.value as 'DIARISTA' | 'CONTRATADO'})}
-                >
-                  <option value="DIARISTA">Diarista</option>
-                  <option value="CONTRATADO">Contratado CLT</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Profissão / Segmento</label>
-                <select 
-                  required
-                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                  value={formData.profession}
-                  onChange={e => setFormData({...formData, profession: e.target.value})}
-                >
-                  <option value="">Selecione uma profissão...</option>
-                  {professions.map(prof => (
-                    <option key={prof} value={prof}>{prof}</option>
-                  ))}
-                  <option value="Outros">Outros</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Documento eSocial (PDF/IMG)</label>
-                <div className="flex items-center gap-3">
-                  <label className="flex-1 cursor-pointer">
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 transition-all">
-                      <FileText size={16} />
-                      <span className="text-xs font-bold truncate">
-                        {formData.eSocialUrl ? 'Documento Anexado' : 'Selecionar Arquivo'}
-                      </span>
+            <form onSubmit={handleRegister} className="p-4 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              {regStep === 1 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Nome</label>
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        value={formData.firstName}
+                        onChange={e => setFormData({...formData, firstName: e.target.value})}
+                      />
                     </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*,application/pdf"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setFormData({...formData, eSocialUrl: reader.result as string});
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                  {formData.eSocialUrl && (
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({...formData, eSocialUrl: ''})}
-                      className="p-3 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all"
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Sobrenome</label>
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        value={formData.lastName}
+                        onChange={e => setFormData({...formData, lastName: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Categoria</label>
+                    <select 
+                      required
+                      className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      value={formData.category}
+                      onChange={e => setFormData({...formData, category: e.target.value as 'DIARISTA' | 'CONTRATADO'})}
                     >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">CPF</label>
-                  <input 
-                    required
-                    type="text" 
-                    placeholder="000.000.000-00"
-                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                    value={formData.cpf}
-                    onChange={e => setFormData({...formData, cpf: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Data de Nascimento</label>
-                  <input 
-                    required
-                    type="date" 
-                    className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                    value={formData.birthDate}
-                    onChange={e => setFormData({...formData, birthDate: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">E-mail Pessoal</label>
-                <input 
-                  required
-                  type="email" 
-                  className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
-                  value={formData.personalEmail}
-                  onChange={e => setFormData({...formData, personalEmail: e.target.value})}
-                />
-              </div>
-              <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <input 
-                  required
-                  type="checkbox" 
-                  id="lgpd-agency"
-                  className="mt-0.5 w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                  checked={formData.lgpdAuthorized}
-                  onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
-                />
-                <label htmlFor="lgpd-agency" className="text-[9px] text-slate-500 font-medium leading-relaxed">
-                  Autorizo o uso dos dados conforme a LGPD.
-                </label>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Foto Profissional</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div 
-                    onClick={startCamera}
-                    className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all bg-slate-50/50 group"
-                  >
-                    <Camera size={20} className="mb-1 group-hover:scale-110 transition-transform" />
-                    <p className="text-[9px] font-black uppercase tracking-widest">Câmera</p>
+                      <option value="DIARISTA">Diarista</option>
+                      <option value="CONTRATADO">Contratado CLT</option>
+                    </select>
                   </div>
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-emerald-400 hover:text-emerald-400 cursor-pointer transition-all bg-slate-50/50 group"
-                  >
-                    <Upload size={20} className="mb-1 group-hover:scale-110 transition-transform" />
-                    <p className="text-[9px] font-black uppercase tracking-widest">Galeria</p>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Profissão / Segmento</label>
+                    <select 
+                      required
+                      className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      value={formData.profession}
+                      onChange={e => setFormData({...formData, profession: e.target.value})}
+                    >
+                      <option value="">Selecione uma profissão...</option>
+                      {professions.map(prof => (
+                        <option key={prof} value={prof}>{prof}</option>
+                      ))}
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Documento eSocial (PDF/IMG)</label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 transition-all">
+                          <FileText size={16} />
+                          <span className="text-xs font-bold truncate">
+                            {formData.eSocialUrl ? 'Documento Anexado' : 'Selecionar Arquivo'}
+                          </span>
+                        </div>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*,application/pdf"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({...formData, eSocialUrl: reader.result as string});
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {formData.eSocialUrl && (
+                        <button 
+                          type="button"
+                          onClick={() => setFormData({...formData, eSocialUrl: ''})}
+                          className="p-3 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">CPF</label>
+                      <input 
+                        required
+                        type="text" 
+                        placeholder="000.000.000-00"
+                        className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        value={formData.cpf}
+                        onChange={e => setFormData({...formData, cpf: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Data de Nascimento</label>
+                      <input 
+                        required
+                        type="date" 
+                        className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                        value={formData.birthDate}
+                        onChange={e => setFormData({...formData, birthDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold font-bold">WhatsApp / Telefone</label>
                     <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleGalleryUpload} 
+                      required
+                      type="tel" 
+                      placeholder="Ex: 11999999999"
+                      className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      value={formData.phone}
+                      onChange={e => setFormData({...formData, phone: e.target.value})}
                     />
                   </div>
-                </div>
-              </div>
-                {formData.photoUrl && (
-                  <div className="flex justify-center mt-4">
-                    <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
-                      <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera size={32} className="text-white" />
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">E-mail Pessoal</label>
+                    <input 
+                      required
+                      type="email" 
+                      className="w-full p-3 bg-slate-50 border-2 border-transparent rounded-lg focus:bg-white focus:border-blue-600 outline-none transition-all font-bold text-slate-700 text-sm"
+                      value={formData.personalEmail}
+                      onChange={e => setFormData({...formData, personalEmail: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <input 
+                      required
+                      type="checkbox" 
+                      id="lgpd-agency"
+                      className="mt-0.5 w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                      checked={formData.lgpdAuthorized}
+                      onChange={e => setFormData({...formData, lgpdAuthorized: e.target.checked})}
+                    />
+                    <label htmlFor="lgpd-agency" className="text-[9px] text-slate-500 font-medium leading-relaxed font-bold">
+                      Autorizo o uso dos dados conforme a LGPD.
+                    </label>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-bold">Foto Profissional</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div 
+                        onClick={startCamera}
+                        className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-400 cursor-pointer transition-all bg-slate-50/50 group"
+                      >
+                        <Camera size={20} className="mb-1 group-hover:scale-110 transition-transform" />
+                        <p className="text-[9px] font-black uppercase tracking-widest font-bold">Câmera</p>
+                      </div>
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-4 border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-300 hover:border-emerald-400 hover:text-emerald-400 cursor-pointer transition-all bg-slate-50/50 group"
+                      >
+                        <Upload size={20} className="mb-1 group-hover:scale-110 transition-transform" />
+                        <p className="text-[9px] font-black uppercase tracking-widest font-bold">Galeria</p>
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={handleGalleryUpload} 
+                        />
                       </div>
                     </div>
                   </div>
-                )}
-              <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
-                {isEditing ? 'Salvar Alterações' : 'Finalizar Cadastro'}
-              </button>
+                  {formData.photoUrl && (
+                    <div className="flex justify-center mt-4">
+                      <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
+                        <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera size={32} className="text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
+                    {isEditing ? 'Salvar Alterações' : 'Avançar'}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl flex flex-col gap-5">
+                    <p className="text-xs text-slate-500 font-bold leading-relaxed text-center">
+                      Estas serão as credenciais de acesso provisórias geradas para o funcionário <strong className="text-slate-800">{formData.firstName}</strong>:
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">E-mail para Login</label>
+                        <div className="flex items-center gap-2 bg-white p-4 rounded-xl border border-slate-200">
+                          <Mail size={16} className="text-slate-400" />
+                          <span className="flex-1 font-mono text-sm text-slate-700 font-black truncate">{generatedEmail}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedEmail);
+                              toast.success('Login copiado!');
+                            }}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all border border-slate-100"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Senha Provisória</label>
+                        <div className="flex items-center gap-2 bg-white p-4 rounded-xl border border-slate-200">
+                          <Lock size={16} className="text-slate-400" />
+                          <span className="flex-1 font-mono text-sm text-slate-700 font-black">{generatedPassword}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedPassword);
+                              toast.success('Senha copiada!');
+                            }}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all border border-slate-100"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 text-blue-700 text-xs font-bold leading-relaxed rounded-2xl border border-blue-100 flex gap-2">
+                    <Info size={16} className="shrink-0 mt-0.5 text-blue-500" />
+                    <p>Ao finalizar, as credenciais e o link de acesso <strong className="text-blue-800">Prostaff.com</strong> serão enviados automaticamente para o WhatsApp do funcionário.</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button 
+                      type="button" 
+                      onClick={() => setRegStep(1)} 
+                      className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all active:scale-95"
+                    >
+                      Voltar
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="flex-1 py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      Finalizar
+                    </button>
+                  </div>
+                </div>
+              )}
             </form>
           </motion.div>
         </div>
