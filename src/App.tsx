@@ -82,7 +82,7 @@ import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
 import { auth, googleProvider, sendPasswordResetEmail, db, messaging, generateToken, onMessage } from './firebase';
 import { createNewUser } from './secondary-auth';
-import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential, updateProfile } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged, signOut, User, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential, updateProfile, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { onSnapshot, doc, collection, query, getDocs } from 'firebase/firestore';
 import { 
   subscribeToCollection, 
@@ -1972,15 +1972,37 @@ export default function App() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!resetEmail || !resetEmail.includes('@')) {
+      setResetErrorMessage('Por favor, digite um e-mail válido.');
+      return;
+    }
     setResetStatus('LOADING');
     setResetErrorMessage('');
     try {
-      await sendPasswordResetEmail(auth, resetEmail);
+      const signInMethods = await fetchSignInMethodsForEmail(auth, resetEmail);
+      if (!signInMethods || signInMethods.length === 0) {
+        setResetStatus('ERROR');
+        setResetErrorMessage('Este e-mail não está registrado no sistema.');
+        return;
+      }
+      const actionCodeSettings = {
+        url: `${window.location.origin}/?mode=resetPassword&oobCode=`,
+        handleCodeInApp: false
+      };
+      await sendPasswordResetEmail(auth, resetEmail, actionCodeSettings);
       setResetStatus('SUCCESS');
+      setResetEmail('');
+      toast.success(`Link enviado para ${resetEmail}!\n\nVerifique seu email. Link expira em 1 hora.`);
     } catch (err: any) {
-      console.error(err);
+      console.error('Erro ao enviar email:', err);
       setResetStatus('ERROR');
-      setResetErrorMessage(err.message || 'Falha ao enviar e-mail');
+      if (err.code === 'auth/too-many-requests') {
+        setResetErrorMessage('Muitas tentativas. Tente novamente em alguns minutos.');
+      } else if (err.code === 'auth/user-not-found') {
+        setResetErrorMessage('Este e-mail não está registrado.');
+      } else {
+        setResetErrorMessage('Falha ao enviar e-mail. Verifique e tente novamente.');
+      }
     }
   };
 
@@ -14750,11 +14772,18 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Foto de Perfil (Selfie)</label>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Foto de Perfil (Selfie)</label>
+                  <span className="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-black rounded-full">OBRIGATÓRIO</span>
+                </div>
                 <div className="relative">
                   {formData.photo ? (
                     <div className="relative w-full aspect-video rounded-3xl overflow-hidden border-2 border-slate-100 shadow-sm">
                       <img src={formData.photo} alt="Selfie" className="w-full h-full object-cover" />
+                      <div className="absolute top-3 left-3 flex items-center gap-2 bg-emerald-500 text-white px-3 py-2 rounded-full text-[11px] font-bold shadow-lg">
+                        <CheckCircle2 size={14} />
+                        Foto Capturada ✓
+                      </div>
                       <div className="absolute bottom-3 right-3 flex gap-2">
                         <button 
                           type="button"
@@ -14788,14 +14817,14 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
                       <button 
                         type="button"
                         onClick={startCamera}
-                        className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group"
+                        className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group hover:scale-105"
                       >
-                        <Camera className="text-slate-400 group-hover:text-blue-600 transition-colors" size={32} />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">Tirar Foto</span>
+                        <Camera className="text-slate-400 group-hover:text-blue-600 transition-colors" size={40} />
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors text-center">📸 Tirar<br/>Selfie</span>
                       </button>
-                      <label className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group">
-                        <Upload className="text-slate-400 group-hover:text-blue-600 transition-colors" size={32} />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">Galeria</span>
+                      <label className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group hover:scale-105">
+                        <Upload className="text-slate-400 group-hover:text-blue-600 transition-colors" size={40} />
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors text-center">🖼️ Carregar<br/>Galeria</span>
                         <input 
                           type="file" 
                           accept="image/*" 
@@ -14815,6 +14844,15 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
                     </div>
                   )}
                 </div>
+                {!formData.photo && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-3">
+                    <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
+                    <div className="text-sm text-blue-700 font-medium">
+                      <p className="font-bold">A foto é obrigatória!</p>
+                      <p className="text-[12px] text-blue-600 mt-1">Certifique-se que seu rosto está claro e bem iluminado.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -14906,9 +14944,23 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-xl hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`w-full py-4 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 ${
+                  isSubmitting
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-xl'
+                }`}
               >
-                {isSubmitting ? "Enviando..." : "Finalizar Cadastro"}
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin" />
+                    Finalizando cadastro...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={20} />
+                    Finalizar Cadastro
+                  </>
+                )}
               </button>
               <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">
                 Ao enviar, você concorda com nossos termos de uso e LGPD.

@@ -242,11 +242,11 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isAgencyOwner(resource.data) || isOwner(employeeId);
     }
 
-    match /employeeRegistrations/{registrationId} {
-      allow read: if isAuthenticated();
-      allow create: if true;
-      allow update: if isAuthenticated();
-      allow delete: if isSuperAdmin() || isAgencyOwner(resource.data);
+    match /employeeRegistrations/{document=**} {
+      allow create: if request.resource.data.keys().hasAll(['firstName', 'lastName', 'cpf', 'personalEmail', 'agencyId']);
+      allow read: if request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'AGENCY', 'COMPANY'];
+      allow update: if request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'AGENCY'];
+      allow delete: if false;
     }
 
     match /clients/{clientId} {
