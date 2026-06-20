@@ -143,6 +143,68 @@ export async function createServer() {
     }
   });
 
+  app.post("/api/send-whatsapp", async (req, res) => {
+    try {
+      const { phone, message, employeeId, agencyId, requestId, jobFunction, dailyRate } = req.body;
+      
+      const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+      if (!cleanPhone) {
+        return res.status(400).json({ error: "Missing phone number" });
+      }
+
+      console.log(`[WhatsApp API / Twilio Simulation] Sending WhatsApp to +55${cleanPhone}: "${message}"`);
+
+      let logId = "";
+      if (admin.apps.length > 0) {
+        const db = getFirestore(firestoreDatabaseId);
+        const logRef = await db.collection('notificationLogs').add({
+          channel: 'WHATSAPP',
+          phone: cleanPhone,
+          message,
+          employeeId: employeeId || null,
+          agencyId: agencyId || null,
+          requestId: requestId || null,
+          jobFunction: jobFunction || null,
+          dailyRate: dailyRate || null,
+          status: 'SUCCESS',
+          sentAt: new Date().toISOString()
+        });
+        logId = logRef.id;
+      }
+
+      res.json({ success: true, simulated: true, logId });
+    } catch (error: any) {
+      console.error("Error in send-whatsapp API:", error);
+      res.status(500).json({ error: "Failed to send WhatsApp", details: error.message });
+    }
+  });
+
+  app.post("/api/log-notification", async (req, res) => {
+    try {
+      const { channel, title, message, employeeId, agencyId, requestId, status, details } = req.body;
+      
+      if (admin.apps.length > 0) {
+        const db = getFirestore(firestoreDatabaseId);
+        const logRef = await db.collection('notificationLogs').add({
+          channel, // 'IN_APP' | 'PUSH' | 'WHATSAPP' | 'EMAIL'
+          title: title || null,
+          message,
+          employeeId: employeeId || null,
+          agencyId: agencyId || null,
+          requestId: requestId || null,
+          status: status || 'SUCCESS',
+          details: details || null,
+          sentAt: new Date().toISOString()
+        });
+        return res.json({ success: true, logId: logRef.id });
+      }
+      res.json({ success: true, simulated: true });
+    } catch (error: any) {
+      console.error("Error logging notification:", error);
+      res.status(500).json({ error: "Failed to log notification", details: error.message });
+    }
+  });
+
   app.post("/api/delete-user", async (req, res) => {
     try {
       const { uid } = req.body;

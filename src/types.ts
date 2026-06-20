@@ -268,7 +268,10 @@ export interface CompanyRequest {
   employeeIds: string[];
   quantity: number;
   date: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EM_ATENDIMENTO';
+  jobFunction?: string;
+  dailyRate?: number;
+  notificationChannels?: string[];
   broadcasted?: boolean;
   createdAt: string;
 }

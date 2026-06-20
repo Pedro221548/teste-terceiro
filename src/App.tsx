@@ -8309,6 +8309,13 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
   const [activeSubTab, setActiveSubTab] = useState<'STAFFING' | 'CONFIRMED' | 'REQUESTS' | 'INCONSISTENCIES'>(initialSubTab);
 
+  // Modal capture states for attending requests
+  const [attendModalOpen, setAttendModalOpen] = useState(false);
+  const [requestForModal, setRequestForModal] = useState<CompanyRequest | null>(null);
+  const [modalJobFunction, setModalJobFunction] = useState('');
+  const [modalDailyRate, setModalDailyRate] = useState('');
+  const [modalChannels, setModalChannels] = useState<string[]>(['IN_APP', 'PUSH', 'WHATSAPP']);
+
   React.useEffect(() => {
     setActiveSubTab(initialSubTab);
   }, [initialSubTab]);
@@ -8411,33 +8418,185 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
     }
   };
 
-  const handleAttendRequest = async (req: CompanyRequest) => {
-    setActiveRequest(req);
-    setSelectedClientId(req.clientId);
-    setSelectedDate(req.date);
-    setActiveSubTab('STAFFING');
-    // Mark as being attended and broadcast it to employees
-    await updateDocument('companyRequests', req.id, { status: 'PENDING', broadcasted: true });
-    
-    const targetAgencyId = selectedAgencyId || agencyId;
-    if (targetAgencyId) {
-      try {
-        await fetch('/api/send-push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: 'Nova Vaga Disponível!',
-            body: `Uma nova solicitação de trabalho está disponível para você na plataforma.`,
-            targetRoles: ['EMPLOYEE'],
-            targetAgencyId: targetAgencyId
-          })
-        });
-      } catch(e) {
-        console.warn("Failed to send push notification to employees via API");
-      }
+  const formatBRL = (valStr: string) => {
+    const digits = valStr.replace(/\D/g, '');
+    if (!digits) return '';
+    const numericValue = parseFloat(digits) / 100;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(numericValue);
+  };
+
+  const parseBRLToFloat = (valStr: string) => {
+    const digits = valStr.replace(/\D/g, '');
+    if (!digits) return 0;
+    return parseFloat(digits) / 100;
+  };
+
+  const handleAttendRequest = (req: CompanyRequest) => {
+    setRequestForModal(req);
+    setModalJobFunction(req.jobFunction || '');
+    setModalDailyRate(req.dailyRate ? formatBRL(String(req.dailyRate * 100)) : '');
+    setModalChannels(req.notificationChannels || ['IN_APP', 'PUSH', 'WHATSAPP']);
+    setAttendModalOpen(true);
+  };
+
+  const confirmAttendRequest = async () => {
+    if (!requestForModal) return;
+    if (!modalJobFunction) {
+      toast.error('Por favor, selecione a Função/Cargo.');
+      return;
+    }
+    if (!modalDailyRate) {
+      toast.error('Por favor, insira o valor da diária.');
+      return;
     }
 
-    toast.success('Solicitação em atendimento! Notificações enviadas aos profissionais.');
+    const rateValue = parseBRLToFloat(modalDailyRate);
+    if (rateValue <= 0) {
+      toast.error('O valor da diária deve ser maior que zero.');
+      return;
+    }
+
+    const loadId = toast.loading('Processando atendimento e divulgando vaga...');
+    try {
+      const targetAgencyId = selectedAgencyId || agencyId;
+      const client = clients.find(c => c.id === requestForModal.clientId);
+      const companyName = client?.name || 'Prostaff Cliente';
+      const formattedDate = formatDateBR(requestForModal.date);
+      const formattedRate = modalDailyRate;
+
+      // 1. Update the Company Request document in Firestore
+      await updateDocument('companyRequests', requestForModal.id, {
+        status: 'EM_ATENDIMENTO',
+        jobFunction: modalJobFunction,
+        dailyRate: rateValue,
+        notificationChannels: modalChannels,
+        broadcasted: true
+      });
+
+      // 2. Identify employees to notify
+      const activeEmployees = employees.filter(e => e.agencyId === targetAgencyId && e.status === 'ACTIVE');
+
+      // 3. Send In-App notifications (Save to Firestore 'notifications' collection)
+      if (modalChannels.includes('IN_APP')) {
+        for (const emp of activeEmployees) {
+          try {
+            await createDocument('notifications', {
+              userId: emp.id,
+              title: `Oportunidade: ${modalJobFunction}`,
+              message: `Vaga de trabalho para ${modalJobFunction} no dia ${formattedDate} na empresa ${companyName}. Diária de ${formattedRate}. Acesse o Prostaff para aceitar!`,
+              type: 'ASSIGNMENT',
+              read: false,
+              createdAt: new Date().toISOString()
+            });
+
+            // Log notification creation
+            await fetch('/api/log-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                channel: 'IN_APP',
+                title: `Oportunidade: ${modalJobFunction}`,
+                message: `Vaga de trabalho para ${modalJobFunction} no dia ${formattedDate} na empresa ${companyName}. Diária de ${formattedRate}.`,
+                employeeId: emp.id,
+                agencyId: targetAgencyId,
+                requestId: requestForModal.id
+              })
+            });
+          } catch (e) {
+            console.error('Error sending in-app notification', e);
+          }
+        }
+      }
+
+      // 4. Send Push Notifications via API
+      if (modalChannels.includes('PUSH')) {
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `Nova Vaga: ${modalJobFunction}`,
+              body: `${companyName} precisa de profissional para o dia ${formattedDate}. Diária: ${formattedRate}.`,
+              targetRoles: ['EMPLOYEE'],
+              targetAgencyId: targetAgencyId
+            })
+          });
+
+          // Log push notification
+          for (const emp of activeEmployees) {
+            await fetch('/api/log-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                channel: 'PUSH',
+                title: `Nova Vaga: ${modalJobFunction}`,
+                message: `${companyName} precisa de profissional para o dia ${formattedDate}. Diária: ${formattedRate}.`,
+                employeeId: emp.id,
+                agencyId: targetAgencyId,
+                requestId: requestForModal.id
+              })
+            });
+          }
+        } catch (e) {
+          console.warn("Error sending push notification via API:", e);
+        }
+      }
+
+      // 5. Send WhatsApp notifications via API
+      if (modalChannels.includes('WHATSAPP')) {
+        for (const emp of activeEmployees) {
+          const cleanPhone = emp.phone ? emp.phone.replace(/\D/g, '') : '';
+          if (cleanPhone) {
+            try {
+              const whatsappMsg = `Olá, ${emp.firstName}! Nova oportunidade de trabalho no Prostaff Brasil:\n\n🏢 Empresa/Cliente: *${companyName}*\n📅 Data: *${formattedDate}*\n💼 Função: *${modalJobFunction}*\n💰 Diária: *${formattedRate}*\n\n👉 Acesse o painel pelo site para aceitar a vaga!`;
+              
+              await fetch('/api/send-whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  phone: cleanPhone,
+                  message: whatsappMsg,
+                  employeeId: emp.id,
+                  agencyId: targetAgencyId,
+                  requestId: requestForModal.id,
+                  jobFunction: modalJobFunction,
+                  dailyRate: rateValue
+                })
+              });
+            } catch (error) {
+              console.error('Error sending whatsapp notification', error);
+            }
+          }
+        }
+      }
+
+      toast.success('Solicitação em atendimento! Notificações enviadas aos profissionais.', { id: loadId });
+      
+      // Set assignment states to immediately display the staffing visual screen
+      const reqToStaff: CompanyRequest = {
+        ...requestForModal,
+        status: 'EM_ATENDIMENTO' as const,
+        jobFunction: modalJobFunction,
+        dailyRate: rateValue,
+        notificationChannels: modalChannels,
+        broadcasted: true
+      };
+      
+      setActiveRequest(reqToStaff);
+      setSelectedClientId(requestForModal.clientId);
+      setSelectedDate(requestForModal.date);
+      setActiveSubTab('STAFFING');
+      
+      // Reset modal state
+      setAttendModalOpen(false);
+      setRequestForModal(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao processar atendimento: ' + err.message, { id: loadId });
+    }
   };
 
   const handleFinishRequest = async () => {
@@ -9409,8 +9568,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
           </div>
 
           <div className="space-y-6">
-            {companyRequests.filter(req => req.status === 'PENDING').map(req => {
+            {companyRequests.filter(req => req.status === 'PENDING' || req.status === 'EM_ATENDIMENTO').map(req => {
               const client = clients.find(c => c.id === req.clientId);
+              const isEmAtendimento = req.status === 'EM_ATENDIMENTO';
               return (
                 <div key={req.id} className="p-6 sm:p-8 bg-slate-50 dark:bg-slate-950 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-6 transition-colors">
                   <div className="flex items-center gap-4 sm:gap-6">
@@ -9418,14 +9578,31 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                       <Building2 size={24} />
                     </div>
                     <div>
-                      <h4 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">{client?.name}</h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">{client?.name}</h4>
+                        {isEmAtendimento && (
+                          <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 rounded-lg text-[8px] font-black uppercase tracking-wider">
+                            Em Atendimento
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1">
-                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                           <Calendar size={12} /> {formatDateBR(req.date)}
                         </span>
-                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                           <Users size={12} /> {req.quantity} Profissionais
                         </span>
+                        {req.jobFunction && (
+                          <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Cargo: {req.jobFunction}
+                          </span>
+                        )}
+                        {req.dailyRate !== undefined && req.dailyRate !== null && (
+                          <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Diária: R$ {req.dailyRate.toFixed(2).replace('.', ',')}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -9448,13 +9625,15 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                     <div className="flex gap-2 w-full sm:w-auto">
                       <button 
                         onClick={() => handleAttendRequest(req)}
-                        className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                        className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 text-white rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] h-[48px] hover:shadow-lg transition-all active:scale-95 flex items-center justify-center ${
+                          isEmAtendimento ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                        }`}
                       >
-                        Atender
+                        {isEmAtendimento ? 'Ajustar Vaga' : 'Atender'}
                       </button>
                       <button 
                         onClick={() => handleRejectRequest(req)}
-                        className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white text-slate-400 border border-slate-200 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95"
+                        className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] h-[48px] hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 hover:border-rose-150 transition-all active:scale-95 flex items-center justify-center"
                       >
                         Recusar
                       </button>
@@ -9463,7 +9642,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                 </div>
               );
             })}
-            {companyRequests.filter(req => req.status === 'PENDING').length === 0 && (
+            {companyRequests.filter(req => req.status === 'PENDING' || req.status === 'EM_ATENDIMENTO').length === 0 && (
               <div className="py-20 text-center">
                 <p className="text-slate-400 font-medium italic">Nenhuma solicitação pendente.</p>
               </div>
@@ -9523,6 +9702,133 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                     className="flex-1 py-3.5 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
                   >
                     Confirmar Recusa
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {attendModalOpen && requestForModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              onClick={() => setAttendModalOpen(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-zinc-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden z-10"
+            >
+              <div className="p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Atender Solicitação</h3>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-widest mt-1">Configurar diária e canais de comunicação</p>
+                  </div>
+                  <button 
+                    onClick={() => setAttendModalOpen(false)}
+                    className="p-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span>Empresa/Cliente:</span>
+                    <span className="text-slate-800 dark:text-slate-200 font-black">{clients.find(c => c.id === requestForModal.clientId)?.name || 'Cliente'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span>Data da Vaga:</span>
+                    <span className="text-slate-800 dark:text-slate-200 font-black">{formatDateBR(requestForModal.date)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span>Quantidade Solicitada:</span>
+                    <span className="text-slate-800 dark:text-slate-200 font-black">{requestForModal.quantity} {requestForModal.quantity === 1 ? 'Profissional' : 'Profissionais'}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block ml-2">Função / Cargo <span className="text-rose-500">*</span></label>
+                    <select
+                      value={modalJobFunction}
+                      onChange={(e) => setModalJobFunction(e.target.value)}
+                      required
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-blue-600 focus:bg-white dark:focus:bg-zinc-950 rounded-2xl outline-none font-bold text-slate-700 dark:text-slate-200 text-sm transition-all h-[52px]"
+                    >
+                      <option value="">Selecione a profissão/cargo...</option>
+                      {(professions.length > 0 ? professions : ['Logística', 'Segurança', 'Limpeza', 'Eventos', 'Administração', 'Copa/Cozinha', 'Portaria', 'Recepcionista', 'Outros']).map(prof => (
+                        <option key={prof} value={prof}>{prof}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block ml-2">Valor da Diária (R$) <span className="text-rose-500">*</span></label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={modalDailyRate}
+                      onChange={(e) => setModalDailyRate(formatBRL(e.target.value))}
+                      placeholder="Ex: R$ 150,00"
+                      required
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-blue-600 focus:bg-white dark:focus:bg-zinc-950 rounded-2xl outline-none font-bold text-slate-700 dark:text-slate-200 text-sm transition-all h-[52px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block ml-2 mb-2">Canais de Notificação</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { id: 'IN_APP', label: 'In-App', desc: 'Painel Interno' },
+                        { id: 'PUSH', label: 'Push', desc: 'Navegador' },
+                        { id: 'WHATSAPP', label: 'WhatsApp', desc: 'WhatsApp Direto' }
+                      ].map(ch => {
+                        const isSelected = modalChannels.includes(ch.id);
+                        return (
+                          <button
+                            type="button"
+                            key={ch.id}
+                            onClick={() => {
+                              if (isSelected) {
+                                setModalChannels(prev => prev.filter(item => item !== ch.id));
+                              } else {
+                                setModalChannels(prev => [...prev, ch.id]);
+                              }
+                            }}
+                            className={`p-4 border-2 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer h-24 ${
+                              isSelected 
+                                ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400' 
+                                : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-400 dark:text-slate-500 hover:border-slate-300'
+                            }`}
+                          >
+                            <span className="text-xs font-black uppercase tracking-wider">{ch.label}</span>
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1">{ch.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => setAttendModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all h-[52px]"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={confirmAttendRequest}
+                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 h-[52px]"
+                  >
+                    Avançar
                   </button>
                 </div>
               </div>
@@ -13109,12 +13415,13 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                               <div className="flex items-center gap-4">
                                 <span className={`text-[10px] px-4 py-1.5 rounded-lg font-black uppercase tracking-widest ${
                                   req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                  req.status === 'EM_ATENDIMENTO' ? 'bg-blue-100 text-blue-700' :
                                   req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
                                   'bg-red-100 text-red-700'
                                 }`}>
-                                  {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
+                                  {req.status === 'PENDING' ? 'Pendente' : req.status === 'EM_ATENDIMENTO' ? 'Em Atendimento' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
                                 </span>
-                                {req.status === 'PENDING' && (
+                                {(req.status === 'PENDING' || req.status === 'EM_ATENDIMENTO') && (
                                   <button 
                                     onClick={() => handleCancelRequest(req.id)}
                                     className="text-[10px] font-black text-red-600 hover:text-red-800 uppercase tracking-widest transition-colors"
@@ -13475,6 +13782,7 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all ${
                           req.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          req.status === 'EM_ATENDIMENTO' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                           req.status === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                           'bg-red-50 text-red-600 border-rose-100'
                         }`}>
@@ -13490,20 +13798,23 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
                       <div className="flex items-center gap-3">
                         <span className={`text-[9px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest border transition-all ${
                           req.status === 'PENDING' ? 'bg-amber-100/50 text-amber-700 border-amber-200' :
+                          req.status === 'EM_ATENDIMENTO' ? 'bg-blue-100/50 text-blue-700 border-blue-200' :
                           req.status === 'ACCEPTED' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
                           'bg-red-100/50 text-rose-700 border-rose-200'
                         }`}>
-                          {req.status === 'PENDING' ? 'Pendente' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
+                          {req.status === 'PENDING' ? 'Pendente' : req.status === 'EM_ATENDIMENTO' ? 'Em Atendimento' : req.status === 'ACCEPTED' ? 'Aceito' : 'Cancelado'}
                         </span>
                         
-                        {req.status === 'PENDING' && (
+                        {(req.status === 'PENDING' || req.status === 'EM_ATENDIMENTO') && (
                           <>
-                            <button 
-                              onClick={() => handleOpenEdit(req)}
-                              className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
-                            >
-                              Editar
-                            </button>
+                            {req.status === 'PENDING' && (
+                              <button 
+                                onClick={() => handleOpenEdit(req)}
+                                className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                              >
+                                Editar
+                              </button>
+                            )}
                             <button 
                               onClick={() => handleCancelRequest(req.id)}
                               className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100"
