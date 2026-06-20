@@ -2106,10 +2106,17 @@ export default function App() {
         const userDoc = await getDocument<{ role: UserRole, agencyId?: string, companyId?: string, forcePasswordChange?: boolean, status?: string }>('users', firebaseUser.uid);
         if (userDoc) {
           if (userDoc.status === 'PENDING') {
-            setIsPending(true);
-            setUser(firebaseUser);
-            setIsAuthReady(true);
-            return;
+            // Auto-activate to remove pending screen permanently
+            try {
+              await updateDocument('users', firebaseUser.uid, { status: 'ACTIVE', isTrial: true });
+              if (userDoc.companyId) {
+                await updateDocument('companies', userDoc.companyId, { status: 'ACTIVE', isTrial: true });
+              }
+              await updateDocument('companyUsers', firebaseUser.uid, { status: 'ACTIVE', isTrial: true });
+              userDoc.status = 'ACTIVE';
+            } catch (error) {
+              console.error('Error auto-activating user:', error);
+            }
           }
           let currentRole = userDoc.role;
           setRole(currentRole);
@@ -9716,7 +9723,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       id: companyId,
       ...formData,
       agencyId: targetAgencyId,
-      status: 'PENDING',
+      status: 'ACTIVE',
       createdAt: new Date().toISOString()
     };
     await setDocument('companies', companyId, newCompany);
@@ -9732,7 +9739,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         fullName: formData.responsibleName,
         email: formData.email,
         role: 'COMPANY',
-        status: 'PENDING',
+        status: 'ACTIVE',
         createdAt: new Date().toISOString()
       };
       await setDocument('companyUsers', newUid, { ...newUser, id: newUid });
@@ -9744,7 +9751,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         agencyId: targetAgencyId,
         email: formData.email,
         fullName: formData.responsibleName,
-        status: 'PENDING',
+        status: 'ACTIVE',
         createdAt: new Date().toISOString()
       });
     }
@@ -9806,7 +9813,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         fullName: unitData.managerName,
         email: unitData.login,
         role: 'COMPANY',
-        status: 'PENDING',
+        status: 'ACTIVE',
         createdAt: new Date().toISOString()
       };
       await setDocument('companyUsers', newUid, newUser);
@@ -9818,7 +9825,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
         agencyId: targetAgencyId,
         email: unitData.login,
         fullName: unitData.managerName,
-        status: 'PENDING',
+        status: 'ACTIVE',
         createdAt: new Date().toISOString()
       });
     }
@@ -9871,7 +9878,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       fullName: userData.fullName,
       email: login,
       role: 'COMPANY',
-      status: 'PENDING',
+      status: 'ACTIVE',
       createdAt: new Date().toISOString()
     };
 
@@ -9884,7 +9891,7 @@ function AgencyCompanies({ companies, units, companyUsers, clients, assignments,
       agencyId: targetAgencyId,
       email: login,
       fullName: userData.fullName,
-      status: 'PENDING',
+      status: 'ACTIVE',
       createdAt: new Date().toISOString()
     });
     
