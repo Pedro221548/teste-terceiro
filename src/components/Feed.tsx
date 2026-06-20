@@ -196,12 +196,20 @@ export const Feed = () => {
   const [postContent, setPostContent] = useState('');
   const [postType, setPostType] = useState('TRAINING');
 
-  // Load all users once for mentions
+  // Load users for mentions (scoped by role)
   useEffect(() => {
-    getDocs(collection(db, 'users')).then(snap => {
+    if (userRole === null) return;
+    
+    let usersQuery = query(collection(db, 'users'));
+    if (userRole !== 'ADMIN') {
+      if (!agencyInfo?.id) return;
+      usersQuery = query(collection(db, 'users'), where('agencyId', '==', agencyInfo.id));
+    }
+    
+    getDocs(usersQuery).then(snap => {
       setAllUsersData(snap.docs.map(d => ({id: d.id, ...d.data() as any})));
     }).catch(err => console.error('Error fetching users:', err));
-  }, []);
+  }, [userRole, agencyInfo?.id]);
 
   // Auth and user info
   useEffect(() => {
@@ -227,7 +235,15 @@ export const Feed = () => {
 
   // Posts Listener
   useEffect(() => {
-    const q = query(collection(db, 'feedPosts'), orderBy('createdAt', 'desc'), limit(postLimit));
+    if (userRole === null) return; // Wait for role resolution
+
+    let q = query(collection(db, 'feedPosts'), orderBy('createdAt', 'desc'), limit(postLimit));
+    
+    if (userRole !== 'ADMIN') {
+      if (!agencyInfo?.id) return; // Wait for agency information
+      q = query(collection(db, 'feedPosts'), where('agencyId', '==', agencyInfo.id), orderBy('createdAt', 'desc'), limit(postLimit));
+    }
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeedPost));
       
@@ -254,7 +270,7 @@ export const Feed = () => {
       setIsLoadingPosts(false);
     });
     return unsubscribe;
-  }, [postLimit]);
+  }, [postLimit, userRole, agencyInfo?.id]);
 
   // Comments Listener scoped to visible posts
   useEffect(() => {
@@ -489,7 +505,7 @@ export const Feed = () => {
       const { name: creatorName, photo: creatorPhotoUrl } = await getUserProfile(auth.currentUser.uid);
 
       await addDoc(collection(db, 'feedPosts'), {
-        agencyId: agencyInfo?.id || 'agency_placeholder',
+        agencyId: agencyInfo?.id || null,
         title: postTitle,
         content: postContent,
         type: postType,

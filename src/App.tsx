@@ -2294,11 +2294,11 @@ export default function App() {
 
     const filterByAgency = (data: any[]) => {
       if (role === 'ADMIN') {
-        if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId || !d.agencyId);
+        if (selectedAgencyId) return data.filter(d => d.agencyId === selectedAgencyId);
         return data;
       }
       if (role === 'AGENCY' || role === 'COMPANY') {
-        if (currentAgencyId) return data.filter(d => d.agencyId === currentAgencyId || !d.agencyId);
+        if (currentAgencyId) return data.filter(d => d.agencyId === currentAgencyId);
       }
       if (role === 'EMPLOYEE') {
         // Employees should see all clients/units/companies to avoid N/A in their schedule
@@ -2333,10 +2333,10 @@ export default function App() {
       }
     }, assignmentConstraints);
     
-    const unsubFeedbacks = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Feedback>('feedbacks', (data) => setFeedbacks(filterByAgency(data))) : () => {};
+    const unsubFeedbacks = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Feedback>('feedbacks', (data) => setFeedbacks(filterByAgency(data)), (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     
     // Only agency/admin sees contacts
-    const unsubContacts = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<ContactRequest>('contacts', (data) => setContacts(filterByAgency(data))) : () => {};
+    const unsubContacts = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<ContactRequest>('contacts', (data) => setContacts(filterByAgency(data)), role === 'AGENCY' && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     const unsubEmployeeRegistrations = (role === 'AGENCY' || role === 'ADMIN') ? subscribeToCollection<EmployeeRegistration>('employeeRegistrations', (docs) => {
       const filtered = filterByAgency(docs);
       setEmployeeRegistrations(prev => {
@@ -2344,7 +2344,7 @@ export default function App() {
         if (newRegs.length > prev.filter(d => d.status === 'PENDING').length) playNotificationSound();
         return filtered;
       });
-    }) : () => {};
+    }, role === 'AGENCY' && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     
     // Role-based check-ins subscription
     
@@ -2354,7 +2354,7 @@ export default function App() {
     const unsubUnits = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN' || role === 'EMPLOYEE') ? subscribeToCollection<Unit>('units', (data) => {
       setUnits(filterByAgency(data));
     }, (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
-    const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data))) : () => {};
+    const unsubCompanyUsers = (role === 'AGENCY' || role === 'COMPANY' || role === 'ADMIN') ? subscribeToCollection<CompanyUser>('companyUsers', (data) => setCompanyUsers(filterByAgency(data)), (role === 'AGENCY' || role === 'COMPANY') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []) : () => {};
     const unsubCompanyRequests = subscribeToCollection<CompanyRequest>('companyRequests', (docs) => {
       const filtered = filterByAgency(docs);
       
@@ -2379,7 +2379,7 @@ export default function App() {
         }
         return filtered;
       });
-    });
+    }, (role === 'AGENCY' || role === 'COMPANY') && currentAgencyId ? [where('agencyId', '==', currentAgencyId)] : []);
 
     const notificationConstraints = [];
     if (role !== 'ADMIN') {
@@ -3392,21 +3392,37 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
     if (!agencyToDelete) return;
 
     try {
+      // Coleções para procurar e excluir dados vinculados a agencyId
+      const collectionsToClean = [
+        'users', 'employees', 'clients', 'companies', 'units', 'companyUsers',
+        'companyRequests', 'employeeRegistrations', 'assignments', 'feedbacks',
+        'contacts', 'checkins', 'invoices', 'bulletins', 'feedPosts'
+      ];
+      
       // Excluir a agência
       await deleteDocument('agencies', agencyToDelete);
       
-      // Tentar limpar dependências básicas do dono, se possível
-      const agencyUsers = usersList.filter(u => u.agencyId === agencyToDelete && u.role === 'AGENCY');
-      for (const u of agencyUsers) {
-        await deleteDocument('users', u.id);
+      // Criar queries para deletar todos os documentos das coleções que pertençam a esta agência
+      for (const col of collectionsToClean) {
+        try {
+          const q = query(collection(db, col), where('agencyId', '==', agencyToDelete));
+          const querySnapshot = await getDocs(q);
+          const deletePromises = querySnapshot.docs.map(docSnap => deleteDocument(col, docSnap.id));
+          await Promise.all(deletePromises);
+        } catch (colError) {
+          console.error(`Erro ao limpar coleção ${col} para agência ${agencyToDelete}:`, colError);
+        }
       }
       
-      toast.success('Agência excluída permanentemente!');
+      // Opcional: deletar comentários de posts que foram excluídos (um pouco complexo para client-side genérico,
+      // mas os feedPosts já foram isolados pela query agencyId agora).
+      
+      toast.success('Agência e todos os seus dados vinculados foram excluídos permanentemente!');
       setShowDetailsModal(false);
       setAgencyToDelete(null);
     } catch (error) {
       console.error('Error deleting agency:', error);
-      toast.error('Erro ao excluir a agência.');
+      toast.error('Erro ao excluir a agência. Alguns dados podem ter ficado residuais.');
     }
   };
 
@@ -6595,6 +6611,14 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         }
       } catch (error) {
         console.error('Failed to call delete-user API:', error);
+      }
+      
+      try {
+        const q = query(collection(db, 'feedPosts'), where('creatorId', '==', deleteEmployee.id));
+        const qs = await getDocs(q);
+        await Promise.all(qs.docs.map(d => deleteDocument('feedPosts', d.id)));
+      } catch (e) {
+        console.error('Failed to cleanup feedposts for user', e);
       }
       
       await deleteDocument('employees', deleteEmployee.id);
@@ -15126,6 +15150,14 @@ const UserManagement = ({ employees, companyUsers, role }: { employees: Employee
     if (!deleteTarget) return;
     const { id, type } = deleteTarget;
     try {
+      try {
+        const q = query(collection(db, 'feedPosts'), where('creatorId', '==', id));
+        const qs = await getDocs(q);
+        await Promise.all(qs.docs.map(d => deleteDocument('feedPosts', d.id)));
+      } catch (e) {
+        console.error('Failed to cleanup feedposts for user', e);
+      }
+      
       await deleteDocument(type === 'EMPLOYEE' ? 'employees' : 'companyUsers', id);
       await deleteDocument('users', id);
       toast.success('Usuário excluído com sucesso!');
