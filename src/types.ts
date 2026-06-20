@@ -134,6 +134,14 @@ export interface Client {
   managerName: string;
   location?: string;
   activeScales?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  email?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Company {
@@ -178,6 +186,13 @@ export interface Unit {
     lng: number;
   };
   favoriteEmployees?: string[]; // Array of employee IDs
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CheckIn {
@@ -307,6 +322,8 @@ export interface AppNotification {
   createdAt: string;
   link?: string;
   assignmentId?: string;
+  clientId?: string;
+  requestId?: string;
 }
 
 export interface Message {

@@ -78,6 +78,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
+import MapViewerModal from './components/MapViewerModal';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, AppNotification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
@@ -3120,6 +3121,8 @@ export default function App() {
                       assignments={assignments}
                       notifications={notifications}
                       pricing={pricing}
+                      clients={clients}
+                      companies={companies}
                     />
                   </div>
                 )}
@@ -5421,6 +5424,17 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
   const [cancelReason, setCancelReason] = useState('');
   const [isCanceling, setIsCanceling] = useState(false);
   
+  // Local Map Modal State
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [mapCompanyDetails, setMapCompanyDetails] = useState<{
+    name: string;
+    address: string;
+    phone?: string;
+    email?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
+  
   const employee = employees.find(e => e.id === employeeId);
   const myAssignments = assignments.filter(a => a.employeeId === employeeId);
   const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -5523,6 +5537,76 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
       toast.error('Erro ao cancelar diária.');
     } finally {
       setIsCanceling(false);
+    }
+  };
+
+  const DEFAULT_MAP_LAT = -23.55052;
+  const DEFAULT_MAP_LNG = -46.633308;
+
+  const handleOpenMap = (clientOrUnit: any) => {
+    if (!clientOrUnit) return;
+    
+    const name = clientOrUnit.name || 'Cliente';
+    const address = clientOrUnit.location || clientOrUnit.address || '';
+    const linkedCompany = clientOrUnit.companyId ? companies.find(c => c.id === clientOrUnit.companyId) : null;
+    const phone = clientOrUnit.phone || linkedCompany?.phone || '';
+    const email = clientOrUnit.email || linkedCompany?.email || '';
+    
+    let latitude = clientOrUnit.latitude;
+    let longitude = clientOrUnit.longitude;
+    
+    if (latitude === undefined || latitude === null || isNaN(latitude)) {
+      if (clientOrUnit.coordinates?.lat) {
+        latitude = clientOrUnit.coordinates.lat;
+        longitude = clientOrUnit.coordinates.lng;
+      } else {
+        const hash = name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+        const latOffset = ((hash % 100) - 50) / 1000;
+        const lngOffset = ((hash % 70) - 35) / 1000;
+        latitude = DEFAULT_MAP_LAT + latOffset;
+        longitude = DEFAULT_MAP_LNG + lngOffset;
+      }
+    }
+    
+    setMapCompanyDetails({
+      name,
+      address,
+      phone,
+      email,
+      latitude,
+      longitude
+    });
+    setMapModalOpen(true);
+  };
+
+  const handleOpenMapForNotification = (notification: any) => {
+    let clientToMap = null;
+    
+    if (notification.clientId) {
+      clientToMap = clients.find(c => c.id === notification.clientId);
+    }
+    
+    if (!clientToMap) {
+      clientToMap = clients.find(c => {
+        const cName = c.name?.toLowerCase() || '';
+        const nMsg = notification.message?.toLowerCase() || '';
+        return cName && nMsg.includes(cName);
+      });
+    }
+    
+    if (clientToMap) {
+      handleOpenMap(clientToMap);
+    } else {
+      const matchedName = notification.message?.match(/empresa\s+([A-Za-z0-9\s\-]+?)\./i);
+      const name = matchedName?.[1] || notification.title || 'Cliente';
+      
+      setMapCompanyDetails({
+        name,
+        address: 'Consulte o painel da vaga para obter o endereço.',
+        latitude: DEFAULT_MAP_LAT,
+        longitude: DEFAULT_MAP_LNG
+      });
+      setMapModalOpen(true);
     }
   };
 
@@ -5691,6 +5775,18 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                   <div className="text-center sm:text-left space-y-2">
                     <h4 className="text-2xl font-black text-white tracking-tight uppercase">{notification.title}</h4>
                     <p className="text-base font-medium text-slate-400 max-w-md leading-relaxed">{notification.message}</p>
+                    {(notification.type === 'ASSIGNMENT' || notification.clientId || notification.requestId || notification.title?.toLowerCase().includes('oportunidade')) && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenMapForNotification(notification)}
+                          className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-95"
+                        >
+                          <MapPin size={12} className="text-blue-400" />
+                          <span>📍 Ver Localização</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -5761,27 +5857,15 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
                           Vagas totais: {offer.quantity}
                         </p>
                         
-                        {client?.location && (
+                        {client && (
                           <div className="mt-2">
-                            {isLocationLink ? (
-                              <a 
-                                href={client.location.startsWith('http') ? client.location : `https://${client.location}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
-                              >
-                                <MapPin size={14} /> Ver Localização no Mapa
-                              </a>
-                            ) : (
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.location)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors cursor-pointer"
-                              >
-                                <MapPin size={14} /> {client.location} - Ver no Mapa
-                              </a>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenMap(client)}
+                              className="inline-flex items-center gap-2 bg-emerald-650 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
+                            >
+                              <MapPin size={14} /> 📍 Ver Localização no Mapa
+                            </button>
                           </div>
                         )}
                       </div>
@@ -6196,6 +6280,22 @@ function EmployeeSchedule({ employeeId, employees, assignments, notifications, c
           </motion.div>
         </div>
       )}
+
+      {/* Map modal inside EmployeeSchedule */}
+      <AnimatePresence>
+        {mapModalOpen && mapCompanyDetails && (
+          <MapViewerModal
+            isOpen={mapModalOpen}
+            onClose={() => setMapModalOpen(false)}
+            companyName={mapCompanyDetails.name}
+            address={mapCompanyDetails.address}
+            phone={mapCompanyDetails.phone}
+            email={mapCompanyDetails.email}
+            latitude={mapCompanyDetails.latitude}
+            longitude={mapCompanyDetails.longitude}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -8322,6 +8422,17 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
   const [activeRequest, setActiveRequest] = useState<CompanyRequest | null>(null);
   const [rejectingRequest, setRejectingRequest] = useState<CompanyRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  
+  // Map Modal State Definition
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [mapCompanyDetails, setMapCompanyDetails] = useState<{
+    name: string;
+    address: string;
+    phone?: string;
+    email?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
   const [expandedInconsistencyEmpId, setExpandedInconsistencyEmpId] = useState<string | null>(null);
@@ -8489,7 +8600,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
               message: `Vaga de trabalho para ${modalJobFunction} no dia ${formattedDate} na empresa ${companyName}. Diária de ${formattedRate}. Acesse o Prostaff para aceitar!`,
               type: 'ASSIGNMENT',
               read: false,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              requestId: requestForModal.id,
+              clientId: requestForModal.clientId
             });
 
             // Log notification creation
@@ -9834,6 +9947,19 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
               </div>
             </motion.div>
           </div>
+        )}
+
+        {mapModalOpen && mapCompanyDetails && (
+          <MapViewerModal
+            isOpen={mapModalOpen}
+            onClose={() => setMapModalOpen(false)}
+            companyName={mapCompanyDetails.name}
+            address={mapCompanyDetails.address}
+            phone={mapCompanyDetails.phone}
+            email={mapCompanyDetails.email}
+            latitude={mapCompanyDetails.latitude}
+            longitude={mapCompanyDetails.longitude}
+          />
         )}
       </AnimatePresence>
     </motion.div>
@@ -12689,8 +12815,90 @@ function CompanyProfile({ companyUserId, companyUsers, companies }: { companyUse
   );
 }
 
-function EmployeeProfile({ employeeId, employees, assignments, notifications, pricing }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: AppNotification[], pricing: PricingConfig }) {
+function EmployeeProfile({ employeeId, employees, assignments, notifications, pricing, clients, companies }: { employeeId: string, employees: Employee[], assignments: Assignment[], notifications: AppNotification[], pricing: PricingConfig, clients: Client[], companies: Company[] }) {
   const [showFaceUpdate, setShowFaceUpdate] = useState(false);
+  
+  // Local Map Modal State for EmployeeProfile
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [mapCompanyDetails, setMapCompanyDetails] = useState<{
+    name: string;
+    address: string;
+    phone?: string;
+    email?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
+
+  const DEFAULT_MAP_LAT = -23.55052;
+  const DEFAULT_MAP_LNG = -46.633308;
+
+  const handleOpenMap = (clientOrUnit: any) => {
+    if (!clientOrUnit) return;
+    
+    const name = clientOrUnit.name || 'Cliente';
+    const address = clientOrUnit.location || clientOrUnit.address || '';
+    const linkedCompany = clientOrUnit.companyId ? companies.find(c => c.id === clientOrUnit.companyId) : null;
+    const phone = clientOrUnit.phone || linkedCompany?.phone || '';
+    const email = clientOrUnit.email || linkedCompany?.email || '';
+    
+    let latitude = clientOrUnit.latitude;
+    let longitude = clientOrUnit.longitude;
+    
+    if (latitude === undefined || latitude === null || isNaN(latitude)) {
+      if (clientOrUnit.coordinates?.lat) {
+        latitude = clientOrUnit.coordinates.lat;
+        longitude = clientOrUnit.coordinates.lng;
+      } else {
+        const hash = name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+        const latOffset = ((hash % 100) - 50) / 1000;
+        const lngOffset = ((hash % 70) - 35) / 1000;
+        latitude = DEFAULT_MAP_LAT + latOffset;
+        longitude = DEFAULT_MAP_LNG + lngOffset;
+      }
+    }
+    
+    setMapCompanyDetails({
+      name,
+      address,
+      phone,
+      email,
+      latitude,
+      longitude
+    });
+    setMapModalOpen(true);
+  };
+
+  const handleOpenMapForNotification = (notification: any) => {
+    let clientToMap = null;
+    
+    if (notification.clientId) {
+      clientToMap = clients?.find(c => c.id === notification.clientId);
+    }
+    
+    if (!clientToMap) {
+      clientToMap = clients?.find(c => {
+        const cName = c.name?.toLowerCase() || '';
+        const nMsg = notification.message?.toLowerCase() || '';
+        return cName && nMsg.includes(cName);
+      });
+    }
+    
+    if (clientToMap) {
+      handleOpenMap(clientToMap);
+    } else {
+      const matchedName = notification.message?.match(/empresa\s+([A-Za-z0-9\s\-]+?)\./i);
+      const name = matchedName?.[1] || notification.title || 'Cliente';
+      
+      setMapCompanyDetails({
+        name,
+        address: 'Consulte o painel da vaga para obter o endereço.',
+        latitude: DEFAULT_MAP_LAT,
+        longitude: DEFAULT_MAP_LNG
+      });
+      setMapModalOpen(true);
+    }
+  };
+
   const employee = employees.find(e => e.id === employeeId);
   const pendingAssignments = assignments.filter(a => a.employeeId === employeeId && a.status === 'SCHEDULED' && !a.confirmed);
   const myNotifications = notifications.filter(n => n.userId === employeeId && !n.read);
@@ -12796,6 +13004,18 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, pr
                   <div>
                     <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">{notification.title}</h4>
                     <p className="text-xs font-medium text-blue-600 mt-1">{notification.message}</p>
+                    {(notification.type === 'ASSIGNMENT' || notification.clientId || notification.requestId || notification.title?.toLowerCase().includes('oportunidade')) && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenMapForNotification(notification)}
+                          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer transition-all active:scale-95 border border-transparent shadow-sm"
+                        >
+                          <MapPin size={10} />
+                          Ver Localização no Mapa
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -12985,6 +13205,22 @@ function EmployeeProfile({ employeeId, employees, assignments, notifications, pr
           </div>
         </div>
       )}
+
+      {/* Map viewer modal inside EmployeeProfile */}
+      <AnimatePresence>
+        {mapModalOpen && mapCompanyDetails && (
+          <MapViewerModal
+            isOpen={mapModalOpen}
+            onClose={() => setMapModalOpen(false)}
+            companyName={mapCompanyDetails.name}
+            address={mapCompanyDetails.address}
+            phone={mapCompanyDetails.phone}
+            email={mapCompanyDetails.email}
+            latitude={mapCompanyDetails.latitude}
+            longitude={mapCompanyDetails.longitude}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
