@@ -14701,7 +14701,7 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
     const agencyId = params.get('agencyId');
     const urlCategory = params.get('category') as 'DIARISTA' | 'CONTRATADO' | null;
 
-    const newEmployeeRegistration = {
+    const newEmployeeRegistration: any = {
       firstName,
       lastName,
       cpf: formData.cpf,
@@ -14709,16 +14709,17 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
       phone: formData.phone,
       personalEmail: formData.personalEmail,
       lgpdAuthorized: formData.lgpdAuthorized,
-      photoUrl: formData.photo || undefined,
-      docUrl: formData.document ? formData.document.name : undefined,
-      eSocialUrl: formData.eSocialBase64 || undefined,
-      faceReferenceUrl: formData.faceReference || undefined,
       status: 'PENDING',
-      agencyId: agencyId || undefined,
       category: urlCategory || formData.category,
-      profession: formData.profession,
+      profession: formData.profession || '',
       createdAt: new Date().toISOString()
     };
+    
+    if (formData.photo) newEmployeeRegistration.photoUrl = formData.photo;
+    if (formData.document) newEmployeeRegistration.docUrl = formData.document.name;
+    if (formData.eSocialBase64) newEmployeeRegistration.eSocialUrl = formData.eSocialBase64;
+    if (formData.faceReference) newEmployeeRegistration.faceReferenceUrl = formData.faceReference;
+    if (agencyId) newEmployeeRegistration.agencyId = agencyId;
 
     try {
       const docId = await createDocument('employeeRegistrations', newEmployeeRegistration);
