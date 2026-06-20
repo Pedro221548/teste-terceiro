@@ -1707,7 +1707,7 @@ function AgencyPendingScreen({ status, onLogout, isDarkMode, setIsDarkMode }: { 
       </div>
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl max-w-md w-full text-center border border-slate-200 dark:border-slate-800">
         <div className="w-20 h-20 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-400">
-          <ShieldAlert size={32} />
+          <AlertCircle size={32} />
         </div>
         <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Conta em Análise</h2>
         <p className="text-slate-500 dark:text-slate-400 mb-8 font-medium">
@@ -14452,6 +14452,7 @@ function AgencyRegistrationForm({ onComplete, plans }: { onComplete: () => void,
 
 function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, agencies: Agency[] }) {
   const [step, setStep] = useState<'INFO' | 'PHOTO' | 'DOCUMENT' | 'FACE_REG'>('INFO');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     cpf: '',
@@ -14521,14 +14522,63 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.photo) {
-      toast("Por favor, tire uma foto para o cadastro.");
+    if (isSubmitting) return;
+
+    // Validações completas para todos os campos obrigatórios
+    if (!formData.fullName.trim()) {
+      toast.error("Por favor, preencha o seu nome completo.");
+      return;
+    }
+    const names = formData.fullName.trim().split(' ').filter(Boolean);
+    if (names.length < 2) {
+      toast.error("Por favor, preencha o seu nome completo (Nome e Sobrenome).");
       return;
     }
 
-    const names = formData.fullName.split(' ');
+    if (!formData.cpf.trim()) {
+      toast.error("Por favor, preencha o seu CPF.");
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      toast.error("Por favor, preencha o seu WhatsApp.");
+      return;
+    }
+
+    if (!formData.birthDate.trim()) {
+      toast.error("Por favor, preencha a sua data de nascimento.");
+      return;
+    }
+
+    if (!formData.personalEmail.trim()) {
+      toast.error("Por favor, preencha o seu e-mail.");
+      return;
+    }
+
+    if (!formData.profession) {
+      toast.error("Por favor, selecione a sua profissão.");
+      return;
+    }
+
+    if (!formData.photo) {
+      toast.error("Por favor, envie ou tire uma foto de perfil para o cadastro.");
+      return;
+    }
+
+    if (!formData.document) {
+      toast.error("Por favor, envie o seu documento (RG ou CNH).");
+      return;
+    }
+
+    if (!formData.lgpdAuthorized) {
+      toast.error("Você precisa autorizar o uso dos seus dados (LGPD) para continuar.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     const firstName = names[0];
-    const lastName = names.slice(1).join(' ') || '';
+    const lastName = names.slice(1).join(' ');
 
     const params = new URLSearchParams(window.location.search);
     const agencyId = params.get('agencyId');
@@ -14553,11 +14603,18 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
       createdAt: new Date().toISOString()
     };
 
-    await createDocument('employeeRegistrations', newEmployeeRegistration);
-    toast.success('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
-    setTimeout(() => {
-      onComplete();
-    }, 1500);
+    try {
+      const docId = await createDocument('employeeRegistrations', newEmployeeRegistration);
+      toast.success('Cadastro enviado com sucesso! Nossa equipe entrará em contato.');
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    } catch (firebaseError: any) {
+      console.error("Erro ao salvar cadastro no Firestore:", firebaseError);
+      toast.error(`Falha ao salvar o cadastro: ${firebaseError?.message || firebaseError}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -14848,9 +14905,10 @@ function RegistrationForm({ onComplete, agencies }: { onComplete: () => void, ag
             <div className="pt-6">
               <button 
                 type="submit" 
-                className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-xl hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/20 active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-xl hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Finalizar Cadastro
+                {isSubmitting ? "Enviando..." : "Finalizar Cadastro"}
               </button>
               <p className="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold">
                 Ao enviar, você concorda com nossos termos de uso e LGPD.
