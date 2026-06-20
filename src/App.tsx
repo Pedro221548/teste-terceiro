@@ -1273,9 +1273,9 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
   const [scannedUnitId, setScannedUnitId] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [type, setType] = useState<'IN' | 'OUT' | null>(null);
+  const [type, setType] = useState<'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END' | null>(null);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
-  const [adjType, setAdjType] = useState<'IN' | 'OUT'>('IN');
+  const [adjType, setAdjType] = useState<'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END'>('IN');
   const [adjTime, setAdjTime] = useState('');
   const [adjReason, setAdjReason] = useState('');
   const [adjUnitId, setAdjUnitId] = useState('');
@@ -1348,6 +1348,22 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
   };
 
   const myCheckins = checkins.filter(ci => ci.employeeId === user?.uid).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const lastPunchType = myCheckins.length > 0 ? myCheckins[0].type : null;
+  
+  let nextPunchBtn: { type: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END', label: string, color: string, icon: any } = {
+    type: 'IN', label: 'ENTRADA', color: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 dark:shadow-emerald-900/20 text-white', icon: <ArrowUpRight size={24} />
+  };
+
+  if (lastPunchType === 'IN') {
+    nextPunchBtn = { type: 'BREAK_START', label: 'SAÍDA INTERVALO', color: 'bg-amber-500 hover:bg-amber-600 shadow-amber-100 dark:shadow-amber-900/20 text-white', icon: <ArrowRight size={24} /> };
+  } else if (lastPunchType === 'BREAK_START') {
+    nextPunchBtn = { type: 'BREAK_END', label: 'VOLTA INTERVALO', color: 'bg-blue-600 hover:bg-blue-700 shadow-blue-100 dark:shadow-blue-900/20 text-white', icon: <ArrowUpRight size={24} /> };
+  } else if (lastPunchType === 'BREAK_END') {
+    nextPunchBtn = { type: 'OUT', label: 'SAÍDA', color: 'bg-rose-600 hover:bg-rose-700 shadow-rose-100 dark:shadow-rose-900/20 text-white', icon: <ArrowRight size={24} className="rotate-45" /> };
+  } else if (lastPunchType === 'OUT') {
+    nextPunchBtn = { type: 'IN', label: 'ENTRADA', color: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 dark:shadow-emerald-900/20 text-white', icon: <ArrowUpRight size={24} /> };
+  }
 
   const handleAdjustmentSubmit = async () => {
     if (!user || !adjUnitId || !adjTime || !adjReason) {
@@ -1439,7 +1455,8 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
                 onClick={() => {
                   const inc = myInconsistencies[0];
                   setAdjUnitId(inc.lastPunch.unitId);
-                  setAdjType(inc.lastPunch.type === 'IN' ? 'OUT' : 'IN');
+                  const nextAdjType = inc.lastPunch.type === 'IN' ? 'BREAK_START' : inc.lastPunch.type === 'BREAK_START' ? 'BREAK_END' : inc.lastPunch.type === 'BREAK_END' ? 'OUT' : 'IN';
+                  setAdjType(nextAdjType);
                   // Extract YYYY-MM-DD from the timestamp
                   setAdjDate(new Date(inc.lastPunch.timestamp).toISOString().split('T')[0]);
                   setShowAdjustmentModal(true);
@@ -1458,20 +1475,13 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
             <p className="text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto">
               Escaneie o QR Code da unidade para registrar sua entrada ou saída.
             </p>
-            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+            <div className="flex justify-center">
               <button 
-                onClick={() => { setType('IN'); setScanning(true); }}
-                className="py-6 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 dark:shadow-emerald-900/20 flex flex-col items-center gap-3"
+                onClick={() => { setType(nextPunchBtn.type); setScanning(true); }}
+                className={`w-full max-w-xs py-6 ${nextPunchBtn.color} rounded-[2rem] font-black uppercase tracking-widest text-xs transition-all shadow-xl flex flex-col items-center gap-3`}
               >
-                <ArrowUpRight size={24} />
-                Entrada
-              </button>
-              <button 
-                onClick={() => { setType('OUT'); setScanning(true); }}
-                className="py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-rose-700 transition-all shadow-xl shadow-rose-100 dark:shadow-rose-900/20 flex flex-col items-center gap-3"
-              >
-                <ArrowRight size={24} className="rotate-45" />
-                Saída
+                {nextPunchBtn.icon}
+                {nextPunchBtn.label}
               </button>
             </div>
           </div>
@@ -1484,11 +1494,13 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
                 return (
                   <div key={ci.id} className="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ci.type === 'IN' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'}`}>
-                        {ci.type === 'IN' ? <ArrowUpRight size={20} /> : <ArrowRight size={20} className="rotate-45" />}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ci.type === 'IN' || ci.type === 'BREAK_END' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : ci.type === 'BREAK_START' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'}`}>
+                        {ci.type === 'IN' || ci.type === 'BREAK_END' ? <ArrowUpRight size={20} /> : <ArrowRight size={20} className={ci.type === 'OUT' ? "rotate-45" : ""} />}
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 dark:text-white text-sm">{ci.type === 'IN' ? 'Entrada' : 'Saída'}</p>
+                        <p className="font-black text-slate-900 dark:text-white text-sm">
+                          {ci.type === 'IN' ? 'Entrada' : ci.type === 'BREAK_START' ? 'Saída Intervalo' : ci.type === 'BREAK_END' ? 'Volta Intervalo' : 'Saída'}
+                        </p>
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{ciUnit?.name || 'Unidade'}</p>
                       </div>
                     </div>
@@ -1566,7 +1578,7 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Confirmar Registro</h3>
-              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{type === 'IN' ? 'Entrada' : 'Saída'} em {unit?.name}</p>
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{type === 'IN' ? 'Entrada' : type === 'BREAK_START' ? 'Saída Intervalo' : type === 'BREAK_END' ? 'Volta Intervalo' : 'Saída'} em {unit?.name}</p>
             </div>
             <button onClick={() => { setPhoto(null); startCamera(); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
               <X size={20} className="dark:text-slate-400" />
@@ -1626,10 +1638,12 @@ function SimplePonto({ user, employees, units, checkins }: { user: any, employee
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 font-display">Tipo de Batida</label>
                       <select 
                         value={adjType}
-                        onChange={(e) => setAdjType(e.target.value as 'IN' | 'OUT')}
+                        onChange={(e) => setAdjType(e.target.value as 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END')}
                         className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
                       >
                         <option value="IN">Entrada</option>
+                        <option value="BREAK_START">Saída Intervalo</option>
+                        <option value="BREAK_END">Volta Intervalo</option>
                         <option value="OUT">Saída</option>
                       </select>
                     </div>
@@ -4696,6 +4710,69 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         />
       </div>
 
+      {role === 'AGENCY' && companyRequests.filter(req => req.status === 'PENDING').length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-500">
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-inner">
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Solicitações das Empresas</h3>
+              <p className="text-slate-400 dark:text-slate-500 text-[9px] sm:text-xs font-black uppercase tracking-widest mt-0.5">Pedidos de profissionais para datas específicas</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {companyRequests.filter(req => req.status === 'PENDING').map(req => {
+              const client = clients.find(c => c.id === req.clientId);
+              return (
+                <div key={req.id} className="p-6 sm:p-8 bg-slate-50 dark:bg-slate-950 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-6 transition-colors duration-500">
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white dark:bg-black rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm border border-slate-100 dark:border-slate-800 shrink-0 transition-colors">
+                      <Building2 size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{client?.name || 'Cliente não encontrado'}</h4>
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2">
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                          <Calendar size={12} /> {formatDateBR(req.date)}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                          <Users size={12} /> {req.quantity} {req.quantity === 1 ? 'Profissional' : 'Profissionais'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button 
+                        onClick={() => {
+                          if (setStaffingSubTab) setStaffingSubTab('REQUESTS');
+                          setActiveTab('staffing');
+                        }}
+                        className="flex-1 sm:flex-none px-6 py-3.5 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 transition-all active:scale-95 text-center leading-none"
+                      >
+                        Atender
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (setStaffingSubTab) setStaffingSubTab('REQUESTS');
+                          setActiveTab('staffing');
+                        }}
+                        className="flex-1 sm:flex-none px-6 py-3.5 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-50 dark:hover:bg-slate-900 transition-all active:scale-95 text-center leading-none shadow-sm"
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
           <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Faturamento (Últimos 6 meses)</h3>
@@ -7685,7 +7762,7 @@ function AccessFlow({
           };
         }
         const time = new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        if (ci.type === 'IN') acc[key].entries.push(time);
+        if (ci.type === 'IN' || ci.type === 'BREAK_END') acc[key].entries.push(time);
         else acc[key].exits.push(time);
         return acc;
       }, {} as Record<string, any>);
@@ -8024,14 +8101,26 @@ function AccessFlow({
                                     </td>
                                     <td className="px-8 py-5 text-right">
                                       <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-sm transition-all group-hover/row:shadow-md ${
-                                        isEntry 
+                                        p.type === 'IN' || p.type === 'BREAK_END' 
                                           ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                                          : 'bg-rose-600 text-white hover:bg-rose-700'
+                                          : p.type === 'BREAK_START'
+                                            ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                            : 'bg-rose-600 text-white hover:bg-rose-700'
                                       }`}>
-                                        {isEntry ? (
+                                        {p.type === 'IN' ? (
                                           <>
                                             <ArrowDownLeft size={16} />
                                             <span>Entrada</span>
+                                          </>
+                                        ) : p.type === 'BREAK_START' ? (
+                                          <>
+                                            <ArrowUpRight size={16} />
+                                            <span>S. Intervalo</span>
+                                          </>
+                                        ) : p.type === 'BREAK_END' ? (
+                                          <>
+                                            <ArrowDownLeft size={16} />
+                                            <span>V. Intervalo</span>
                                           </>
                                         ) : (
                                           <>
@@ -8369,9 +8458,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                             <div key={ci.id || idx} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-4">
                               <div className="flex items-center justify-between">
                                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                  ci.type === 'IN' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                                  ci.type === 'IN' || ci.type === 'BREAK_END' ? 'bg-emerald-100 text-emerald-600' : ci.type === 'BREAK_START' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
                                 }`}>
-                                  {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                  {ci.type === 'IN' ? 'Entrada' : ci.type === 'BREAK_START' ? 'S. Intervalo' : ci.type === 'BREAK_END' ? 'V. Intervalo' : 'Saída'}
                                 </div>
                                 <span className="text-xs font-bold text-slate-400">
                                   {new Date(ci.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -8382,7 +8471,7 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                                 {ci.photoUrl ? (
                                   <img 
                                     src={ci.photoUrl} 
-                                    alt={`Foto de ${ci.type === 'IN' ? 'Entrada' : 'Saída'}`}
+                                    alt={`Foto de ${ci.type}`}
                                     className="w-full h-full object-cover"
                                     referrerPolicy="no-referrer"
                                   />
@@ -8968,9 +9057,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
                                     <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tight ${
-                                      ci.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                                      ci.type === 'IN' || ci.type === 'BREAK_END' ? 'bg-emerald-50 text-emerald-600' : ci.type === 'BREAK_START' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
                                     }`}>
-                                      Aju. {ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                      Aju. {ci.type === 'IN' ? 'Entrada' : ci.type === 'BREAK_START' ? 'Saída Int.' : ci.type === 'BREAK_END' ? 'Volta Int.' : 'Saída'}
                                     </span>
                                     <span className="font-black text-slate-900 text-sm">{formatTime(ci.timestamp)} - {formatDateBR(ci.timestamp)}</span>
                                   </div>
@@ -9119,9 +9208,9 @@ function AgencyStaffing({ user, employees, assignments, clients, getScaleValue, 
                                         </td>
                                         <td className="p-4 sm:p-6 text-center">
                                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tight ${
-                                            inc.ci.type === 'IN' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
+                                            inc.ci.type === 'IN' || inc.ci.type === 'BREAK_END' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' : inc.ci.type === 'BREAK_START' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
                                           }`}>
-                                            {inc.ci.type === 'IN' ? 'Entrada' : 'Saída'}
+                                            {inc.ci.type === 'IN' ? 'Entrada' : inc.ci.type === 'BREAK_START' ? 'S. Intervalo' : inc.ci.type === 'BREAK_END' ? 'V. Intervalo' : 'Saída'}
                                           </span>
                                         </td>
                                         <td className="p-4 sm:p-6 text-center">

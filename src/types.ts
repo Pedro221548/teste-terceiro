@@ -185,7 +185,7 @@ export interface CheckIn {
   employeeId: string;
   unitId: string;
   timestamp: string;
-  type: 'IN' | 'OUT';
+  type: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END';
   photoUrl: string;
   status?: 'APPROVED' | 'PENDING' | 'REJECTED';
   isAdjustment?: boolean;
