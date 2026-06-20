@@ -3380,6 +3380,29 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
     }
   };
 
+  const handleDeleteAgency = async (agencyId: string) => {
+    if (!window.confirm('Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta agência e todos os seus dados vinculados? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+    
+    try {
+      // Excluir a agência
+      await deleteDocument('agencies', agencyId);
+      
+      // Tentar limpar dependências básicas do dono, se possível
+      const agencyUsers = usersList.filter(u => u.agencyId === agencyId && u.role === 'AGENCY');
+      for (const u of agencyUsers) {
+        await deleteDocument('users', u.id);
+      }
+      
+      toast.success('Agência excluída permanentemente!');
+      setShowDetailsModal(false);
+    } catch (error) {
+      console.error('Error deleting agency:', error);
+      toast.error('Erro ao excluir a agência.');
+    }
+  };
+
   return (
     <div className="space-y-8">
       {showDetailsModal && selectedAgency && (
@@ -3822,6 +3845,13 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
                           title="Ver Detalhes"
                         >
                           <Eye size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteAgency(agency.id)}
+                          className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
+                          title="Excluir Agência"
+                        >
+                          <Trash2 size={18} />
                         </button>
                         <button 
                           onClick={() => onManageAgency(agency.id)}
