@@ -6181,7 +6181,7 @@ function EmployeeFeedbackView({ feedbacks, employees, clients }: { feedbacks: Fe
   );
 }
 
-function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee, onClose: () => void, onComplete: (username: string) => void }) {
+function CreateUserModal({ employee, onClose, onComplete, agencies, agencyId, selectedAgencyId }: { employee: Employee, onClose: () => void, onComplete: (username: string) => void, agencies: Agency[], agencyId: string | null, selectedAgencyId?: string | null }) {
   const [username, setUsername] = useState(`${employee.firstName.toLowerCase()}.${employee.lastName.toLowerCase().split(' ')[0]}`);
   const [password, setPassword] = useState(Math.random().toString(36).slice(-8));
   const [isSending, setIsSending] = useState(false);
@@ -6191,7 +6191,16 @@ function CreateUserModal({ employee, onClose, onComplete }: { employee: Employee
     setIsSending(true);
     
     try {
-      const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
+      const targetAgencyId = selectedAgencyId || agencyId || employee.agencyId;
+      const currentAgency = agencies.find(a => a.id === targetAgencyId);
+      const agencyDomainName = currentAgency?.tradeName 
+        ? currentAgency.tradeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+        : currentAgency?.name 
+          ? currentAgency.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+          : 'b11';
+      const domain = `${agencyDomainName || 'b11'}.com`;
+      
+      const emailForAuth = username.includes('@') ? username : `${username}@${domain}`;
       
       // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
       const newUid = await createNewUser(emailForAuth, password);
@@ -6322,7 +6331,14 @@ function ProcessRegistrationModal({ registration, onClose, onComplete, agencyId,
       }
 
       // 1. Create Firebase Auth user via secondary app to avoid automatic sign-in
-      const emailForAuth = username.includes('@') ? username : `${username}@b11.com`;
+      const agencyDomainName = currentAgency?.tradeName 
+        ? currentAgency.tradeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+        : currentAgency?.name 
+          ? currentAgency.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '') 
+          : 'b11';
+      const domain = `${agencyDomainName || 'b11'}.com`;
+      
+      const emailForAuth = username.includes('@') ? username : `${username}@${domain}`;
       
       const newUid = await createNewUser(emailForAuth, password);
 
@@ -6751,6 +6767,9 @@ function AgencyRegistrations({ employees, clients, ratingLabel, agencyId, select
         {showCreateUserModal && employeeToCreateUserFor && (
           <CreateUserModal 
             employee={employeeToCreateUserFor}
+            agencies={agencies}
+            agencyId={agencyId}
+            selectedAgencyId={selectedAgencyId}
             onClose={() => {
               setShowCreateUserModal(false);
               setEmployeeToCreateUserFor(null);
