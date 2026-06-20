@@ -3300,6 +3300,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [agencyToDelete, setAgencyToDelete] = useState<string | null>(null);
   const [invitePhone, setInvitePhone] = useState('');
   const [inviteRole, setInviteRole] = useState<'AGENCY_REGISTRATION' | 'COMPANY_REGISTRATION'>('AGENCY_REGISTRATION');
   const [newAgency, setNewAgency] = useState({ name: '', responsibleName: '', email: '', phone: '' });
@@ -3380,23 +3381,22 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
     }
   };
 
-  const handleDeleteAgency = async (agencyId: string) => {
-    if (!window.confirm('Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta agência e todos os seus dados vinculados? Esta ação não pode ser desfeita.')) {
-      return;
-    }
-    
+  const handleDeleteAgency = async () => {
+    if (!agencyToDelete) return;
+
     try {
       // Excluir a agência
-      await deleteDocument('agencies', agencyId);
+      await deleteDocument('agencies', agencyToDelete);
       
       // Tentar limpar dependências básicas do dono, se possível
-      const agencyUsers = usersList.filter(u => u.agencyId === agencyId && u.role === 'AGENCY');
+      const agencyUsers = usersList.filter(u => u.agencyId === agencyToDelete && u.role === 'AGENCY');
       for (const u of agencyUsers) {
         await deleteDocument('users', u.id);
       }
       
       toast.success('Agência excluída permanentemente!');
       setShowDetailsModal(false);
+      setAgencyToDelete(null);
     } catch (error) {
       console.error('Error deleting agency:', error);
       toast.error('Erro ao excluir a agência.');
@@ -3405,6 +3405,14 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
 
   return (
     <div className="space-y-8">
+      <ConfirmationModal
+        isOpen={!!agencyToDelete}
+        onClose={() => setAgencyToDelete(null)}
+        onConfirm={handleDeleteAgency}
+        title="Excluir Agência"
+        message="Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta agência e todos os seus dados vinculados? Esta ação não pode ser desfeita."
+        confirmText="Excluir Permanentemente"
+      />
       {showDetailsModal && selectedAgency && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <motion.div
@@ -3847,7 +3855,7 @@ function SuperAdminAgencies({ agencies, companies, employees, usersList, onManag
                           <Eye size={18} />
                         </button>
                         <button 
-                          onClick={() => handleDeleteAgency(agency.id)}
+                          onClick={() => setAgencyToDelete(agency.id)}
                           className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
                           title="Excluir Agência"
                         >
