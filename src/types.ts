@@ -148,6 +148,7 @@ export interface Company {
   paymentDay?: string;
   createdAt: string;
   status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
+  isTrial?: boolean;
   services?: string[];
   documents?: {
     id: string;
@@ -205,6 +206,7 @@ export interface CompanyUser {
   role: 'COMPANY';
   createdAt: string;
   status?: 'ACTIVE' | 'PENDING' | 'BLOCKED';
+  isTrial?: boolean;
 }
 
 export interface Assignment {

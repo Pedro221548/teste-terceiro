@@ -12395,6 +12395,8 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
   const myUnits = units.filter(u => u.companyId === companyId);
   const favoriteEmployees = employees.filter(e => myUnits.some(u => u.favoriteEmployees?.includes(e.id)));
 
+  const isTrial = company?.isTrial;
+
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
@@ -12612,6 +12614,25 @@ function CompanyDashboard({ companyId, unitId, clients, assignments, employees, 
         animate={{ opacity: 1, y: 0 }}
         className="space-y-10"
       >
+        {isTrial && (
+          <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-2 border-blue-500/20 rounded-2xl p-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 scale-150 transform translate-x-4 -translate-y-4 group-hover:scale-110 group-hover:opacity-20 transition-all duration-700">
+              <AlertCircle size={120} />
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black tracking-tight text-blue-700 dark:text-blue-400 mb-1">Empresa em Modo Experiência</h3>
+                <p className="text-sm font-medium text-blue-600/80 dark:text-blue-300/80">
+                  Sua conta foi criada e está em análise pela agência. Durante este período, você pode explorar os recursos e visualizar as funcionalidades da plataforma.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1 px-2 sm:px-0 mb-2 sm:mb-0 items-center text-center sm:items-start sm:text-left">
           <h2 className="text-base sm:text-4xl font-black text-slate-950 dark:text-white tracking-tight uppercase">Minhas Diarias</h2>
           <p className="text-slate-500 dark:text-slate-400 font-medium text-[8px] sm:text-base">Acompanhe os funcionários agendados para suas unidades.</p>
@@ -13679,9 +13700,13 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           agencyId,
           email: formData.email,
           fullName: formData.fullName,
-          status: 'PENDING',
+          status: 'ACTIVE',
+          isTrial: true,
           createdAt: new Date().toISOString()
         });
+
+        // Set the company itself to active if it's pending
+        await updateDocument('companies', companyId, { status: 'ACTIVE', isTrial: true });
 
         // Create the Unit
         const newUnit: Omit<Unit, 'id'> = {
@@ -13716,12 +13741,13 @@ function CompanyRegistrationForm({ onComplete }: { onComplete: () => void }) {
           fullName: formData.fullName,
           email: formData.email,
           role: 'COMPANY',
-          status: 'PENDING',
+          status: 'ACTIVE',
+          isTrial: true,
           createdAt: new Date().toISOString()
         });
       }
       
-      toast.success('Cadastro concluído com sucesso! Aguarde a aprovação.');
+      toast.success('Cadastro concluído com sucesso!');
       setTimeout(() => {
         onComplete();
       }, 1500);
