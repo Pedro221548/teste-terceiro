@@ -150,3 +150,17 @@ export const getDocument = async <T>(collectionName: string, id: string) => {
     handleFirestoreError(error, OperationType.GET, `${collectionName}/${id}`);
   }
 };
+
+export const getCollection = async <T>(collectionName: string) => {
+  try {
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    const data: T[] = [];
+    querySnapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() } as T);
+    });
+    return data;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, collectionName);
+    return [];
+  }
+};

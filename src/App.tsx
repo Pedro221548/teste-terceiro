@@ -79,6 +79,8 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Feed } from './components/Feed';
 import MapViewerModal from './components/MapViewerModal';
+import { AgencyUnits } from './components/AgencyUnits';
+import { PublicUnitReport } from './components/PublicUnitReport';
 import { UserRole, Employee, Client, Assignment, Feedback, ContactRequest, Company, Unit, CompanyUser, PricingConfig, CompanyRequest, EmployeeRegistration, AppNotification, Agency, Message, Bulletin, Invoice, Plan, CheckIn, PlanType } from './types';
 import { LandingPage } from './components/LandingPage';
 import { DEFAULT_PRICING } from './constants';
@@ -230,6 +232,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
     { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
     { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
+    { id: 'agency_units', label: 'Unidades', icon: MapPin, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
     { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800' },
@@ -300,7 +303,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
   ] : [];
 
   const mainItems = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') 
-    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed'].includes(i.id)) 
+    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed', 'agency_units'].includes(i.id)) 
     : menuItems;
 
   return (
@@ -325,20 +328,7 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
           </div>
 
           <div className="flex items-center gap-4">
-            {role !== 'ADMIN' && (
-              <button 
-                onClick={() => setActiveTab(role === 'EMPLOYEE' ? 'employee_profile' : role === 'COMPANY' ? 'company_profile' : 'dashboard')}
-                className="relative p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                title="Notificações"
-              >
-                <Bell size={20} />
-                {unreadNotifications > 0 && (
-                  <span className="absolute top-1 right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-900 border-none">
-                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                  </span>
-                )}
-              </button>
-            )}
+
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
@@ -348,7 +338,6 @@ function AppNavbar({ role, activeTab, setActiveTab, userEmail, userName, userPho
             </button>
             <div className="hidden sm:block text-right">
               <p className="text-xs font-black text-slate-900 dark:text-white leading-none mb-1">{userName || 'Usuário'}</p>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{role === 'AGENCY' ? 'Agência' : role === 'ADMIN' ? 'Admin' : role === 'COMPANY' ? 'Empresa' : 'Colaborador'}</p>
             </div>
             
             <div className="flex items-center gap-2">
@@ -478,6 +467,7 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
     { id: 'ponto', label: 'Ponto de controle', icon: QrCode, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20' },
     { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20' },
+    { id: 'agency_units', label: 'Unidades', icon: MapPin, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
     { id: 'pricing', label: 'Precificação', icon: CreditCard, color: 'text-accent-cyan bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/20' },
     { id: 'reports', label: 'Relatórios', icon: FileText, color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20' },
     { id: 'user_management', label: 'Gestão de Logins', icon: Lock, color: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800' },
@@ -548,7 +538,7 @@ function MobileSidebar({ role, activeTab, setActiveTab, isMobileMenuOpen, setIsM
   ] : [];
 
   const mainItems = (role === 'AGENCY' || role === 'COMPANY' || role === 'EMPLOYEE') 
-    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed'].includes(i.id)) 
+    ? menuItems.filter(i => ['dashboard', 'admin_dashboard', 'manager_dashboard', 'feed', 'agency_units'].includes(i.id)) 
     : menuItems;
 
   return (
@@ -2543,6 +2533,12 @@ export default function App() {
     }
   }, []);
 
+  const unitReportId = new URLSearchParams(window.location.search).get('unit-report');
+
+  if (unitReportId) {
+    return <PublicUnitReport unitId={unitReportId} />;
+  }
+
   if (!isAuthReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black relative transition-colors duration-500">
@@ -2994,6 +2990,17 @@ export default function App() {
                     />
                   </div>
                 )}
+                {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'agency_units' && (
+                  <div key="agency-units">
+                    <AgencyUnits 
+                      units={units}
+                      companies={companies}
+                      employees={employees}
+                      assignments={assignments}
+                      agencyId={currentAgencyId}
+                    />
+                  </div>
+                )}
                 {role === 'AGENCY' && agencies.find(a => a.id === currentAgencyId)?.status === 'ACTIVE' && activeTab === 'pricing' && currentAgencyPlan !== 'STARTER' && (
                   <div key="agency-pricing">
                     <AgencyPricing 
@@ -3269,6 +3276,8 @@ function BottomNav({ role, activeTab, handleTabChange, agencyPlan }: {
     { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, color: 'text-brand-600 bg-brand-50' },
     { id: 'staffing', label: 'Solicitação', icon: Users, color: 'text-accent-violet bg-violet-50' },
     { id: 'registrations', label: 'Cadastros', icon: UserPlus, color: 'text-accent-emerald bg-emerald-50' },
+    { id: 'companies', label: 'Empresas', icon: Building2, color: 'text-accent-indigo bg-indigo-50' },
+    { id: 'agency_units', label: 'Unidades', icon: MapPin, color: 'text-blue-600 bg-blue-50' },
     { id: 'access_flow', label: 'Fluxo', icon: Activity, color: 'text-accent-rose bg-rose-50' },
     // CORRIGIDO: O id correto para a aba de Ponto é 'ponto'
     { id: 'ponto', label: 'Ponto', icon: QrCode, color: 'text-accent-rose bg-rose-50' },
@@ -4235,34 +4244,6 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
     }
   };
 
-  // Chart Data Preparation
-  const statusCounts = assignments.reduce((acc, curr) => {
-    acc[curr.status] = (acc[curr.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const pieData = [
-    { name: 'Concluídos', value: statusCounts['COMPLETED'] || 0, color: '#10b981' },
-    { name: 'Em Andamento', value: statusCounts['IN_PROGRESS'] || 0, color: '#3b82f6' },
-    { name: 'Agendados', value: statusCounts['SCHEDULED'] || 0, color: '#8b5cf6' },
-    { name: 'Cancelados', value: statusCounts['CANCELLED'] || 0, color: '#f43f5e' },
-  ].filter(d => d.value > 0);
-
-  const last6Months = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    return d.toISOString().substring(0, 7);
-  }).reverse();
-
-  const barData = last6Months.map(month => {
-    const monthAssignments = assignments.filter(a => a.date.startsWith(month) && a.status === 'COMPLETED');
-    const revenue = monthAssignments.reduce((acc, curr) => acc + curr.value, 0);
-    return {
-      name: month.split('-').reverse().join('/'),
-      Faturamento: revenue
-    };
-  });
-
   const [evaluatingEmployee, setEvaluatingEmployee] = useState<Employee | null>(null);
   const [evalRating, setEvalRating] = useState(5);
   const [evalComment, setEvalComment] = useState('');
@@ -4777,81 +4758,7 @@ function AgencyDashboard({ assignments, employees, contacts, employeeRegistratio
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
-          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Faturamento (Últimos 6 meses)</h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#1e293b" : "#f1f5f9"} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$${value}`} />
-                <RechartsTooltip 
-                  cursor={{ fill: isDarkMode ? '#0f172a' : '#f8fafc' }}
-                  contentStyle={{ 
-                    borderRadius: '1rem', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    backgroundColor: isDarkMode ? '#020617' : '#ffffff',
-                    color: isDarkMode ? '#ffffff' : '#000000',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}
-                  itemStyle={{ color: isDarkMode ? '#3b82f6' : '#2563eb' }}
-                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
-                />
-                <Bar dataKey="Faturamento" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-500">
-          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Status das Diárias</h3>
-          <div className="h-72 w-full flex items-center justify-center">
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    contentStyle={{ 
-                      borderRadius: '1rem', 
-                      border: 'none', 
-                      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                      backgroundColor: isDarkMode ? '#020617' : '#ffffff',
-                      color: isDarkMode ? '#ffffff' : '#000000',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-slate-400 dark:text-slate-500 font-medium text-sm">Nenhum dado disponível</p>
-            )}
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
-            {pieData.map((entry, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{entry.name} ({entry.value})</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Charts Grid removed per user request */}
 
       {alerts > 0 && (
         <div className="bg-rose-50 dark:bg-rose-950/20 p-8 sm:p-12 rounded-[2.5rem] border border-rose-100 dark:border-rose-900/30 shadow-sm relative overflow-hidden group">
